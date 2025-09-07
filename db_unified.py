@@ -122,6 +122,24 @@ if USE_PG:
 
 # ---------------- API Unificada ----------------
 
+def init_db() -> bool:
+    """Mantém compatibilidade com chamadas existentes em app.py.
+    Para Postgres apenas garante que o schema foi inicializado;
+    para SQLite delega para o módulo original.
+    """
+    if USE_PG:
+        try:
+            _pg_init_schema()
+            # Se chegou aqui sem exceção consideramos sucesso
+            return True
+        except Exception:
+            return False
+    # Fallback / modo SQLite
+    try:
+        return bool(getattr(sqlite_db, "init_db")())
+    except Exception:
+        return False
+
 def verificar_conexao() -> bool:
     if USE_PG:
         conn = _pg_connect()
