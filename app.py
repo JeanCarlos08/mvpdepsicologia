@@ -62,6 +62,7 @@ def _load_security_module():
 		"security_exists": sec_path.exists(),
 		"dir_listing": sorted(os.listdir(_BASE_DIR))[:40],
 		"error": repr(last_err),
+			import hashlib
 		"sys_path_sample": sys.path[:5],
 	}
 	st.warning(f"Módulo security não carregado. Modo degradado. Diagnóstico: {diag}")
@@ -134,8 +135,23 @@ def save_uploaded_pdf(uploaded_file) -> Optional[str]:
 		safe_name = security.generate_safe_filename(uploaded_file.name)
 		dest = _uploads_dir()
 		path = os.path.join(dest, safe_name)
+		file_bytes = uploaded_file.getvalue()
 		with open(path, "wb") as f:
-			f.write(uploaded_file.getbuffer())
+			f.write(file_bytes)
+		# Calcula hash e persiste em arquivo auxiliar (CSV simples)
+		try:
+			h = hashlib.sha256(file_bytes).hexdigest()
+			hashes_path = os.path.join(dest, "hashes.csv")
+			import csv, time
+			new_row = [safe_name, h, int(time.time())]
+			write_header = not os.path.exists(hashes_path)
+			with open(hashes_path, "a", newline="", encoding="utf-8") as cf:
+				w = csv.writer(cf)
+				if write_header:
+					w.writerow(["arquivo","sha256","epoch"])
+				w.writerow(new_row)
+		except Exception:
+			pass
 		return path
 	except Exception as e:
 		st.error(f"Falha ao salvar arquivo: {e}")
@@ -917,12 +933,22 @@ class DashboardPage:
 			st.error(f"Erro ao carregar estatísticas: {e}")
 			total_at = total_emp = laudos_env = avals_env = 0
 
+		# Pendências
+		try:
+			from services import pending_items
+			pend = pending_items()
+		except Exception:
+			pend = {"sem_laudo":0,"sem_avaliacao":0,"sem_ambos":0}
+
 		# Cards idênticos
 		cards = [
 			{"icon": "👥", "title": "Atendimentos", "value": total_at, "acc": PRIMARY_ACCENT, "spark": [0,2,3,5,4,6,7]},
 			{"icon": "🏢", "title": "Empresas", "value": total_emp, "acc": PRIMARY_ACCENT, "spark": [0,1,1,2,2,3,3]},
 			{"icon": "📄", "title": "Relatórios", "value": laudos_env, "acc": PRIMARY_ACCENT, "spark": [0,0,1,1,2,2,2]},
 			{"icon": "📝", "title": "Avaliações", "value": avals_env, "acc": PRIMARY_ACCENT, "spark": [0,1,0,1,1,1,2]},
+			{"icon": "⚠️", "title": "Pend. Laudo", "value": pend.get("sem_laudo",0), "acc": "#e67e22"},
+			{"icon": "⚠️", "title": "Pend. Avaliação", "value": pend.get("sem_avaliacao",0), "acc": "#d35400"},
+			{"icon": "⏳", "title": "Pend. Ambos", "value": pend.get("sem_ambos",0), "acc": "#c0392b"},
 		]
 		display_cards(cards)
 

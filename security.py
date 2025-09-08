@@ -119,12 +119,16 @@ setup_logging()
 log_access("SECURITY_MODULE_LOADED", "Módulo carregado com sucesso")
 
 try:
-    import streamlit as st
-    st.write("Módulo de Segurança carregado.")
+    import streamlit as st  # opcional; evitar side-effects diretos
 except ImportError:
-    print("Streamlit não está instalado. Execute 'pip install streamlit' para instalar.")
-    log_access("STREAMLIT_IMPORT_ERROR", "Streamlit não está instalado")
+    log_access("STREAMLIT_IMPORT_WARN", "Streamlit ausente - execução headless")
+
+def compute_sha256(file_bytes: bytes) -> str:
+    """Retorna hash SHA256 hex de um conteúdo em memória."""
+    import hashlib
+    h = hashlib.sha256()
+    h.update(file_bytes)
+    return h.hexdigest()
 
 if __name__ == "__main__":
     print(check_system_health())
-    os.system('streamlit run app.py')
