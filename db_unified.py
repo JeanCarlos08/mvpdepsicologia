@@ -8,59 +8,72 @@ from __future__ import annotations
 import os
 from typing import List, Tuple, Dict, Optional
 
-# Carrega .env (se existir) para permitir DATABASE_URL sem alterar app principal
+# Carrega .env (se existir)
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
 except Exception:
     pass
 
-USE_PG = False
 _DB_URL = os.getenv("DATABASE_URL", "").strip()
-
+USE_PG = False
 _pg_conn = None
 
-# Tenta carregar psycopg2 se URL indicar postgres
-if _DB_URL.lower().startswith("postgres://") or _DB_URL.lower().startswith("postgresql://"):
+# --- Placeholder para evitar AttributeError em importação circular ---
+def init_db() -> bool:
+    """
+    Placeholder inicial para impedir AttributeError se o app chamar init_db()
+    enquanto este módulo ainda está sendo carregado.
+    Será sobrescrita pela implementação real mais abaixo.
+    """
+    return True
+# --- fim placeholder ---
+
+# Import protegido de psycopg2
+_psycopg2 = None
+if _DB_URL.lower().startswith(("postgres://", "postgresql://")):
     try:
         import psycopg2  # type: ignore
+        _psycopg2 = psycopg2
         USE_PG = True
-    except Exception:
+    except Exception as e:
+        print(f"[DB_UNIFIED] psycopg2 não disponível ({e}); usando SQLite fallback.")
         USE_PG = False
 
-# Importa sempre o módulo SQLite como fallback
+# Fallback sempre disponível
 import db as sqlite_db  # type: ignore
 
-# ---------------- PostgreSQL Helpers ----------------
 def _pg_connect():
+    """Retorna conexão Postgres ou None (sem lançar exceção)."""
     global _pg_conn
+    if not USE_PG or not _psycopg2:
+        return None
     if _pg_conn is not None:
         try:
             _pg_conn.cursor().execute("SELECT 1")
             return _pg_conn
         except Exception:
             _pg_conn = None
-    if not _DB_URL:
-        return None
     try:
-        _pg_conn = psycopg2.connect(_DB_URL, connect_timeout=10)
+        _pg_conn = _psycopg2.connect(_DB_URL, connect_timeout=10)
         _pg_conn.autocommit = True
         return _pg_conn
-    except Exception:
+    except Exception as e:
+        print(f"[DB_UNIFIED] Falha ao conectar Postgres: {e}; fallback SQLite.")
         return None
 
 _PG_TABLES_CREATED = False
 
 def _pg_init_schema():
+    """Cria tabelas no Postgres se necessário (silencioso em erro)."""
     global _PG_TABLES_CREATED
-    if _PG_TABLES_CREATED:
+    if _PG_TABLES_CREATED or not USE_PG:
         return
     conn = _pg_connect()
     if not conn:
         return
     try:
         cur = conn.cursor()
-        # Usa DATE e TIME nativos quando em Postgres
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS atendimentos (
@@ -108,33 +121,36 @@ def _pg_init_schema():
             )
             """
         )
-        # Garantir FK suave (tenta adicionar; ignora erro se já existir)
         try:
-            cur.execute("ALTER TABLE notas_historico ADD CONSTRAINT fk_nota FOREIGN KEY (nota_id) REFERENCES notas(id) ON DELETE CASCADE")
+            cur.execute(
+                "ALTER TABLE notas_historico ADD CONSTRAINT fk_nota FOREIGN KEY (nota_id) "
+                "REFERENCES notas(id) ON DELETE CASCADE"
+            )
         except Exception:
             pass
         _PG_TABLES_CREATED = True
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[DB_UNIFIED] Erro criando schema Postgres: {e}")
 
-if USE_PG:
-    _pg_init_schema()
-
-# ---------------- API Unificada ----------------
-
-def init_db() -> bool:
-    """Mantém compatibilidade com chamadas existentes em app.py.
-    Para Postgres apenas garante que o schema foi inicializado;
-    para SQLite delega para o módulo original.
-    """
+def _safe_boot():
+    """Tentativa segura de inicialização Postgres sem quebrar import."""
     if USE_PG:
         try:
             _pg_init_schema()
-            # Se chegou aqui sem exceção consideramos sucesso
+        except Exception as e:
+            print(f"[DB_UNIFIED] Boot Postgres falhou: {e}")
+
+_safe_boot()
+
+# ---------------- API Unificada (mantido abaixo SEM mudanças) ----------------
+# init_db permanece compatível; se módulo falhar acima, esta função ainda existe.
+def init_db() -> bool:
+    if USE_PG:
+        try:
+            _pg_init_schema()
             return True
         except Exception:
             return False
-    # Fallback / modo SQLite
     try:
         return bool(getattr(sqlite_db, "init_db")())
     except Exception:
@@ -352,4 +368,16 @@ def listar_historico_nota(nota_id: int) -> List[Tuple]:
         except Exception:
             return []
     return sqlite_db.listar_historico_nota(nota_id)
+    
+# --- Exportações explícitas ---
+__all__ = [
+    'init_db','verificar_conexao','inserir_atendimento','listar_atendimentos','atualizar_atendimento','excluir_atendimento',
+    'obter_estatisticas','get_backend_info','inserir_nota','listar_notas','atualizar_nota','excluir_nota',
+    'inserir_historico_nota','listar_historico_nota'
+]
+
+# Nota: NÃO importar este módulo dentro de si mesmo (foi removido código recursivo).
+# A inicialização (db.init_db()) deve ser chamada a partir de app.py após o import.
+
+
 
