@@ -10,6 +10,45 @@ from contextlib import contextmanager
 DATABASE_NAME = "gestao_clinica.db"
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), DATABASE_NAME)
 
+def ensure_dir():
+    try:
+        base = os.path.dirname(DATABASE_PATH)
+        if base and not os.path.exists(base):
+            os.makedirs(base, exist_ok=True)
+    except Exception:
+        pass
+
+def get_db_diagnostics() -> Dict:
+    """Retorna diagnóstico detalhado do estado do SQLite."""
+    import time
+    start = time.perf_counter()
+    info: Dict = {}
+    path = DATABASE_PATH
+    info["db_path"] = path
+    exists = os.path.exists(path)
+    info["db_exists"] = exists
+    tables: List[str] = []
+    tables_error: Optional[str] = None
+    if exists:
+        try:
+            with get_db_connection() as conn:
+                rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+                tables = [r[0] for r in rows]
+        except Exception as e:
+            tables_error = str(e)
+    else:
+        tables_error = "Arquivo não existe"
+    info["tables"] = tables
+    if tables_error:
+        info["tables_error"] = tables_error
+    try:
+        size = os.path.getsize(path) if exists else 0
+        info["file_size_bytes"] = size
+    except Exception:
+        info["file_size_bytes"] = None
+    info["duration_ms"] = int((time.perf_counter() - start)*1000)
+    return info
+
 @contextmanager
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH, timeout=30.0)
@@ -23,6 +62,7 @@ def get_db_connection():
         conn.close()
 
 def init_db() -> bool:
+    ensure_dir()
     try:
         with get_db_connection() as conn:
             cur = conn.cursor()

@@ -14,7 +14,7 @@ gatherUsageStats = false
 developmentMode = false
 
 [theme]
-primaryColor = "#1abc9c"
+primaryColor = "#4DA768"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f0f2f6"
 textColor = "#262730"

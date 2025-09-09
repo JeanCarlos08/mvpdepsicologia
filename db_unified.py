@@ -16,6 +16,7 @@ except Exception:
     pass
 
 _DB_URL = os.getenv("DATABASE_URL", "").strip()
+VERBOSE = os.getenv("DB_UNIFIED_VERBOSE", "0") == "1"
 USE_PG = False
 _pg_conn = None
 
@@ -37,7 +38,8 @@ if _DB_URL.lower().startswith(("postgres://", "postgresql://")):
         _psycopg2 = psycopg2
         USE_PG = True
     except Exception as e:
-        print(f"[DB_UNIFIED] psycopg2 não disponível ({e}); usando SQLite fallback.")
+        if VERBOSE:
+            print(f"[DB_UNIFIED] psycopg2 indisponível: {e}")
         USE_PG = False
 
 # Fallback sempre disponível
@@ -59,7 +61,8 @@ def _pg_connect():
         _pg_conn.autocommit = True
         return _pg_conn
     except Exception as e:
-        print(f"[DB_UNIFIED] Falha ao conectar Postgres: {e}; fallback SQLite.")
+        if VERBOSE:
+            print(f"[DB_UNIFIED] Conexão Postgres falhou: {e}")
         return None
 
 _PG_TABLES_CREATED = False
@@ -130,7 +133,8 @@ def _pg_init_schema():
             pass
         _PG_TABLES_CREATED = True
     except Exception as e:
-        print(f"[DB_UNIFIED] Erro criando schema Postgres: {e}")
+        if VERBOSE:
+            print(f"[DB_UNIFIED] Erro schema PG: {e}")
 
 def _safe_boot():
     """Tentativa segura de inicialização Postgres sem quebrar import."""
@@ -138,7 +142,8 @@ def _safe_boot():
         try:
             _pg_init_schema()
         except Exception as e:
-            print(f"[DB_UNIFIED] Boot Postgres falhou: {e}")
+            if VERBOSE:
+                print(f"[DB_UNIFIED] Boot PG falhou: {e}")
 
 _safe_boot()
 
