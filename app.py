@@ -16,6 +16,11 @@ MAX_UPLOAD_MB = 50
 PRIMARY_ACCENT = "#4DA768"
 ADVANCED_UI = True  # Defina False para reverter facilmente as melhorias de design
 
+# Permite desativar tema avançado no deploy (debug de erro DOM) definindo DISABLE_ADVANCED_UI=1
+import os as _os
+if _os.getenv("DISABLE_ADVANCED_UI", "0") == "1":
+	ADVANCED_UI = False
+
 _BASE_DIR = pathlib.Path(__file__).resolve().parent
 if str(_BASE_DIR) not in sys.path:
 	sys.path.insert(0, str(_BASE_DIR))
@@ -1658,21 +1663,6 @@ class ClinicalManagementApp:
 		configure_page()
 		if not DatabaseManager.initialize_database():
 			st.stop()
-		
-		# Verificar mudanças pendentes e aplicar refresh controlado
-		needs_refresh = any([
-			st.session_state.get('_pin_changed', False),
-			st.session_state.get('_edit_requested', False),
-			st.session_state.get('_new_note_requested', False),
-			st.session_state.get('_editor_closed', False)
-		])
-		
-		if needs_refresh:
-			# Limpar flags
-			for flag in ['_pin_changed', '_edit_requested', '_new_note_requested', '_editor_closed']:
-				st.session_state.pop(flag, None)
-			st.rerun()
-		
 		filters = UIComponents.render_sidebar()
 		# Aplicar CSS após saber se dark mode está ativo
 		is_dark = filters.get("dark_mode", False)
