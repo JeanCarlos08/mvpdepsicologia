@@ -1,86 +1,61 @@
-"""
-JULIANA - Gestão Clínica (MVP)
-"""
+"""JULIANA - Gestão Clínica (MVP)"""
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, date, timedelta, time
-import os, sys, pathlib
+import plotly.io as pio
+from datetime import datetime, date, time
+import os, sys, pathlib, hashlib
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, Any
 
-# ==============================
-# Constantes de Configuração
-# ==============================
 DATE_FORMAT = "%d/%m/%Y"
 TIME_FORMAT = "%H:%M"
 MAX_UPLOAD_MB = 50
 PRIMARY_ACCENT = "#4DA768"
+ADVANCED_UI = True  # Defina False para reverter facilmente as melhorias de design
 
-# Banco de dados / segurança (garante caminho do diretório)
 _BASE_DIR = pathlib.Path(__file__).resolve().parent
 if str(_BASE_DIR) not in sys.path:
 	sys.path.insert(0, str(_BASE_DIR))
 
-# Import de banco: tenta camada unificada (Postgres ou SQLite fallback)
 try:
 	import db_unified as db  # type: ignore
 except Exception:
-	try:
-		import db  # type: ignore
-	except Exception as e:
-		st.error(f"Falha ao importar db: {e}")
-		st.stop()
+	import db  # type: ignore
 
 def _load_security_module():
-	"""Tenta importar security com várias estratégias e registra diagnóstico em caso de falha."""
-	import importlib, importlib.util, traceback
+	"""Importa security.py; se falhar retorna fallback enxuto."""
+	import importlib, importlib.util
 	candidates = ["security"]
 	sec_path = _BASE_DIR / "security.py"
 	if sec_path.exists():
 		candidates.append(str(sec_path))
-	last_err = None
 	for cand in candidates:
 		try:
 			if cand.endswith(".py"):
 				spec = importlib.util.spec_from_file_location("security", cand)
 				if spec and spec.loader:
 					mod = importlib.util.module_from_spec(spec)
-					spec.loader.exec_module(mod)  # type: ignore
+					spec.loader.exec_module(mod)
 					return mod
 			else:
 				return importlib.import_module(cand)
-		except Exception as e:  # captura e tenta próxima estratégia
-			last_err = e
-	# Falhou todas as tentativas
-	diag = {
-		"cwd": os.getcwd(),
-		"base_dir": str(_BASE_DIR),
-		"security_exists": sec_path.exists(),
-		"dir_listing": sorted(os.listdir(_BASE_DIR))[:40],
-		"error": repr(last_err),
-			import hashlib
-		"sys_path_sample": sys.path[:5],
-	}
-	st.warning(f"Módulo security não carregado. Modo degradado. Diagnóstico: {diag}")
+		except Exception:
+			continue
+	st.warning("Segurança em modo degradado")
 	class _SecFallback:
-		def log_access(self, *a, **k):
-			pass
-		def sanitize_input(self, x):
-			return x if isinstance(x, str) else str(x)
-		def validate_file_upload(self, *a, **k):
-			return True, ""
+		def log_access(self, *a, **k): return None
+		def sanitize_input(self, x): return x if isinstance(x, str) else str(x)
+		def validate_file_upload(self, *a, **k): return True, ""
 		def generate_safe_filename(self, original_name: str):
 			return f"fallback_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
 	return _SecFallback()
 
-security = _load_security_module()  # type: ignore
+security = _load_security_module()
 
-
-# Editor rich-text (opcional) via importlib para evitar erro estático se não instalado
+# Editor rich-text (opcional)
 import importlib
 try:
 	_quill_mod = importlib.import_module("streamlit_quill")
@@ -88,19 +63,31 @@ try:
 except Exception:
 	st_quill = None
 
+class ModalidadeAtendimento(Enum):
+	ADMISSIONAL = "Admissional"
+	PERIODICO = "Periódico"
+	DEMISSIONAL = "Demissional"
+	RETORNO = "Retorno"
+
+@dataclass
+class AtendimentoData:
+	empresa: str
+	nome: str
+	modalidade: str
+	data: str
+	hora: str
+	laudo_pdf: Optional[str] = None
+	avaliacao_pdf: Optional[str] = None
 
 def hex_to_rgba(hex_color: str, alpha: float = 0.10) -> str:
-	"""Converte #RRGGBB ou #RGB em rgba(r,g,b,a); fallback para o verde principal.
-	alpha padrão 10% para degradê quase invisível.
-	"""
+	"""Converte #RRGGBB ou #RGB em rgba(r,g,b,a)."""
 	try:
 		if not hex_color:
-			return "rgba(77,167,104,0.08)"  # #4DA768 com 8%
+			return "rgba(77,167,104,0.08)"
 		c = hex_color.strip()
 		if c.lower().startswith("rgba"):
-			return c  # já é rgba
+			return c
 		if c.lower().startswith("rgb("):
-			# converte rgb(r,g,b) para rgba(r,g,b,a)
 			vals = c[c.find("(")+1:c.find(")")].split(",")
 			r, g, b = [int(v) for v in vals[:3]]
 			return f"rgba({r},{g},{b},{alpha})"
@@ -116,10 +103,8 @@ def hex_to_rgba(hex_color: str, alpha: float = 0.10) -> str:
 	except Exception:
 		return "rgba(77,167,104,0.08)"
 
-
 def save_uploaded_pdf(uploaded_file) -> Optional[str]:
-	"""Valida e salva PDF retornando caminho ou None.
-	Centraliza lógica repetida de upload (clean code)."""
+	"""Valida e salva PDF retornando caminho ou None."""
 	if uploaded_file is None:
 		return None
 	try:
@@ -138,7 +123,7 @@ def save_uploaded_pdf(uploaded_file) -> Optional[str]:
 		file_bytes = uploaded_file.getvalue()
 		with open(path, "wb") as f:
 			f.write(file_bytes)
-		# Calcula hash e persiste em arquivo auxiliar (CSV simples)
+		# Hash
 		try:
 			h = hashlib.sha256(file_bytes).hexdigest()
 			hashes_path = os.path.join(dest, "hashes.csv")
@@ -157,9 +142,8 @@ def save_uploaded_pdf(uploaded_file) -> Optional[str]:
 		st.error(f"Falha ao salvar arquivo: {e}")
 		return None
 
-
 def display_cards(cards: List[Dict[str, Any]]) -> None:
-	"""Exibe cards modernos compatíveis com o painel do app online"""
+	"""Versão simplificada: cards estáticos com borda neon chamativa."""
 	if not cards:
 		return
 	cols = st.columns(len(cards))
@@ -168,486 +152,169 @@ def display_cards(cards: List[Dict[str, Any]]) -> None:
 			icon = c.get("icon", "📦")
 			title = c.get("title", "Item")
 			value = c.get("value", 0)
-			color = c.get("acc", "#4DA768")  # cor principal padrão
-			bg_rgba = hex_to_rgba(color, 0.10)  # degradê 10%
+			color = c.get("acc", "#39ff14") or "#39ff14"
+			def _esc(s: Any) -> str:
+				try:
+					return (str(s)
+						.replace("&", "&amp;")
+						.replace("<", "&lt;")
+						.replace(">", "&gt;")
+						.replace("'", "&#39;")
+						.replace('"', "&quot;")
+					)
+				except Exception:
+					return ""
+			safe_title = _esc(title)
 			st.markdown(f"""
-			<div class='card-modern' style='
-				border-top: 3px solid {color};
-				background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, {bg_rgba} 100%);
-			'>
-				<div class='card-icon'>{icon}</div>
-				<div class='card-title'>{title}</div>
-				<div class='card-value' style='color: {color};'>{value}</div>
+			<div class='simple-card' style='border-color:{color};'>
+				<div class='sc-icon'>{icon}</div>
+				<div class='sc-title'>{safe_title}</div>
+				<div class='sc-value'>{value}</div>
 			</div>
 			""", unsafe_allow_html=True)
 
+def apply_custom_css(dark_mode: bool = False, advanced: bool = ADVANCED_UI) -> None:
+	"""Injeta CSS global. Se advanced=False usa tema básico. Dark mode com override."""
+	if not advanced:
+		st.markdown("""
+		<style>
+		.stApp { background:#f5fff6; }
+		.simple-card { background:#ffffffcc; border:2px solid #4DA768; border-radius:14px; padding:14px; }
+		</style>
+		""", unsafe_allow_html=True)
+		return
 
-class ModalidadeAtendimento(Enum):
-	ADMISSIONAL = "Admissional"
-	PERIODICO = "Periódico"
-	DEMISSIONAL = "Demissional"
-	RETORNO = "Retorno"
+	# Paleta e design avançado
+	base_css = f"""
+	<style>
+	:root {{
+		--acc-1:{PRIMARY_ACCENT};
+		--acc-2:#1d3b29;
+		--bg-grad:linear-gradient(135deg,#99E89D 0%,#7FD784 55%,#4DA768 100%);
+		--card-bg:linear-gradient(145deg,rgba(255,255,255,0.65) 0%,rgba(255,255,255,0.30) 100%);
+		--card-border:#39ff14;
+		--radius-xl:22px; --radius-lg:18px; --radius-md:12px;
+		--shadow-sm:0 2px 4px -2px rgba(0,0,0,0.18);
+		--shadow-md:0 6px 18px -4px rgba(0,0,0,0.25);
+		--shadow-neon:0 0 6px #39ff14,0 0 18px rgba(57,255,20,.55),0 0 32px rgba(57,255,20,.35);
+		--transition-base:.35s cubic-bezier(.16,.8,.24,1);
+		--sidebar-grad:linear-gradient(200deg,#4DA768 0%,#3A8A56 50%,#2c5f3d 100%);
+	}}
+	body {{ font-family: 'Inter', system-ui, Arial, sans-serif; }}
+	.stApp {{ background: var(--bg-grad); background-attachment:fixed; }}
+	section[data-testid="stSidebar"] {{ width:360px !important; }}
+	section[data-testid="stSidebar"]>div {{ background:var(--sidebar-grad)!important; backdrop-filter:blur(6px) saturate(1.15); }}
+	section[data-testid="stSidebar"] * {{ color:#fff !important; }}
+	/* Scrollbar */
+	::-webkit-scrollbar {{ width:10px; }}
+	::-webkit-scrollbar-track {{ background:rgba(255,255,255,0.1); }}
+	::-webkit-scrollbar-thumb {{ background:#2f6b44; border-radius:20px; border:2px solid rgba(255,255,255,0.2); }}
+	::-webkit-scrollbar-thumb:hover {{ background:#368250; }}
+	/* Radio menu */
+	section[data-testid="stSidebar"] div[role="radiogroup"] {{ gap:4px !important; }}
+	section[data-testid="stSidebar"] div[role="radiogroup"] label {{ display:flex; align-items:center; gap:14px; padding:8px 12px; border-radius:16px; cursor:pointer; transition:var(--transition-base); font-weight:600; font-size:0.95rem; letter-spacing:.3px; position:relative; }}
+	section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{ background:rgba(255,255,255,0.12); transform:translateX(2px); }}
+	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {{ background:linear-gradient(135deg,#4DA768 0%,#30714a 100%); box-shadow:0 4px 14px -4px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,0.25) inset; }}
+	section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{ margin:0; }}
+	/* Toggle dark mode indicator */
+	.dark-label {{ font-size:0.75rem; opacity:.75; margin-top:-4px; }}
+	/* Cards */
+	.simple-card {{ background:var(--card-bg); backdrop-filter:blur(6px) saturate(1.15); border:3px solid var(--card-border); border-radius:var(--radius-lg); padding:20px 16px 18px; box-shadow:0 0 2px #39ff14,0 0 8px rgba(57,255,20,0.40); text-align:center; min-height:160px; display:flex; flex-direction:column; justify-content:center; gap:6px; position:relative; overflow:hidden; transition:var(--transition-base); }}
+	.simple-card:before {{ content:""; position:absolute; inset:0; background:radial-gradient(circle at 20% 15%,rgba(255,255,255,.65),rgba(255,255,255,0)); opacity:.35; pointer-events:none; }}
+	.simple-card:hover {{ transform:translateY(-8px) scale(1.025); box-shadow:var(--shadow-neon); }}
+	.sc-icon {{ font-size:2.35rem; line-height:1; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.25)); }}
+	.sc-title {{ font-weight:800; font-size:.80rem; letter-spacing:1px; text-transform:uppercase; color:#0d301c; opacity:.9; }}
+	.sc-value {{ font-weight:900; font-size:2.05rem; letter-spacing:.5px; color:#042; text-shadow:0 0 6px rgba(57,255,20,0.65); }}
+	/* Headings */
+	h1,h2,h3,h4,h5,h6 {{ font-family:'Inter',system-ui,Arial Black,sans-serif; font-weight:800; letter-spacing:.5px; }}
+	/* Buttons */
+	button[kind="primary"] {{ background:linear-gradient(135deg,#4DA768 0%,#3b8a56 100%) !important; border:0 !important; box-shadow:0 4px 14px -4px rgba(0,0,0,0.4); font-weight:700; letter-spacing:.4px; transition:var(--transition-base); }}
+	button[kind="primary"]:hover {{ filter:brightness(1.07); transform:translateY(-2px); }}
+	button[kind="secondary"] {{ border-radius:10px !important; }}
+	/* Dataframe */
+	.dataframe thead th {{ position:sticky; top:0; backdrop-filter:blur(4px); background:rgba(255,255,255,0.75)!important; }}
+	.dataframe tbody tr:hover {{ background:rgba(77,167,104,0.10)!important; }}
+	.dataframe tbody tr:nth-child(even) {{ background:rgba(255,255,255,0.40); }}
+	/* Focus */
+	button:focus, input:focus, select:focus, textarea:focus {{ outline:2px solid #39ff14 !important; outline-offset:2px; box-shadow:0 0 0 3px rgba(57,255,20,0.35)!important; }}
+	/* Badges */
+	.badge {{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.60rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; backdrop-filter:blur(4px); }}
+	.badge-ok {{ background:#2ecc71; color:#fff; }}
+	.badge-warn {{ background:#f1c40f; color:#1d2100; }}
+	.badge-err {{ background:#e74c3c; color:#fff; }}
+	.badge-info {{ background:#3498db; color:#fff; }}
+	/* Skeleton */
+	.skel {{ background:linear-gradient(90deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.40) 50%, rgba(255,255,255,0.15) 75%); background-size:200% 100%; animation:skel 1.2s ease-in-out infinite; border-radius:10px; }}
+	@keyframes skel {{ 0%{{background-position:0 0;}} 100%{{background-position:-200% 0;}} }}
+	/* Nav header */
+	.nav-header {{ display:flex; align-items:center; gap:10px; font-size:1.05rem; font-weight:800; padding:6px 4px 4px; margin:4px 0 16px; letter-spacing:.5px; }}
+	/* Utility containers */
+	.glass-box {{ background:linear-gradient(145deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.22) 100%); padding:1.4rem 1.2rem; border-radius:20px; border:1px solid rgba(255,255,255,0.55); box-shadow:0 10px 28px -10px rgba(0,0,0,0.35); backdrop-filter:blur(8px) saturate(1.4); }}
+	/* Dark overrides serão adicionados separadamente sem necessidade de classe */
+	</style>
+	"""
+	st.markdown(base_css, unsafe_allow_html=True)
+	if dark_mode:
+		st.markdown(inject_dark_theme(), unsafe_allow_html=True)
 
+def inject_dark_theme() -> str:
+	"""CSS de override para modo escuro (separado para reutilização/teste)."""
+	return """
+	<style>
+	:root { --bg-grad:linear-gradient(135deg,#062312 0%,#0d4424 55%,#0a301b 100%); --card-bg:linear-gradient(145deg,rgba(15,40,25,0.85) 0%,rgba(30,70,40,0.55) 100%); }
+	.stApp { color:#f5fff6; }
+	h1,h2,h3,h4,h5,h6 { color:#e8ffee !important; }
+	.simple-card { border-color:#39ff14; box-shadow:0 0 3px #39ff14,0 0 10px rgba(57,255,20,0.35); }
+	.sc-title { color:#d9ffe9; }
+	.sc-value { color:#d7ffe4; text-shadow:0 0 10px rgba(57,255,20,0.85); }
+	.dataframe thead th { background:rgba(10,40,22,0.85)!important; color:#d9ffe9 !important; }
+	.dataframe tbody tr:nth-child(even) { background:rgba(255,255,255,0.06); }
+	section[data-testid="stSidebar"]>div { background:linear-gradient(200deg,#113a22 0%,#0e301c 55%,#0b2716 100%)!important; }
+	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(135deg,#145d33 0%,#0d3d22 100%); }
+	</style>
+	"""
 
-@dataclass
-class AtendimentoData:
-	empresa: str
-	nome: str
-	modalidade: str
-	data: str
-	hora: str
-	laudo_pdf: Optional[str] = None
-	avaliacao_pdf: Optional[str] = None
+def apply_plotly_theme(dark_mode: bool = False) -> None:
+	"""Registra e aplica templates Plotly (claro/escuro) alinhados ao tema UI."""
+	light = {
+		"layout": {
+			"paper_bgcolor": "rgba(0,0,0,0)",
+			"plot_bgcolor": "rgba(255,255,255,0.55)",
+			"font": {"family": "Inter,Arial,sans-serif", "color": "#123"},
+			"title": {"x": 0.02, "font": {"size": 20, "color": "#123", "family": "Inter,Arial Black,sans-serif"}},
+			"legend": {"bgcolor": "rgba(255,255,255,0.6)", "borderwidth": 0},
+			"margin": {"l": 40, "r": 30, "t": 60, "b": 40},
+			"xaxis": {"gridcolor": "rgba(0,0,0,0.08)", "zeroline": False},
+			"yaxis": {"gridcolor": "rgba(0,0,0,0.08)", "zeroline": False},
+			"colorway": ["#4DA768", "#7FD784", "#2ecc71", "#3A8A56", "#99E89D", "#16a085"],
+		}
+	}
+	dark = {
+		"layout": {
+			"paper_bgcolor": "rgba(0,0,0,0)",
+			"plot_bgcolor": "rgba(15,40,25,0.55)",
+			"font": {"family": "Inter,Arial,sans-serif", "color": "#e8ffee"},
+			"title": {"x": 0.02, "font": {"size": 20, "color": "#d9ffe9", "family": "Inter,Arial Black,sans-serif"}},
+			"legend": {"bgcolor": "rgba(15,40,25,0.35)", "borderwidth": 0},
+			"margin": {"l": 40, "r": 30, "t": 60, "b": 40},
+			"xaxis": {"gridcolor": "rgba(255,255,255,0.12)", "zeroline": False, "tickcolor": "rgba(255,255,255,0.4)"},
+			"yaxis": {"gridcolor": "rgba(255,255,255,0.12)", "zeroline": False, "tickcolor": "rgba(255,255,255,0.4)"},
+			"colorway": ["#39ff14", "#7FD784", "#4DA768", "#2ecc71", "#16a085", "#3A8A56"],
+		}
+	}
+	pio.templates["juliana_light"] = light
+	pio.templates["juliana_dark"] = dark
+	pio.templates.default = "juliana_dark" if dark_mode else "juliana_light"
 
 
 def configure_page() -> None:
+	"""Configura parâmetros básicos da página Streamlit."""
 	st.set_page_config(
 		page_title="🧠 JULIANA - Gestão Clínica",
 		page_icon="🧠",
 		layout="wide",
 		initial_sidebar_state="expanded",
 	)
-
-
-def apply_custom_css() -> None:
-	st.markdown(
-		"""
-		<style>
-		/* Badge de backend (tipo de banco) */
-		.db-badge {display:inline-block; padding:2px 10px; border-radius:14px; font-size:11px; font-weight:600; letter-spacing:.5px; margin-left:6px; vertical-align:middle;}
-		.db-badge.pg {background:linear-gradient(90deg,#2f80ed,#1366c1); color:#fff;}
-		.db-badge.sqlite {background:linear-gradient(90deg,#666,#444); color:#fff;}
-		/* Background principal - Verde claro (#99E89D) */
-		.stApp { 
-			background: linear-gradient(135deg, #99E89D 0%, #7FD784 100%); 
-		}
-		
-		/* Sidebar moderna - Verde escuro (#4DA768) */
-		section[data-testid="stSidebar"] > div { 
-			background: linear-gradient(180deg, #4DA768 0%, #3A8A56 100%) !important; 
-			border-right: 2px solid rgba(255,255,255,0.1);
-			padding-top: 1.2rem !important;
-			display: flex;
-			flex-direction: column;
-			align-items: stretch;
-			justify-content: flex-start;
-			width: 100% !important; /* permite encolher quando colapsada */
-		}
-		/* Largura apenas quando há espaço (evita travar colapso) */
-		@media (min-width: 1000px) {
-			section[data-testid="stSidebar"] { width: 270px !important; }
-		}
-
-		/* Wrapper automático para primeiro bloco (navegação) */
-		section[data-testid="stSidebar"] .stRadio { margin-top: .25rem !important; }
-		section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h2 { margin-top: 0 !important; }
-		section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
-		
-		/* Textos da sidebar em branco */
-		section[data-testid="stSidebar"] * {
-			color: #ffffff !important;
-		}
-		
-		/* Headers principais: mantém peso e família sem forçar cor para permitir padronização */
-		h1, h2, h3, h4, h5, h6 { 
-			font-weight: 700; 
-			text-shadow: 2px 2px 4px rgba(0,0,0,0.3); 
-			font-family: 'Arial Black', sans-serif;
-		}
-		
-		/* Container principal */
-		.main .block-container {
-			padding: 2rem 1rem;
-			background: rgba(255,255,255,0.05);
-			border-radius: 20px;
-			backdrop-filter: blur(10px);
-			border: 1px solid rgba(255,255,255,0.1);
-			margin: 1rem;
-			box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-		}
-		
-		/* Cards de métricas modernos */
-		[data-testid="metric-container"] {
-			background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
-			border: 1px solid rgba(255,255,255,0.2);
-			border-radius: 15px;
-			padding: 1.5rem;
-			backdrop-filter: blur(10px);
-			box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-			transition: all 0.3s ease;
-		}
-		
-		[data-testid="metric-container"]:hover {
-			transform: translateY(-5px);
-			box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-		}
-		
-		/* Valores das métricas */
-		[data-testid="metric-container"] [data-testid="metric-value"] {
-			color: #ffffff !important;
-			font-size: 2.5rem !important;
-			font-weight: 900 !important;
-			text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-		}
-		
-		/* Labels das métricas */
-		[data-testid="metric-container"] [data-testid="metric-label"] {
-			color: rgba(255,255,255,0.9) !important;
-			font-weight: 600 !important;
-			font-size: 1rem !important;
-		}
-		
-		/* Botões modernos - Verde */
-		.stButton > button { 
-			background: linear-gradient(45deg, #4DA768, #3A8A56) !important; 
-			color: #ffffff !important; 
-			border: none !important; 
-			border-radius: 12px !important; 
-			padding: 0.75rem 2rem !important;
-			font-size: 1rem !important;
-			font-weight: 700 !important;
-			transition: all 0.3s ease !important;
-			box-shadow: 0 4px 15px rgba(77,167,104,0.3) !important;
-		}
-		
-		.stButton > button:hover { 
-			background: linear-gradient(45deg, #3A8A56, #4DA768) !important; 
-			transform: translateY(-2px) !important;
-			box-shadow: 0 8px 25px rgba(77,167,104,0.4) !important;
-		}
-		
-		/* DataFrames estilizados */
-		.stDataFrame { 
-			background: rgba(255,255,255,0.95) !important; 
-			border-radius: 15px !important; 
-			box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-			border: 1px solid rgba(255,255,255,0.2) !important;
-		}
-		
-		/* Headers de tabela - Verde escuro */
-		.stDataFrame th {
-			background: linear-gradient(135deg, #4DA768, #3A8A56) !important;
-			color: white !important;
-			font-weight: 700 !important;
-			text-align: center !important;
-		}
-		
-		/* Células de tabela */
-		.stDataFrame td {
-			color: #2c3e50 !important;
-			font-weight: 500 !important;
-			text-align: center !important;
-		}
-		
-		/* Forms e inputs */
-		.stTextInput input, .stSelectbox select, .stNumberInput input,
-		.stDateInput input, .stTimeInput input, .stTextArea textarea {
-			border: 2px solid rgba(77,167,104,0.3) !important;
-			border-radius: 10px !important;
-			background: rgba(255,255,255,0.9) !important;
-			color: #2c3e50 !important;
-			font-weight: 500 !important;
-			padding: 0.75rem !important;
-		}
-		
-		/* Labels dos inputs */
-		.stTextInput label, .stSelectbox label, .stNumberInput label, 
-		.stDateInput label, .stTimeInput label, .stTextArea label {
-			color: #1f2d3d !important;
-			font-weight: 600 !important;
-			text-shadow: none !important;
-		}
-		
-		/* KPI Cards customizados - Verde */
-		.kpi-grid { 
-			display: grid; 
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-			gap: 20px; 
-			margin: 2rem 0; 
-		}
-		
-		.kpi-card { 
-			background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
-			border: 1px solid rgba(255,255,255,0.2);
-			border-radius: 20px; 
-			padding: 2rem; 
-			text-align: center;
-			backdrop-filter: blur(15px);
-			box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-			transition: all 0.3s ease;
-		}
-		
-		.kpi-card:hover {
-			transform: translateY(-8px);
-			box-shadow: 0 15px 40px rgba(77,167,104,0.2);
-		}
-		
-		.kpi-title { 
-			font-size: 1rem; 
-			color: rgba(255,255,255,0.8);
-			margin-bottom: 1rem;
-			font-weight: 600;
-		}
-		
-		.kpi-value { 
-			font-size: 3rem; 
-			font-weight: 900; 
-			color: #ffffff;
-			text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-			line-height: 1;
-		}
-		
-		/* Alertas - Tons de verde */
-		.stSuccess {
-			background: linear-gradient(135deg, #4DA768, #3A8A56) !important;
-			color: white !important;
-			border-radius: 10px !important;
-			border: none !important;
-		}
-		
-		.stError {
-			background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
-			color: white !important;
-			border-radius: 10px !important;
-			border: none !important;
-		}
-		
-		.stInfo {
-			background: linear-gradient(135deg, #3498db, #2980b9) !important;
-			color: white !important;
-			border-radius: 10px !important;
-			border: none !important;
-		}
-		
-		.stWarning {
-			background: linear-gradient(135deg, #f39c12, #e67e22) !important;
-			color: white !important;
-			border-radius: 10px !important;
-			border: none !important;
-		}
-		
-		/* Expanders */
-		.streamlit-expanderHeader {
-			background: rgba(77,167,104,0.1) !important;
-			color: var(--acc-2) !important;
-			font-weight: 700 !important;
-			border-radius: 10px !important;
-		}
-		
-		/* Tabs - Verde */
-		.stTabs [data-baseweb="tab-list"] {
-			gap: 8px;
-			border-bottom: 2px solid #7FD78433;
-			margin-bottom: 0.5rem;
-		}
-		
-		.stTabs [data-baseweb="tab"] {
-			background: rgba(77,167,104,0.1);
-			border-radius: 10px;
-			color: var(--acc-2);
-			font-weight: 600;
-		}
-		
-		.stTabs [aria-selected="true"] {
-			background: linear-gradient(135deg, #4DA768, #3A8A56);
-			border: 1px solid #3A8A56;
-			box-shadow: 0 4px 12px rgba(61, 145, 97, 0.25);
-		}
-
-		/* Tipografia destacada (harmonia com a paleta) - fora dos cards verdes */
-		:root {
-			--acc-1: #4DA768;
-			--acc-2: #3A8A56;
-			--acc-3: #7FD784;
-		}
-		/* Destaque em títulos (efeito marca-texto suave) */
-		.block-container h1, .block-container h2, .block-container h3, .block-container h4 {
-			color: var(--acc-2);
-			position: relative;
-			background-image: linear-gradient(120deg, rgba(127,215,132,0.35) 0%, rgba(77,167,104,0.2) 100%);
-			background-size: 100% 40%;
-			background-repeat: no-repeat;
-			background-position: 0 85%;
-			border-bottom: 2px solid rgba(77,167,104,0.25);
-			padding-bottom: 3px;
-		}
-		/* Títulos menores: destaque um pouco mais discreto */
-		.block-container h4 {
-			background-size: 100% 30%;
-			border-bottom-color: rgba(77,167,104,0.18);
-		}
-		/* Ênfase no texto e labels de formulários nas abas */
-		.block-container .stMarkdown strong { color: var(--acc-2); }
-		.block-container label, .block-container .st-emotion-cache-ue6h4q { color: #1f2d3d !important; }
-		/* Proteção: manter textos dos cards verdes em branco */
-		.kpi-card, .kpi-card *, .kpi-title, .kpi-value { color: #fff !important; }
-		
-		/* Radio buttons */
-		.stRadio > div {
-			background: rgba(77,167,104,0.1);
-			border-radius: 10px;
-			padding: 1rem;
-		}
-		
-		/* Checkboxes */
-		.stCheckbox > label {
-			color: #1f2d3d !important;
-			font-weight: 600 !important;
-		}
-		
-		/* File uploader */
-		.stFileUploader {
-			background: rgba(77,167,104,0.1);
-			border-radius: 15px;
-			border: 2px dashed rgba(77,167,104,0.3);
-			padding: 2rem;
-		}
-		/* Realce quando houver arquivo selecionado (usa :has, suportado em navegadores modernos) */
-		.stFileUploader:has([data-testid="stUploadedFile"]) {
-			border: 2px solid #4DA768 !important;
-			background: rgba(77,167,104,0.12) !important;
-			box-shadow: 0 0 0 3px rgba(77,167,104,0.15) inset !important;
-		}
-		.stFileUploader:has([data-testid="stFileUploaderFileName"]) {
-			border: 2px solid #4DA768 !important;
-			background: rgba(77,167,104,0.12) !important;
-		}
-
-		/* Badge de seleção do uploader */
-		.uploader-badge {
-			margin-top: 6px;
-			display: inline-block;
-			border: 2px solid #4DA768;
-			border-radius: 12px;
-			padding: 6px 10px;
-			background: rgba(77,167,104,0.10);
-			color: #2d5a3d;
-			font-weight: 700;
-			box-shadow: 0 0 0 3px rgba(77,167,104,0.15) inset;
-		}
-		
-		/* Plotly charts */
-		.js-plotly-plot {
-			border-radius: 15px !important;
-			box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-		}
-
-		/* Cards modernos do painel (idênticos ao app online) */
-		.card-modern {
-			background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(77,167,104,0.10) 100%);
-			border: 1px solid rgba(0,0,0,0.08);
-			border-radius: 16px !important;
-			padding: 16px !important;
-			box-shadow: 0 6px 16px rgba(0,0,0,0.10) !important;
-			position: relative !important;
-		}
-		.card-modern:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important; }
-		.card-icon { font-size: 2rem; margin-bottom: .25rem; text-align: center; color: #2c3e50 !important; }
-		.card-title { font-weight: 700; opacity: .9; text-align: center; color: #2c3e50 !important; }
-		.card-value { font-size: 1.8rem; font-weight: 900; line-height: 1; text-align: center; }
-
-		/* (Removido) Estilos específicos de report-kpi para unificar com padrão card-modern */
-		
-		/* Texto principal com alto contraste */
-		.main .block-container p,
-		.main .block-container div:not([data-testid]):not([class]),
-		.main .block-container span {
-			color: #1f2d3d !important;
-		}
-		
-		/* Animações suaves */
-		* {
-			transition: all 0.3s ease;
-		}
-
-		/* (limpeza) Sem regras específicas para report-kpi após padronização */
-
-		/* Relatórios: escopo com títulos/subtítulos brancos para maior contraste */
-		.reports-scope h3, .reports-scope p, .reports-scope span, .reports-scope strong {
-			color: #ffffff !important;
-		}
-
-		/* ================= Sidebar IDÊNTICA ao App Online ================= */
-		/* Remove padding extra do container da sidebar */
-		section[data-testid="stSidebar"] > div {
-			background: linear-gradient(180deg, #4DA768 0%, #3A8A56 100%) !important;
-			border-right: 2px solid rgba(255,255,255,0.1);
-			padding: 1rem 0.75rem !important;
-			display: flex;
-			flex-direction: column;
-			align-items: stretch;
-			justify-content: flex-start;
-		}
-
-		/* Largura fixa igual ao app online */
-		@media (min-width: 1000px) {
-			section[data-testid="stSidebar"] { width: 280px !important; }
-		}
-
-		/* Título sem estilo customizado - usar padrão Streamlit */
-		section[data-testid="stSidebar"] h3 {
-			color: #ffffff !important;
-			font-size: 1rem !important;
-			font-weight: 600 !important;
-			margin-top: 0 !important;
-			margin-bottom: 1rem !important;
-			padding: 0 !important;
-		}
-
-		/* Container dos radio buttons - layout padrão */
-		section[data-testid="stSidebar"] .stRadio {
-			margin: 0 !important;
-			padding: 0 !important;
-		}
-
-		section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
-			display: flex !important;
-			flex-direction: column !important;
-			gap: 8px !important;
-		}
-
-		/* Itens do menu - estilo padrão Streamlit aprimorado */
-		section[data-testid="stSidebar"] .stRadio div[role="radio"] {
-			margin: 0 !important;
-			padding: 0.5rem 0.75rem !important;
-			border-radius: 6px !important;
-			transition: background-color 0.15s ease !important;
-			cursor: pointer;
-		}
-
-		/* Hover sutil */
-		section[data-testid="stSidebar"] .stRadio div[role="radio"]:hover {
-			background: rgba(255,255,255,0.05) !important;
-		}
-
-		/* Item selecionado - destaque suave */
-		section[data-testid="stSidebar"] .stRadio div[role="radio"][aria-checked="true"] {
-			background: rgba(255,255,255,0.1) !important;
-			border-left: 3px solid #ffffff;
-		}
-
-		/* Labels - fonte padrão sem customizações excessivas */
-		section[data-testid="stSidebar"] .stRadio div[role="radio"] label {
-			display: flex !important;
-			align-items: center !important;
-			gap: 0.5rem !important;
-			font-size: 14px !important;
-			font-weight: 400 !important;
-			color: #ffffff !important;
-			cursor: pointer;
-			margin: 0 !important;
-			padding: 0 !important;
-		}
-
-		/* Remove customizações de ícone - deixar natural */
-		section[data-testid="stSidebar"] .stRadio div[role="radio"] label > span {
-			line-height: 1 !important;
-		}
-		</style>
-		""",
-		unsafe_allow_html=True,
-	)
-
 
 def render_page_header(title: str, subtitle: str = "", inverse: bool = False) -> None:
 	title_color = "#ffffff" if inverse else "var(--acc-2)"
@@ -660,14 +327,12 @@ def render_page_header(title: str, subtitle: str = "", inverse: bool = False) ->
 		"linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(77,167,104,0.10) 100%)"
 	)
 	title_bg = (
-		"linear-gradient(120deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%)"
-		if inverse else
-		"linear-gradient(120deg, rgba(127,215,132,0.35) 0%, rgba(77,167,104,0.20) 100%)"
+		# Removido gradiente para não "lavar" a cor do texto ao fundo
+		"none"
 	)
 	subtitle_bg = (
-		"linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.10) 100%)"
-		if inverse else
-		"linear-gradient(120deg, rgba(127,215,132,0.22) 0%, rgba(77,167,104,0.12) 100%)"
+		# Também removido gradiente do subtítulo
+		"none"
 	)
 	st.markdown(f"""
 	<div style='
@@ -823,10 +488,18 @@ class UIComponents:
 
 	@staticmethod
 	def render_sidebar() -> Dict[str, Any]:
-		# Navegação principal
-		st.sidebar.markdown("### 🧭 Navegação")
-
-		# Itens do menu com espaço consistente entre emoji e rótulo
+		# Cabeçalho de navegação alinhado
+		st.sidebar.markdown("<div class='nav-header'>🧭 <span>Navegação</span></div>", unsafe_allow_html=True)
+		# Toggle Dark Mode (design intensificado) - estabilizado
+		if 'dark_mode' not in st.session_state:
+			st.session_state.dark_mode = False
+		
+		# Usar key estável para evitar recriar widget
+		dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, 
+									  help="Alternar modo escuro/claro (aplica tema avançado)",
+									  key="stable_dark_mode")
+		st.session_state.dark_mode = dark_mode
+		st.sidebar.caption("Interface avançada" if ADVANCED_UI else "Interface básica")
 		menu_items = [
 			"🏠 Painel",
 			"📝 Atendimentos",
@@ -834,7 +507,8 @@ class UIComponents:
 			"📄 Carregar",
 			"⚙️ Configurações",
 		]
-		page = st.sidebar.radio("", menu_items, index=0, key="main_nav")
+		# Key estável para evitar recriar radio
+		page = st.sidebar.radio("", menu_items, index=0, key="stable_main_nav")
 
 		# Ações rápidas (contextuais) – somente em páginas operacionais
 		if page in ("📝 Atendimentos", "📊 Relatórios"):
@@ -848,6 +522,15 @@ class UIComponents:
 		modalidade_filter = ""
 		empresa_filter = ""
 		paciente_filter = ""
+
+		# Preferências UI
+		# (Seção de aparência removida a pedido. Usando defaults: animações ON, modo compacto OFF, neon ON.)
+		if "ui_disable_anim" not in st.session_state:
+			st.session_state.ui_disable_anim = False
+		if "ui_compact_cards" not in st.session_state:
+			st.session_state.ui_compact_cards = False
+		if "ui_neon_cards" not in st.session_state:
+			st.session_state.ui_neon_cards = True
 		if page in ("📝 Atendimentos", "📊 Relatórios"):
 			st.sidebar.markdown("### 🔍 Filtros")
 			use_date_filter = st.sidebar.checkbox("Filtrar por data", value=False)
@@ -865,6 +548,9 @@ class UIComponents:
 			"modalidade_filter": modalidade_filter,
 			"empresa_filter": empresa_filter,
 			"paciente_filter": paciente_filter,
+			"disable_anim": st.session_state.ui_disable_anim,
+			"compact_cards": st.session_state.ui_compact_cards,
+			"dark_mode": dark_mode,  # Usar variável local ao invés do session_state
 		}
 
 	@staticmethod
@@ -942,13 +628,13 @@ class DashboardPage:
 
 		# Cards idênticos
 		cards = [
-			{"icon": "👥", "title": "Atendimentos", "value": total_at, "acc": PRIMARY_ACCENT, "spark": [0,2,3,5,4,6,7]},
-			{"icon": "🏢", "title": "Empresas", "value": total_emp, "acc": PRIMARY_ACCENT, "spark": [0,1,1,2,2,3,3]},
-			{"icon": "📄", "title": "Relatórios", "value": laudos_env, "acc": PRIMARY_ACCENT, "spark": [0,0,1,1,2,2,2]},
-			{"icon": "📝", "title": "Avaliações", "value": avals_env, "acc": PRIMARY_ACCENT, "spark": [0,1,0,1,1,1,2]},
-			{"icon": "⚠️", "title": "Pend. Laudo", "value": pend.get("sem_laudo",0), "acc": "#e67e22"},
-			{"icon": "⚠️", "title": "Pend. Avaliação", "value": pend.get("sem_avaliacao",0), "acc": "#d35400"},
-			{"icon": "⏳", "title": "Pend. Ambos", "value": pend.get("sem_ambos",0), "acc": "#c0392b"},
+			{"icon": "👥", "title": "Atendimentos", "value": total_at, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,2,3,5,4,6,7]},
+			{"icon": "🏢", "title": "Empresas", "value": total_emp, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,1,1,2,2,3,3]},
+			{"icon": "📄", "title": "Relatórios", "value": laudos_env, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,0,1,1,2,2,2]},
+			{"icon": "📝", "title": "Avaliações", "value": avals_env, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,1,0,1,1,1,2]},
+			{"icon": "⚠️", "title": "Pend. Laudo", "value": pend.get("sem_laudo",0), "acc": "#e67e22", "soft": True},
+			{"icon": "⚠️", "title": "Pend. Avaliação", "value": pend.get("sem_avaliacao",0), "acc": "#d35400", "soft": True},
+			{"icon": "⏳", "title": "Pend. Ambos", "value": pend.get("sem_ambos",0), "acc": "#c0392b", "soft": True},
 		]
 		display_cards(cards)
 
@@ -958,13 +644,11 @@ class DashboardPage:
 
 		# Gráfico de modalidades
 		if stats.get("modalidades"):
-			fig = px.pie(
-				values=list(stats["modalidades"].values()),
-				names=list(stats["modalidades"].keys()),
-				title="Distribuição por Modalidade",
-				color_discrete_sequence=px.colors.sequential.Blues_r,
-			)
-			fig.update_traces(textposition="inside", textinfo="percent+label")
+			vals = list(stats["modalidades"].values())
+			labels = list(stats["modalidades"].keys())
+			fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade")
+			fig.update_traces(textposition="inside", textinfo="percent+label", pull=[0.04]*len(vals))
+			fig.update_layout(legend_title_text="Modalidade", height=420)
 			st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1113,6 +797,23 @@ class AppointmentsPage:
 			st.info("Nenhum atendimento encontrado.")
 			return
 
+		# Ações rápidas (recarregar / pendências / limpar)
+		a1, a2, a3, a4 = st.columns([1,1,1,2])
+		with a1:
+			if st.button("🔄 Recarregar", help="Recarrega dados do banco"):
+				st.cache_data.clear(); st.cache_resource.clear(); st.rerun()
+		with a2:
+			if st.button("⚠️ Sem Laudo", help="Filtrar atendimentos sem laudo"):
+				filters["quick"] = "sem_laudo"
+		with a3:
+			if st.button("⚠️ Sem Avaliação", help="Filtrar atendimentos sem avaliação"):
+				filters["quick"] = "sem_avaliacao"
+		with a4:
+			if st.button("🧹 Limpar Filtros"):
+				for k in ["modalidade_filter","date_filter","empresa_filter","paciente_filter","quick"]:
+					filters.pop(k, None)
+				st.rerun()
+
 		df = pd.DataFrame(appts, columns=[
 			"ID","Empresa","Nome","Modalidade","Data","Hora","Laudo PDF","Avaliação PDF","Status","Observações"
 		])
@@ -1131,6 +832,13 @@ class AppointmentsPage:
 		pac = (filters.get("paciente_filter") or "").strip()
 		if pac:
 			df = df[df["Nome"].str.contains(pac, case=False, na=False)]
+
+		# Filtro rápido aplicado
+		quick = filters.get("quick")
+		if quick == "sem_laudo":
+			df = df[df["Laudo PDF"].isna() | (df["Laudo PDF"] == "")]
+		elif quick == "sem_avaliacao":
+			df = df[df["Avaliação PDF"].isna() | (df["Avaliação PDF"] == "")]
 
 		# Colunas visuais: mostrar feedback textual "SIM" (arquivo presente) ou "NÃO" (ausente)
 		# (Anteriormente era "OK"; ajustado conforme solicitação do usuário)
@@ -1366,6 +1074,31 @@ class SettingsPage:
 				st.cache_resource.clear(); DatabaseManager.initialize_database(); st.success("Reinicializado.")
 
 		st.markdown("---")
+		# Diagnóstico detalhado do banco e segurança
+		with st.expander("📋 Diagnóstico do Sistema", expanded=False):
+			from json import dumps
+			# DB
+			try:
+				from db import get_db_diagnostics
+				db_diag = get_db_diagnostics()
+			except Exception as e:
+				db_diag = {"error":"falhou diagnóstico DB", "detail": str(e)}
+			# Security health (mock simplificado baseado em security module)
+			sec_health = {
+				"security_loaded": bool(security),
+				"logs_directory": os.path.isdir(os.path.join(os.path.dirname(__file__), 'logs')),
+				"log_file_writable": True,
+			}
+			# Disco livre
+			try:
+				import shutil, datetime as _dt
+				free_mb = int(shutil.disk_usage(os.path.dirname(__file__)).free/1024/1024)
+				sec_health["free_mb"] = free_mb
+				sec_health["timestamp"] = _dt.datetime.utcnow().isoformat()
+			except Exception:
+				pass
+			payload = {**db_diag, **sec_health}
+			st.code(dumps(payload, ensure_ascii=False, indent=2), language="json")
 		st.markdown("### 🩺 Diagnóstico do Sistema")
 		with st.expander("Executar / Ver resultado", expanded=False):
 			if st.button("▶️ Rodar Diagnóstico", key="run_diag"):
@@ -1473,13 +1206,9 @@ class ReportsPage:
 		# Gráfico Modalidades
 		try:
 			modal_counts = _df["Modalidade"].value_counts()
-			fig = px.bar(
-				x=modal_counts.index,
-				y=modal_counts.values,
-				title="Atendimentos por Modalidade",
-				color_discrete_sequence=["#99E89D", "#4DA768", "#7FD784", "#3A8A56"],
-			)
-			fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+			fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade")
+			fig.update_traces(hovertemplate="Modalidade=%{x}<br>Qtd=%{y}<extra></extra>")
+			fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=460)
 			st.plotly_chart(fig, use_container_width=True)
 		except Exception:
 			pass
@@ -1628,6 +1357,66 @@ class NotesPage:
 		return " ".join(badges)
 
 	@staticmethod
+	def _render_stats() -> None:
+		"""Exibe gráficos (tags e favoritas) com exportação de imagens."""
+		try:
+			notas_stats = db.listar_notas() or []
+			if not notas_stats:
+				return
+			import pandas as _pds, plotly.express as _px, collections
+			df_all = _pds.DataFrame(notas_stats, columns=["ID","Título","Conteúdo","Tags","Criada em","Atualizada em","Favorita"])
+			# Tags
+			all_tags: list[str] = []
+			for ts in df_all["Tags"].dropna().astype(str).tolist():
+				for t in [x.strip() for x in ts.split(',') if x.strip()]:
+					all_tags.append(t)
+			cnt = collections.Counter(all_tags)
+			if cnt:
+				st.markdown("### 🔖 Tags mais usadas")
+				tags_df = _pds.DataFrame(cnt.most_common(), columns=["Tag","Qtd"])
+				fig_tags = _px.bar(tags_df, x="Tag", y="Qtd", title="Frequência de Tags")
+				fig_tags.update_traces(hovertemplate="Tag=%{x}<br>Qtd=%{y}<extra></extra>")
+				fig_tags.update_layout(height=340, xaxis_tickangle=-25, margin=dict(t=60,l=40,r=20,b=70))
+				st.plotly_chart(fig_tags, use_container_width=True)
+				col_t1, col_t2 = st.columns(2)
+				with col_t1:
+					if st.button("💾 PNG Tags", key="exp_png_tags"):
+						try:
+							st.download_button("Baixar tags.png", data=fig_tags.to_image(format="png", scale=2), file_name="tags_frequencia.png", mime="image/png", key="dl_png_tags")
+						except Exception as e_img:
+							st.error(f"Falha PNG: {e_img}")
+				with col_t2:
+					if st.button("🖼️ SVG Tags", key="exp_svg_tags"):
+						try:
+							st.download_button("Baixar tags.svg", data=fig_tags.to_image(format="svg"), file_name="tags_frequencia.svg", mime="image/svg+xml", key="dl_svg_tags")
+						except Exception as e_svg:
+							st.error(f"Falha SVG: {e_svg}")
+			# Favoritas
+			fav_counts = df_all['Favorita'].fillna(0).astype(int).value_counts()
+			if not fav_counts.empty:
+				st.markdown("### ⭐ Distribuição de Favoritas")
+				fav_df = _pds.DataFrame({"Status":["Favoritas","Não Favoritas"], "Qtd":[int(fav_counts.get(1,0)), int(fav_counts.get(0,0))]})
+				fig_fav = _px.pie(fav_df, values="Qtd", names="Status", title="Notas Favoritas vs Não")
+				fig_fav.update_traces(textinfo="percent+label", pull=[0.05,0])
+				fig_fav.update_layout(height=340, legend_orientation='h', legend_y=-0.15)
+				st.plotly_chart(fig_fav, use_container_width=True)
+				col_f1, col_f2 = st.columns(2)
+				with col_f1:
+					if st.button("💾 PNG Favoritas", key="exp_png_fav"):
+						try:
+							st.download_button("Baixar favoritas.png", data=fig_fav.to_image(format="png", scale=2), file_name="notas_favoritas.png", mime="image/png", key="dl_png_fav")
+						except Exception as e_fp:
+							st.error(f"Falha PNG: {e_fp}")
+				with col_f2:
+					if st.button("🖼️ SVG Favoritas", key="exp_svg_fav"):
+						try:
+							st.download_button("Baixar favoritas.svg", data=fig_fav.to_image(format="svg"), file_name="notas_favoritas.svg", mime="image/svg+xml", key="dl_svg_fav")
+						except Exception as e_fs:
+							st.error(f"Falha SVG: {e_fs}")
+		except Exception as e:
+			st.info(f"(Estatísticas de notas indisponíveis: {e})")
+
+	@staticmethod
 	def _render_list(df: pd.DataFrame) -> None:
 		with st.expander("📚 Notas", expanded=True):
 			if df.empty:
@@ -1651,14 +1440,16 @@ class NotesPage:
 						try:
 							db.atualizar_nota(int(r['ID']), favorita=0 if pin_on else 1)
 							security.log_access("PIN_NOTE", f"ID {int(r['ID'])} -> {'OFF' if pin_on else 'ON'}")
-							st.rerun()
+							# Evitar rerun imediato para reduzir conflitos DOM
+							st.session_state['_pin_changed'] = True
 						except Exception as e:
 							st.error(f"Falha ao atualizar pin: {e}")
 				with cols[4]:
 					if st.button("Editar", key=f"edit_{int(r['ID'])}"):
 						st.session_state['notes_selected_id'] = int(r['ID'])
 						st.session_state['notes_open_editor'] = True
-						st.rerun()
+						# Evitar rerun imediato
+						st.session_state['_edit_requested'] = True
 			# Exportações
 			csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
 			st.download_button("⬇️ Exportar CSV", data=csv_bytes, file_name="notas.csv", mime="text/csv")
@@ -1739,6 +1530,7 @@ class NotesPage:
 			if new_open:
 				st.session_state['notes_selected_id'] = None
 				st.session_state['notes_open_editor'] = True
+				st.session_state['_new_note_requested'] = True
 			# Dados e filtros
 			notas = db.listar_notas() or []
 			df = NotesPage._build_df(notas, q)
@@ -1749,6 +1541,8 @@ class NotesPage:
 		with col_right:
 			open_editor = st.session_state.get('notes_open_editor', False)
 			selected_id = st.session_state.get('notes_selected_id', None)
+			# Estatísticas
+			NotesPage._render_stats()
 
 			if open_editor:
 				# Carregar defaults
@@ -1765,7 +1559,7 @@ class NotesPage:
 				if st.button("Fechar editor"):
 					st.session_state['notes_open_editor'] = False
 					st.session_state['notes_selected_id'] = None
-					st.rerun()
+					st.session_state['_editor_closed'] = True
 
 				content_key = NotesPage._content_key(nota_id)
 				if content_key not in st.session_state:
@@ -1862,10 +1656,28 @@ class NotesPage:
 class ClinicalManagementApp:
 	def run(self) -> None:
 		configure_page()
-		apply_custom_css()
 		if not DatabaseManager.initialize_database():
 			st.stop()
+		
+		# Verificar mudanças pendentes e aplicar refresh controlado
+		needs_refresh = any([
+			st.session_state.get('_pin_changed', False),
+			st.session_state.get('_edit_requested', False),
+			st.session_state.get('_new_note_requested', False),
+			st.session_state.get('_editor_closed', False)
+		])
+		
+		if needs_refresh:
+			# Limpar flags
+			for flag in ['_pin_changed', '_edit_requested', '_new_note_requested', '_editor_closed']:
+				st.session_state.pop(flag, None)
+			st.rerun()
+		
 		filters = UIComponents.render_sidebar()
+		# Aplicar CSS após saber se dark mode está ativo
+		is_dark = filters.get("dark_mode", False)
+		apply_custom_css(dark_mode=is_dark, advanced=ADVANCED_UI)
+		apply_plotly_theme(dark_mode=is_dark)
 		page = filters["page"]
 		UIComponents.render_header(page)
 		if page == "🏠 Painel":
@@ -1882,4 +1694,17 @@ class ClinicalManagementApp:
 
 
 if __name__ == "__main__":
-	ClinicalManagementApp().run()
+	try:
+		ClinicalManagementApp().run()
+	except Exception as e:
+		# Log simples em arquivo para investigar falhas no deploy (ex.: Streamlit Cloud)
+		try:
+			import traceback, os
+			log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+			os.makedirs(log_dir, exist_ok=True)
+			with open(os.path.join(log_dir, 'boot_error.log'), 'a', encoding='utf-8') as lf:
+				lf.write(f"\n[{datetime.now().isoformat()}] ERRO FATAL APP\n")
+				lf.write(''.join(traceback.format_exception(e)))
+		except Exception:
+			pass
+		st.error("Falha inesperada ao iniciar o aplicativo. Verifique logs/boot_error.log")
