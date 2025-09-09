@@ -21,6 +21,9 @@ import os as _os
 if _os.getenv("DISABLE_ADVANCED_UI", "0") == "1":
 	ADVANCED_UI = False
 
+# SAFE_MODE remove CSS complexo (ex.: pseudo :has) para evitar conflitos de frontend
+SAFE_MODE = _os.getenv("SAFE_MODE", "0") == "1"
+
 _BASE_DIR = pathlib.Path(__file__).resolve().parent
 if str(_BASE_DIR) not in sys.path:
 	sys.path.insert(0, str(_BASE_DIR))
@@ -189,6 +192,19 @@ def apply_custom_css(dark_mode: bool = False, advanced: bool = ADVANCED_UI) -> N
 		""", unsafe_allow_html=True)
 		return
 
+	if SAFE_MODE:
+		# CSS extremamente reduzido para isolar problemas de manipulação React/DOM
+		st.markdown(f"""
+		<style>
+		.stApp {{ background:#ffffff; }}
+		section[data-testid="stSidebar"] > div {{ background:#2f7046 !important; }}
+		.simple-card {{ background:#ffffff; border:2px solid {PRIMARY_ACCENT}; border-radius:14px; padding:16px; box-shadow:none; }}
+		</style>
+		""", unsafe_allow_html=True)
+		if dark_mode:
+			st.markdown("""<style>.stApp{background:#0d1f14;color:#eef7f0}</style>""", unsafe_allow_html=True)
+		return
+
 	# Paleta e design avançado
 	base_css = f"""
 	<style>
@@ -219,7 +235,8 @@ def apply_custom_css(dark_mode: bool = False, advanced: bool = ADVANCED_UI) -> N
 	section[data-testid="stSidebar"] div[role="radiogroup"] {{ gap:4px !important; }}
 	section[data-testid="stSidebar"] div[role="radiogroup"] label {{ display:flex; align-items:center; gap:14px; padding:8px 12px; border-radius:16px; cursor:pointer; transition:var(--transition-base); font-weight:600; font-size:0.95rem; letter-spacing:.3px; position:relative; }}
 	section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{ background:rgba(255,255,255,0.12); transform:translateX(2px); }}
-	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {{ background:linear-gradient(135deg,#4DA768 0%,#30714a 100%); box-shadow:0 4px 14px -4px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,0.25) inset; }}
+	/* REMOVIDO seletor :has() (incompatível em alguns navegadores/SSR). Usar abordagem degradada */
+	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] input:checked ~ * {{ font-weight:700; text-decoration:underline; }}
 	section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{ margin:0; }}
 	/* Toggle dark mode indicator */
 	.dark-label {{ font-size:0.75rem; opacity:.75; margin-top:-4px; }}
