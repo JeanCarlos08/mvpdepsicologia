@@ -137,3 +137,110 @@ def get_database(db_path: str = "juliana_clinica.db") -> DatabaseManager:
     if _instance is None:
         _instance = DatabaseManager(db_path)
     return _instance
+
+
+# --- Compat layer: funções legadas esperadas por db_unified.py e testes ---
+def init_db() -> bool:
+    """Compat: inicializa o DB. Retorna True em sucesso."""
+    try:
+        get_database().init_database()
+        return True
+    except Exception:
+        return False
+
+
+def verificar_conexao() -> bool:
+    try:
+        # tenta abrir e executar um select simples
+        db = get_database()
+        db.execute_query("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
+def inserir_atendimento(empresa: str, nome: str, modalidade: str, data: str, hora: str,
+                         laudo_pdf: Optional[str] = None, avaliacao_pdf: Optional[str] = None,
+                         observacoes: Optional[str] = None) -> bool:
+    from types import SimpleNamespace
+    ap = SimpleNamespace(empresa=empresa, nome=nome, modalidade=modalidade, data=data, hora=hora,
+                         laudo_pdf=laudo_pdf, avaliacao_pdf=avaliacao_pdf, status='Agendado', observacoes=observacoes)
+    return get_database().add_appointment(ap)
+
+
+def listar_atendimentos() -> List[tuple]:
+    rows = get_database().get_all_appointments()
+    # converter dicts para tuplas de forma compatível com código legado
+    if not rows:
+        return []
+    cols = sorted(rows[0].keys())
+    result = []
+    for r in rows:
+        result.append(tuple(r.get(c) for c in cols))
+    return result
+
+
+def atualizar_atendimento(id_atendimento: int, **campos) -> bool:
+    return get_database().update_appointment(id_atendimento, **campos)
+
+
+def excluir_atendimento(id_atendimento: int) -> bool:
+    return get_database().delete_appointment(id_atendimento)
+
+
+def obter_estatisticas() -> Dict[str, Any]:
+    return get_database().get_stats()
+
+
+# ===== Notas (compat) =====
+def inserir_nota(titulo: str, conteudo: str, tags: Optional[str] = None, favorita: bool = False) -> bool:
+    from types import SimpleNamespace
+    n = SimpleNamespace(titulo=titulo, conteudo=conteudo, tags=tags, favorita=favorita)
+    return get_database().add_note(n)
+
+
+def listar_notas() -> List[tuple]:
+    rows = get_database().get_all_notes()
+    if not rows:
+        return []
+    cols = sorted(rows[0].keys())
+    result = []
+    for r in rows:
+        result.append(tuple(r.get(c) for c in cols))
+    return result
+
+
+def atualizar_nota(id_nota: int, **campos) -> bool:
+    # campos: titulo, conteudo, tags, favorita
+    return get_database().execute_update(
+        f"UPDATE notas SET {', '.join([f'{k} = ?' for k in campos.keys()])}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        tuple(list(campos.values()) + [id_nota])
+    )
+
+
+def excluir_nota(id_nota: int) -> bool:
+    return get_database().delete_note(id_nota)
+
+
+def inserir_historico_nota(nota_id: int, titulo: str, conteudo: str, tags: Optional[str], favorita: int) -> bool:
+    # Implementação simples: inserir na tabela notas_historico se existir
+    try:
+        query = "INSERT INTO notas_historico (nota_id, titulo, conteudo, tags, favorita) VALUES (?, ?, ?, ?, ?)"
+        return get_database().execute_update(query, (nota_id, titulo, conteudo, tags, favorita))
+    except Exception:
+        return False
+
+
+def listar_historico_nota(nota_id: int) -> List[tuple]:
+    try:
+        rows = get_database().execute_query("SELECT id, nota_id, titulo, conteudo, tags, favorita, data_versao FROM notas_historico WHERE nota_id = ? ORDER BY data_versao DESC, id DESC", (nota_id,))
+        if not rows:
+            return []
+        cols = sorted(rows[0].keys())
+        result = []
+        for r in rows:
+            result.append(tuple(r.get(c) for c in cols))
+        return result
+    except Exception:
+        return []
+
