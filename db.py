@@ -1,295 +1,139 @@
 """
-JULIANA - Gestão Clínica (Banco SQLite)
+JULIANA - Gestão Clínica (Banco SQLite simplificado)
+
+Este módulo fornece um DatabaseManager leve para uso local com SQLite.
 """
+
 import sqlite3
 import os
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
-from contextlib import contextmanager
+from typing import Dict, List, Any, Optional
 
-DATABASE_NAME = "gestao_clinica.db"
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), DATABASE_NAME)
 
-def ensure_dir():
-    try:
-        base = os.path.dirname(DATABASE_PATH)
+class DatabaseManager:
+    def __init__(self, db_path: str = "juliana_clinica.db"):
+        self.db_path = db_path
+        self._ensure_dir()
+        self.init_database()
+
+    def _ensure_dir(self):
+        base = os.path.dirname(self.db_path)
         if base and not os.path.exists(base):
             os.makedirs(base, exist_ok=True)
-    except Exception:
-        pass
 
-def get_db_diagnostics() -> Dict:
-    """Retorna diagnóstico detalhado do estado do SQLite."""
-    import time
-    start = time.perf_counter()
-    info: Dict = {}
-    path = DATABASE_PATH
-    info["db_path"] = path
-    exists = os.path.exists(path)
-    info["db_exists"] = exists
-    tables: List[str] = []
-    tables_error: Optional[str] = None
-    if exists:
-        try:
-            with get_db_connection() as conn:
-                rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-                tables = [r[0] for r in rows]
-        except Exception as e:
-            tables_error = str(e)
-    else:
-        tables_error = "Arquivo não existe"
-    info["tables"] = tables
-    if tables_error:
-        info["tables_error"] = tables_error
-    try:
-        size = os.path.getsize(path) if exists else 0
-        info["file_size_bytes"] = size
-    except Exception:
-        info["file_size_bytes"] = None
-    info["duration_ms"] = int((time.perf_counter() - start)*1000)
-    return info
-
-@contextmanager
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE_PATH, timeout=30.0)
-    try:
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        yield conn
+    def init_database(self):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atendimentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa TEXT NOT NULL,
+                nome TEXT NOT NULL,
+                modalidade TEXT NOT NULL,
+                data TEXT NOT NULL,
+                hora TEXT NOT NULL,
+                laudo_pdf TEXT,
+                avaliacao_pdf TEXT,
+                status TEXT DEFAULT 'Agendado',
+                observacoes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo TEXT NOT NULL,
+                conteudo TEXT NOT NULL,
+                tags TEXT,
+                favorita BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_atendimentos_data ON atendimentos(data)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_atendimentos_empresa ON atendimentos(empresa)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_notas_titulo ON notas(titulo)")
         conn.commit()
-    finally:
         conn.close()
 
-def init_db() -> bool:
-    ensure_dir()
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS atendimentos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    empresa TEXT NOT NULL,
-                    nome TEXT NOT NULL,
-                    modalidade TEXT NOT NULL,
-                    data TEXT NOT NULL,
-                    hora TEXT NOT NULL,
-                    laudo_pdf TEXT,
-                    avaliacao_pdf TEXT,
-                    status TEXT DEFAULT 'Agendado',
-                    observacoes TEXT,
-                    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_at_data ON atendimentos(data)"
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_at_empresa ON atendimentos(empresa)"
-            )
-            # Tabela de notas (bloco de notas)
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS notas (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    titulo TEXT NOT NULL,
-                    conteudo TEXT NOT NULL,
-                    tags TEXT,
-                    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_notas_titulo ON notas(titulo)"
-            )
-            # Garantir coluna 'favorita' (migração leve)
-            try:
-                cols = [r[1] for r in conn.execute("PRAGMA table_info(notas)").fetchall()]
-                if 'favorita' not in cols:
-                    cur.execute("ALTER TABLE notas ADD COLUMN favorita INTEGER DEFAULT 0")
-            except Exception:
-                pass
-            # Histórico de versões das notas
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS notas_historico (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nota_id INTEGER NOT NULL,
-                    titulo TEXT,
-                    conteudo TEXT,
-                    tags TEXT,
-                    favorita INTEGER,
-                    data_versao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-        return True
-    except Exception:
-        return False
+    def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        cols = [d[0] for d in cursor.description] if cursor.description else []
+        rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        conn.close()
+        return rows
 
-def inserir_atendimento(empresa: str, nome: str, modalidade: str, data: str, hora: str,
-                         laudo_pdf: Optional[str] = None, avaliacao_pdf: Optional[str] = None,
-                         observacoes: Optional[str] = None) -> bool:
-    try:
-        with get_db_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO atendimentos (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes),
-            )
-        return True
-    except Exception:
-        return False
-
-def listar_atendimentos() -> List[Tuple]:
-    try:
-        with get_db_connection() as conn:
-            rows = conn.execute(
-                "SELECT id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes FROM atendimentos ORDER BY data DESC, hora DESC"
-            ).fetchall()
-            return [tuple(r) for r in rows]
-    except Exception:
-        return []
-
-def atualizar_atendimento(id_atendimento: int, **campos) -> bool:
-    if not campos:
-        return False
-    allowed = ["empresa", "nome", "modalidade", "data", "hora", "laudo_pdf", "avaliacao_pdf", "status", "observacoes"]
-    sets = []
-    vals = []
-    for k, v in campos.items():
-        if k in allowed:
-            sets.append(f"{k} = ?")
-            vals.append(v)
-    if not sets:
-        return False
-    vals.append(id_atendimento)
-    try:
-        with get_db_connection() as conn:
-            conn.execute(
-                f"UPDATE atendimentos SET {', '.join(sets)}, data_atualizacao = CURRENT_TIMESTAMP WHERE id = ?",
-                vals,
-            )
-        return True
-    except Exception:
-        return False
-
-def excluir_atendimento(id_atendimento: int) -> bool:
-    try:
-        with get_db_connection() as conn:
-            cur = conn.execute("DELETE FROM atendimentos WHERE id = ?", (id_atendimento,))
-            return cur.rowcount > 0
-    except Exception:
-        return False
-
-def obter_estatisticas() -> Dict:
-    stats: Dict = {}
-    try:
-        with get_db_connection() as conn:
-            stats["total_atendimentos"] = conn.execute("SELECT COUNT(*) FROM atendimentos").fetchone()[0]
-            stats["total_empresas"] = conn.execute("SELECT COUNT(DISTINCT empresa) FROM atendimentos").fetchone()[0]
-            stats["laudos_enviados"] = conn.execute("SELECT COUNT(*) FROM atendimentos WHERE laudo_pdf IS NOT NULL").fetchone()[0]
-            stats["avaliacoes_enviadas"] = conn.execute("SELECT COUNT(*) FROM atendimentos WHERE avaliacao_pdf IS NOT NULL").fetchone()[0]
-            rows = conn.execute("SELECT modalidade, COUNT(*) FROM atendimentos GROUP BY modalidade ORDER BY 2 DESC").fetchall()
-            stats["modalidades"] = {r[0]: r[1] for r in rows}
-
-        # Remover campos vazios ou desnecessários
-        stats = {k: v for k, v in stats.items() if v}
-    except Exception:
-        pass
-    return stats
-
-def verificar_conexao() -> bool:
-    try:
-        with get_db_connection() as conn:
-            conn.execute("SELECT 1")
+    def execute_update(self, query: str, params: tuple = ()) -> bool:
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
+            conn.close()
             return True
-    except Exception:
-        return False
+        except Exception as e:
+            print("DB ERROR:", e)
+            return False
 
-# ===== CRUD Notas =====
-def inserir_nota(titulo: str, conteudo: str, tags: Optional[str] = None, favorita: bool = False) -> bool:
-    try:
-        with get_db_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO notas (titulo, conteudo, tags, favorita)
-                VALUES (?, ?, ?, ?)
-                """,
-                (titulo, conteudo, tags, 1 if favorita else 0),
-            )
-        return True
-    except Exception:
-        return False
+    def get_all_appointments(self) -> List[Dict[str, Any]]:
+        return self.execute_query("SELECT * FROM atendimentos ORDER BY data DESC, hora DESC")
 
-def listar_notas() -> List[Tuple]:
-    try:
-        with get_db_connection() as conn:
-            rows = conn.execute(
-                "SELECT id, titulo, conteudo, tags, data_criacao, data_atualizacao, COALESCE(favorita,0) as favorita FROM notas ORDER BY favorita DESC, data_atualizacao DESC, id DESC"
-            ).fetchall()
-            return [tuple(r) for r in rows]
-    except Exception:
-        return []
+    def add_appointment(self, data) -> bool:
+        query = """
+            INSERT INTO atendimentos (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        params = (data.empresa, data.nome, data.modalidade, data.data, data.hora, data.laudo_pdf, data.avaliacao_pdf, data.status, data.observacoes)
+        return self.execute_update(query, params)
 
-def atualizar_nota(id_nota: int, **campos) -> bool:
-    if not campos:
-        return False
-    allowed = ["titulo", "conteudo", "tags", "favorita"]
-    sets = []
-    vals = []
-    for k, v in campos.items():
-        if k in allowed:
-            sets.append(f"{k} = ?")
-            vals.append(v)
-    if not sets:
-        return False
-    vals.append(id_nota)
-    try:
-        with get_db_connection() as conn:
-            conn.execute(
-                f"UPDATE notas SET {', '.join(sets)}, data_atualizacao = CURRENT_TIMESTAMP WHERE id = ?",
-                vals,
-            )
-        return True
-    except Exception:
-        return False
+    def update_appointment(self, apt_id: int, **kwargs) -> bool:
+        if not kwargs:
+            return False
+        kwargs['updated_at'] = datetime.now().isoformat()
+        set_clause = ", ".join([f"{k} = ?" for k in kwargs.keys()])
+        params = tuple(list(kwargs.values()) + [apt_id])
+        query = f"UPDATE atendimentos SET {set_clause} WHERE id = ?"
+        return self.execute_update(query, params)
 
-def excluir_nota(id_nota: int) -> bool:
-    try:
-        with get_db_connection() as conn:
-            cur = conn.execute("DELETE FROM notas WHERE id = ?", (id_nota,))
-            return cur.rowcount > 0
-    except Exception:
-        return False
+    def delete_appointment(self, apt_id: int) -> bool:
+        return self.execute_update("DELETE FROM atendimentos WHERE id = ?", (apt_id,))
 
-def inserir_historico_nota(nota_id: int, titulo: str, conteudo: str, tags: Optional[str], favorita: int) -> bool:
-    try:
-        with get_db_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO notas_historico (nota_id, titulo, conteudo, tags, favorita)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (nota_id, titulo, conteudo, tags, favorita),
-            )
-        return True
-    except Exception:
-        return False
+    def get_all_notes(self) -> List[Dict[str, Any]]:
+        return self.execute_query("SELECT * FROM notas ORDER BY created_at DESC")
 
-def listar_historico_nota(nota_id: int) -> List[Tuple]:
-    try:
-        with get_db_connection() as conn:
-            rows = conn.execute(
-                "SELECT id, nota_id, titulo, conteudo, tags, favorita, data_versao FROM notas_historico WHERE nota_id = ? ORDER BY data_versao DESC, id DESC",
-                (nota_id,),
-            ).fetchall()
-            return [tuple(r) for r in rows]
-    except Exception:
-        return []
+    def add_note(self, data) -> bool:
+        query = "INSERT INTO notas (titulo, conteudo, tags, favorita) VALUES (?, ?, ?, ?)"
+        params = (data.titulo, data.conteudo, data.tags, int(bool(data.favorita)))
+        return self.execute_update(query, params)
+
+    def delete_note(self, note_id: int) -> bool:
+        return self.execute_update("DELETE FROM notas WHERE id = ?", (note_id,))
+
+    def get_stats(self) -> Dict[str, Any]:
+        stats = {}
+        r = self.execute_query("SELECT COUNT(*) as total FROM atendimentos")
+        stats['total_atendimentos'] = r[0]['total'] if r else 0
+        r = self.execute_query("SELECT COUNT(DISTINCT empresa) as total FROM atendimentos")
+        stats['total_empresas'] = r[0]['total'] if r else 0
+        r = self.execute_query("SELECT COUNT(*) as total FROM atendimentos WHERE laudo_pdf IS NULL OR laudo_pdf = ''")
+        stats['pendentes_laudo'] = r[0]['total'] if r else 0
+        r = self.execute_query("SELECT COUNT(*) as total FROM atendimentos WHERE avaliacao_pdf IS NULL OR avaliacao_pdf = ''")
+        stats['pendentes_avaliacao'] = r[0]['total'] if r else 0
+        r = self.execute_query("SELECT COUNT(*) as total FROM notas")
+        stats['total_notas'] = r[0]['total'] if r else 0
+        r = self.execute_query("SELECT COUNT(*) as total FROM notas WHERE favorita = 1")
+        stats['notas_favoritas'] = r[0]['total'] if r else 0
+        return stats
+
+
+_instance: Optional[DatabaseManager] = None
+
+
+def get_database(db_path: str = "juliana_clinica.db") -> DatabaseManager:
+    global _instance
+    if _instance is None:
+        _instance = DatabaseManager(db_path)
+    return _instance

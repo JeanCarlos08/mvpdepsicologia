@@ -13,69 +13,22 @@ from typing import Dict, List, Optional, Any
 DATE_FORMAT = "%d/%m/%Y"
 TIME_FORMAT = "%H:%M"
 MAX_UPLOAD_MB = 50
-PRIMARY_ACCENT = "#4DA768"
-ADVANCED_UI = True  # Defina False para reverter facilmente as melhorias de design
+"""Versão simplificada do app Juliana - SQLite only.
 
-# Permite desativar tema avançado no deploy (debug de erro DOM) definindo DISABLE_ADVANCED_UI=1
-import os as _os
-if _os.getenv("DISABLE_ADVANCED_UI", "0") == "1":
-	ADVANCED_UI = False
+Objetivo: remover dependências e CSS avançado que causavam conflitos no Streamlit Cloud
+e manter funcionalidades essenciais (atendimentos, notas, dashboard).
+"""
 
-# SAFE_MODE remove CSS complexo (ex.: pseudo :has) para evitar conflitos de frontend
-SAFE_MODE = _os.getenv("SAFE_MODE", "0") == "1"
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from datetime import datetime, date
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+from pathlib import Path
 
-_BASE_DIR = pathlib.Path(__file__).resolve().parent
-if str(_BASE_DIR) not in sys.path:
-	sys.path.insert(0, str(_BASE_DIR))
-
-try:
-	import db_unified as db  # type: ignore
-except Exception:
-	import db  # type: ignore
-
-def _load_security_module():
-	"""Importa security.py; se falhar retorna fallback enxuto."""
-	import importlib, importlib.util
-	candidates = ["security"]
-	sec_path = _BASE_DIR / "security.py"
-	if sec_path.exists():
-		candidates.append(str(sec_path))
-	for cand in candidates:
-		try:
-			if cand.endswith(".py"):
-				spec = importlib.util.spec_from_file_location("security", cand)
-				if spec and spec.loader:
-					mod = importlib.util.module_from_spec(spec)
-					spec.loader.exec_module(mod)
-					return mod
-			else:
-				return importlib.import_module(cand)
-		except Exception:
-			continue
-	st.warning("Segurança em modo degradado")
-	class _SecFallback:
-		def log_access(self, *a, **k): return None
-		def sanitize_input(self, x): return x if isinstance(x, str) else str(x)
-		def validate_file_upload(self, *a, **k): return True, ""
-		def generate_safe_filename(self, original_name: str):
-			return f"fallback_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-	return _SecFallback()
-
-security = _load_security_module()
-
-# Editor rich-text (opcional)
-import importlib
-try:
-	_quill_mod = importlib.import_module("streamlit_quill")
-	st_quill = getattr(_quill_mod, "st_quill", None)
-except Exception:
-	st_quill = None
-
-class ModalidadeAtendimento(Enum):
-	ADMISSIONAL = "Admissional"
-	PERIODICO = "Periódico"
-	DEMISSIONAL = "Demissional"
-	RETORNO = "Retorno"
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "juliana_clinica.db"
 
 @dataclass
 class AtendimentoData:
@@ -86,334 +39,132 @@ class AtendimentoData:
 	hora: str
 	laudo_pdf: Optional[str] = None
 	avaliacao_pdf: Optional[str] = None
+	status: Optional[str] = "Agendado"
+	observacoes: Optional[str] = None
 
-def hex_to_rgba(hex_color: str, alpha: float = 0.10) -> str:
-	"""Converte #RRGGBB ou #RGB em rgba(r,g,b,a)."""
-	try:
-		if not hex_color:
-			return "rgba(77,167,104,0.08)"
-		c = hex_color.strip()
-		if c.lower().startswith("rgba"):
-			return c
-		if c.lower().startswith("rgb("):
-			vals = c[c.find("(")+1:c.find(")")].split(",")
-			r, g, b = [int(v) for v in vals[:3]]
-			return f"rgba({r},{g},{b},{alpha})"
-		if c.startswith("#"):
-			c = c[1:]
-		if len(c) == 3:
-			r, g, b = [int(ch*2, 16) for ch in c]
-		elif len(c) == 6:
-			r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
-		else:
-			return "rgba(77,167,104,0.08)"
-		return f"rgba({r},{g},{b},{alpha})"
-	except Exception:
-		return "rgba(77,167,104,0.08)"
 
-def save_uploaded_pdf(uploaded_file) -> Optional[str]:
-	"""Valida e salva PDF retornando caminho ou None."""
-	if uploaded_file is None:
-		return None
-	try:
-		ok, msg = security.validate_file_upload(uploaded_file.name, len(uploaded_file.getvalue()), max_size_mb=MAX_UPLOAD_MB)
-		if not ok:
-			st.error(msg)
-			return None
-		def _uploads_dir() -> str:
-			base_dir = os.path.dirname(__file__)
-			dest_local = os.path.join(base_dir, "uploads")
-			os.makedirs(dest_local, exist_ok=True)
-			return dest_local
-		safe_name = security.generate_safe_filename(uploaded_file.name)
-		dest = _uploads_dir()
-		path = os.path.join(dest, safe_name)
-		file_bytes = uploaded_file.getvalue()
-		with open(path, "wb") as f:
-			f.write(file_bytes)
-		# Hash
-		try:
-			h = hashlib.sha256(file_bytes).hexdigest()
-			hashes_path = os.path.join(dest, "hashes.csv")
-			import csv, time
-			new_row = [safe_name, h, int(time.time())]
-			write_header = not os.path.exists(hashes_path)
-			with open(hashes_path, "a", newline="", encoding="utf-8") as cf:
-				w = csv.writer(cf)
-				if write_header:
-					w.writerow(["arquivo","sha256","epoch"])
-				w.writerow(new_row)
-		except Exception:
-			pass
-		return path
-	except Exception as e:
-		st.error(f"Falha ao salvar arquivo: {e}")
-		return None
+def set_page():
+	st.set_page_config(page_title="JULIANA - Gestão Clínica", page_icon="🧠", layout="wide")
 
-def display_cards(cards: List[Dict[str, Any]]) -> None:
-	"""Versão simplificada: cards estáticos com borda neon chamativa."""
-	if not cards:
-		return
-	cols = st.columns(len(cards))
-	for i, c in enumerate(cards):
-		with cols[i]:
-			icon = c.get("icon", "📦")
-			title = c.get("title", "Item")
-			value = c.get("value", 0)
-			color = c.get("acc", "#39ff14") or "#39ff14"
-			def _esc(s: Any) -> str:
-				try:
-					return (str(s)
-						.replace("&", "&amp;")
-						.replace("<", "&lt;")
-						.replace(">", "&gt;")
-						.replace("'", "&#39;")
-						.replace('"', "&quot;")
-					)
-				except Exception:
-					return ""
-			safe_title = _esc(title)
-			st.markdown(f"""
-			<div class='simple-card' style='border-color:{color};'>
-				<div class='sc-icon'>{icon}</div>
-				<div class='sc-title'>{safe_title}</div>
-				<div class='sc-value'>{value}</div>
-			</div>
-			""", unsafe_allow_html=True)
 
-def apply_custom_css(dark_mode: bool = False, advanced: bool = ADVANCED_UI) -> None:
-	"""Injeta CSS global. Se advanced=False usa tema básico. Dark mode com override."""
-	if not advanced:
-		st.markdown("""
-		<style>
-		.stApp { background:#f5fff6; }
-		.simple-card { background:#ffffffcc; border:2px solid #4DA768; border-radius:14px; padding:14px; }
-		</style>
-		""", unsafe_allow_html=True)
-		return
-
-	if SAFE_MODE:
-		# CSS extremamente reduzido para isolar problemas de manipulação React/DOM
-		st.markdown(f"""
-		<style>
-		.stApp {{ background:#ffffff; }}
-		section[data-testid="stSidebar"] > div {{ background:#2f7046 !important; }}
-		.simple-card {{ background:#ffffff; border:2px solid {PRIMARY_ACCENT}; border-radius:14px; padding:16px; box-shadow:none; }}
-		</style>
-		""", unsafe_allow_html=True)
-		if dark_mode:
-			st.markdown("""<style>.stApp{background:#0d1f14;color:#eef7f0}</style>""", unsafe_allow_html=True)
-		return
-
-	# Paleta e design avançado
-	base_css = f"""
+def apply_css():
+	st.markdown(
+		"""
 	<style>
-	:root {{
-		--acc-1:{PRIMARY_ACCENT};
-		--acc-2:#1d3b29;
-		--bg-grad:linear-gradient(135deg,#99E89D 0%,#7FD784 55%,#4DA768 100%);
-		--card-bg:linear-gradient(145deg,rgba(255,255,255,0.65) 0%,rgba(255,255,255,0.30) 100%);
-		--card-border:#39ff14;
-		--radius-xl:22px; --radius-lg:18px; --radius-md:12px;
-		--shadow-sm:0 2px 4px -2px rgba(0,0,0,0.18);
-		--shadow-md:0 6px 18px -4px rgba(0,0,0,0.25);
-		--shadow-neon:0 0 6px #39ff14,0 0 18px rgba(57,255,20,.55),0 0 32px rgba(57,255,20,.35);
-		--transition-base:.35s cubic-bezier(.16,.8,.24,1);
-		--sidebar-grad:linear-gradient(200deg,#4DA768 0%,#3A8A56 50%,#2c5f3d 100%);
-	}}
-	body {{ font-family: 'Inter', system-ui, Arial, sans-serif; }}
-	.stApp {{ background: var(--bg-grad); background-attachment:fixed; }}
-	section[data-testid="stSidebar"] {{ width:360px !important; }}
-	section[data-testid="stSidebar"]>div {{ background:var(--sidebar-grad)!important; backdrop-filter:blur(6px) saturate(1.15); }}
-	section[data-testid="stSidebar"] * {{ color:#fff !important; }}
-	/* Scrollbar */
-	::-webkit-scrollbar {{ width:10px; }}
-	::-webkit-scrollbar-track {{ background:rgba(255,255,255,0.1); }}
-	::-webkit-scrollbar-thumb {{ background:#2f6b44; border-radius:20px; border:2px solid rgba(255,255,255,0.2); }}
-	::-webkit-scrollbar-thumb:hover {{ background:#368250; }}
-	/* Radio menu */
-	section[data-testid="stSidebar"] div[role="radiogroup"] {{ gap:4px !important; }}
-	section[data-testid="stSidebar"] div[role="radiogroup"] label {{ display:flex; align-items:center; gap:14px; padding:8px 12px; border-radius:16px; cursor:pointer; transition:var(--transition-base); font-weight:600; font-size:0.95rem; letter-spacing:.3px; position:relative; }}
-	section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{ background:rgba(255,255,255,0.12); transform:translateX(2px); }}
-	/* REMOVIDO seletor :has() (incompatível em alguns navegadores/SSR). Usar abordagem degradada */
-	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"] input:checked ~ * {{ font-weight:700; text-decoration:underline; }}
-	section[data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{ margin:0; }}
-	/* Toggle dark mode indicator */
-	.dark-label {{ font-size:0.75rem; opacity:.75; margin-top:-4px; }}
-	/* Cards */
-	.simple-card {{ background:var(--card-bg); backdrop-filter:blur(6px) saturate(1.15); border:3px solid var(--card-border); border-radius:var(--radius-lg); padding:20px 16px 18px; box-shadow:0 0 2px #39ff14,0 0 8px rgba(57,255,20,0.40); text-align:center; min-height:160px; display:flex; flex-direction:column; justify-content:center; gap:6px; position:relative; overflow:hidden; transition:var(--transition-base); }}
-	.simple-card:before {{ content:""; position:absolute; inset:0; background:radial-gradient(circle at 20% 15%,rgba(255,255,255,.65),rgba(255,255,255,0)); opacity:.35; pointer-events:none; }}
-	.simple-card:hover {{ transform:translateY(-8px) scale(1.025); box-shadow:var(--shadow-neon); }}
-	.sc-icon {{ font-size:2.35rem; line-height:1; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.25)); }}
-	.sc-title {{ font-weight:800; font-size:.80rem; letter-spacing:1px; text-transform:uppercase; color:#0d301c; opacity:.9; }}
-	.sc-value {{ font-weight:900; font-size:2.05rem; letter-spacing:.5px; color:#042; text-shadow:0 0 6px rgba(57,255,20,0.65); }}
-	/* Headings */
-	h1,h2,h3,h4,h5,h6 {{ font-family:'Inter',system-ui,Arial Black,sans-serif; font-weight:800; letter-spacing:.5px; }}
-	/* Buttons */
-	button[kind="primary"] {{ background:linear-gradient(135deg,#4DA768 0%,#3b8a56 100%) !important; border:0 !important; box-shadow:0 4px 14px -4px rgba(0,0,0,0.4); font-weight:700; letter-spacing:.4px; transition:var(--transition-base); }}
-	button[kind="primary"]:hover {{ filter:brightness(1.07); transform:translateY(-2px); }}
-	button[kind="secondary"] {{ border-radius:10px !important; }}
-	/* Dataframe */
-	.dataframe thead th {{ position:sticky; top:0; backdrop-filter:blur(4px); background:rgba(255,255,255,0.75)!important; }}
-	.dataframe tbody tr:hover {{ background:rgba(77,167,104,0.10)!important; }}
-	.dataframe tbody tr:nth-child(even) {{ background:rgba(255,255,255,0.40); }}
-	/* Focus */
-	button:focus, input:focus, select:focus, textarea:focus {{ outline:2px solid #39ff14 !important; outline-offset:2px; box-shadow:0 0 0 3px rgba(57,255,20,0.35)!important; }}
-	/* Badges */
-	.badge {{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.60rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; backdrop-filter:blur(4px); }}
-	.badge-ok {{ background:#2ecc71; color:#fff; }}
-	.badge-warn {{ background:#f1c40f; color:#1d2100; }}
-	.badge-err {{ background:#e74c3c; color:#fff; }}
-	.badge-info {{ background:#3498db; color:#fff; }}
-	/* Skeleton */
-	.skel {{ background:linear-gradient(90deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.40) 50%, rgba(255,255,255,0.15) 75%); background-size:200% 100%; animation:skel 1.2s ease-in-out infinite; border-radius:10px; }}
-	@keyframes skel {{ 0%{{background-position:0 0;}} 100%{{background-position:-200% 0;}} }}
-	/* Nav header */
-	.nav-header {{ display:flex; align-items:center; gap:10px; font-size:1.05rem; font-weight:800; padding:6px 4px 4px; margin:4px 0 16px; letter-spacing:.5px; }}
-	/* Utility containers */
-	.glass-box {{ background:linear-gradient(145deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.22) 100%); padding:1.4rem 1.2rem; border-radius:20px; border:1px solid rgba(255,255,255,0.55); box-shadow:0 10px 28px -10px rgba(0,0,0,0.35); backdrop-filter:blur(8px) saturate(1.4); }}
-	/* Dark overrides serão adicionados separadamente sem necessidade de classe */
+	.header { background: linear-gradient(135deg,#4DA768,#7FD784); padding:12px; border-radius:10px; color:white; text-align:center }
+	.metric { padding:8px; border-radius:8px; background:#fff; border-left:4px solid #4DA768 }
 	</style>
-	"""
-	st.markdown(base_css, unsafe_allow_html=True)
-	if dark_mode:
-		st.markdown(inject_dark_theme(), unsafe_allow_html=True)
-
-def inject_dark_theme() -> str:
-	"""CSS de override para modo escuro (separado para reutilização/teste)."""
-	return """
-	<style>
-	:root { --bg-grad:linear-gradient(135deg,#062312 0%,#0d4424 55%,#0a301b 100%); --card-bg:linear-gradient(145deg,rgba(15,40,25,0.85) 0%,rgba(30,70,40,0.55) 100%); }
-	.stApp { color:#f5fff6; }
-	h1,h2,h3,h4,h5,h6 { color:#e8ffee !important; }
-	.simple-card { border-color:#39ff14; box-shadow:0 0 3px #39ff14,0 0 10px rgba(57,255,20,0.35); }
-	.sc-title { color:#d9ffe9; }
-	.sc-value { color:#d7ffe4; text-shadow:0 0 10px rgba(57,255,20,0.85); }
-	.dataframe thead th { background:rgba(10,40,22,0.85)!important; color:#d9ffe9 !important; }
-	.dataframe tbody tr:nth-child(even) { background:rgba(255,255,255,0.06); }
-	section[data-testid="stSidebar"]>div { background:linear-gradient(200deg,#113a22 0%,#0e301c 55%,#0b2716 100%)!important; }
-	section[data-testid="stSidebar"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(135deg,#145d33 0%,#0d3d22 100%); }
-	</style>
-	"""
-
-def apply_plotly_theme(dark_mode: bool = False) -> None:
-	"""Registra e aplica templates Plotly (claro/escuro) alinhados ao tema UI."""
-	light = {
-		"layout": {
-			"paper_bgcolor": "rgba(0,0,0,0)",
-			"plot_bgcolor": "rgba(255,255,255,0.55)",
-			"font": {"family": "Inter,Arial,sans-serif", "color": "#123"},
-			"title": {"x": 0.02, "font": {"size": 20, "color": "#123", "family": "Inter,Arial Black,sans-serif"}},
-			"legend": {"bgcolor": "rgba(255,255,255,0.6)", "borderwidth": 0},
-			"margin": {"l": 40, "r": 30, "t": 60, "b": 40},
-			"xaxis": {"gridcolor": "rgba(0,0,0,0.08)", "zeroline": False},
-			"yaxis": {"gridcolor": "rgba(0,0,0,0.08)", "zeroline": False},
-			"colorway": ["#4DA768", "#7FD784", "#2ecc71", "#3A8A56", "#99E89D", "#16a085"],
-		}
-	}
-	dark = {
-		"layout": {
-			"paper_bgcolor": "rgba(0,0,0,0)",
-			"plot_bgcolor": "rgba(15,40,25,0.55)",
-			"font": {"family": "Inter,Arial,sans-serif", "color": "#e8ffee"},
-			"title": {"x": 0.02, "font": {"size": 20, "color": "#d9ffe9", "family": "Inter,Arial Black,sans-serif"}},
-			"legend": {"bgcolor": "rgba(15,40,25,0.35)", "borderwidth": 0},
-			"margin": {"l": 40, "r": 30, "t": 60, "b": 40},
-			"xaxis": {"gridcolor": "rgba(255,255,255,0.12)", "zeroline": False, "tickcolor": "rgba(255,255,255,0.4)"},
-			"yaxis": {"gridcolor": "rgba(255,255,255,0.12)", "zeroline": False, "tickcolor": "rgba(255,255,255,0.4)"},
-			"colorway": ["#39ff14", "#7FD784", "#4DA768", "#2ecc71", "#16a085", "#3A8A56"],
-		}
-	}
-	pio.templates["juliana_light"] = light
-	pio.templates["juliana_dark"] = dark
-	pio.templates.default = "juliana_dark" if dark_mode else "juliana_light"
-
-
-def configure_page() -> None:
-	"""Configura parâmetros básicos da página Streamlit."""
-	st.set_page_config(
-		page_title="🧠 JULIANA - Gestão Clínica",
-		page_icon="🧠",
-		layout="wide",
-		initial_sidebar_state="expanded",
+	""",
+		unsafe_allow_html=True,
 	)
 
-def render_page_header(title: str, subtitle: str = "", inverse: bool = False) -> None:
-	title_color = "#ffffff" if inverse else "var(--acc-2)"
-	subtitle_color = "#ffffff" if inverse else "var(--acc-2)"
-	title_border = "rgba(255,255,255,0.35)" if inverse else "rgba(77,167,104,0.25)"
-	subtitle_border = "rgba(255,255,255,0.25)" if inverse else "rgba(77,167,104,0.18)"
-	container_bg = (
-		"linear-gradient(135deg, rgba(77,167,104,0.25) 0%, rgba(77,167,104,0.15) 100%)"
-		if inverse else
-		"linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(77,167,104,0.10) 100%)"
-	)
-	title_bg = (
-		# Removido gradiente para não "lavar" a cor do texto ao fundo
-		"none"
-	)
-	subtitle_bg = (
-		# Também removido gradiente do subtítulo
-		"none"
-	)
-	st.markdown(f"""
-	<div style='
-		text-align: center;
-		background: {container_bg};
-		border-radius: 18px;
-		padding: 2.2rem 2rem;
-		margin: 1rem 0 2rem 0;
-		border: 1px solid {title_border};
-		backdrop-filter: blur(10px);
-		box-shadow: 0 10px 28px rgba(0,0,0,0.12);
-		position: relative;
-	'>
-		<div style="position:absolute;left:18px;top:18px;font-size:1.6rem;">✨</div>
-		<h1 style='
-			font-size: 2.5rem; 
-			font-weight: 900; 
-			color: {title_color}; 
-			background-image: {title_bg};
-			background-size: 100% 40%;
-			background-repeat: no-repeat;
-			background-position: 0 85%;
-			border-bottom: 2px solid {title_border};
-			padding-bottom: 3px;
-			margin: 0 0 0.5rem 0;
-			text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-		'>{title}</h1>
-		<p style='
-			font-size: 1.1rem; 
-			color: {subtitle_color}; 
-			background-image: {subtitle_bg};
-			background-size: 100% 30%;
-			background-repeat: no-repeat;
-			background-position: 0 85%;
-			border-bottom: 1px solid {subtitle_border};
-			padding-bottom: 2px;
-			margin: 0.5rem 0 0 0;
-			text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-		'>{subtitle}</p>
-	</div>
-	""", unsafe_allow_html=True)
+
+@st.cache_resource
+def get_db_manager():
+	# lazy import to avoid circulars
+	from db import DatabaseManager
+
+	return DatabaseManager(str(DB_PATH))
 
 
-class DatabaseManager:
-	@staticmethod
-	@st.cache_resource
-	def initialize_database() -> bool:
-		try:
-			return bool(db.init_db())
-		except Exception as e:
-			st.error(f"Falha ao inicializar DB: {e}")
-			return False
+def render_header():
+	st.markdown('<div class="header"><h1>🧠 JULIANA - Gestão Clínica</h1></div>', unsafe_allow_html=True)
 
-	@staticmethod
-	def get_backend_engine() -> str:
-		try:
-			if hasattr(db, 'USE_PG') and getattr(db, 'USE_PG'):
-				return 'Postgres'
-		except Exception:
+
+def render_dashboard(db):
+	render_header()
+	st.subheader("📊 Dashboard")
+	stats = db.get_stats()
+
+	c1, c2, c3, c4 = st.columns(4)
+	c1.metric("Atendimentos", stats.get("total_atendimentos", 0))
+	c2.metric("Empresas", stats.get("total_empresas", 0))
+	c3.metric("Pend. Laudo", stats.get("pendentes_laudo", 0))
+	c4.metric("Pend. Avaliação", stats.get("pendentes_avaliacao", 0))
+
+	# simples gráfico por empresa
+	appointments = db.get_all_appointments()
+	if appointments:
+		df = pd.DataFrame(appointments)
+		empresa_counts = df['empresa'].value_counts().head(10)
+		fig = px.bar(x=empresa_counts.values, y=empresa_counts.index, orientation='h', color_discrete_sequence=['#4DA768'])
+		fig.update_layout(height=400)
+		st.plotly_chart(fig, use_container_width=True)
+	else:
+		st.info("Nenhum atendimento cadastrado ainda.")
+
+
+def render_appointments(db):
+	st.subheader("📋 Atendimentos")
+	appointments = db.get_all_appointments()
+	if not appointments:
+		st.info("Nenhum atendimento")
+		return
+	df = pd.DataFrame(appointments)
+	empresa_filter = st.selectbox("Filtrar por Empresa", ['Todas'] + sorted(df['empresa'].unique().tolist()))
+	if empresa_filter != 'Todas':
+		df = df[df['empresa'] == empresa_filter]
+	status_filter = st.selectbox("Filtrar por Status", ['Todos'] + sorted(df['status'].unique().tolist()))
+	if status_filter != 'Todos':
+		df = df[df['status'] == status_filter]
+	st.dataframe(df[['id','empresa','nome','modalidade','data','hora','status']], use_container_width=True)
+
+
+def render_new_appointment(db):
+	st.subheader("➕ Novo Atendimento")
+	with st.form("novo"):
+		empresa = st.text_input("Empresa")
+		nome = st.text_input("Nome do Paciente")
+		modalidade = st.selectbox("Modalidade", ["Presencial","Online"]) 
+		data = st.date_input("Data", value=date.today())
+		hora = st.time_input("Hora")
+		status = st.selectbox("Status", ["Agendado","Realizado","Cancelado"]) 
+		observacoes = st.text_area("Observações")
+		submitted = st.form_submit_button("Salvar")
+		if submitted:
+			if not empresa or not nome:
+				st.error("Empresa e Nome são obrigatórios")
+			else:
+				ap = AtendimentoData(empresa=empresa, nome=nome, modalidade=modalidade, data=str(data), hora=str(hora), status=status, observacoes=observacoes)
+				ok = db.add_appointment(ap)
+				if ok:
+					st.success("Atendimento cadastrado")
+					st.experimental_rerun()
+				else:
+					st.error("Erro ao salvar")
+
+
+def render_notes(db):
+	st.subheader("📝 Notas")
+	notes = db.get_all_notes()
+	if not notes:
+		st.info("Nenhuma nota")
+		return
+	for n in notes:
+		with st.expander(n.get('titulo','')):
+			st.write(n.get('conteudo',''))
+
+
+def main():
+	set_page()
+	apply_css()
+	db = get_db_manager()
+
+	page = st.sidebar.radio("Navegação", ["Dashboard","Atendimentos","Novo Atendimento","Notas","Configurações"]) 
+	if page == "Dashboard":
+		render_dashboard(db)
+	elif page == "Atendimentos":
+		render_appointments(db)
+	elif page == "Novo Atendimento":
+		render_new_appointment(db)
+	elif page == "Notas":
+		render_notes(db)
+	else:
+		st.sidebar.markdown("Configurações de sistema")
+
+
+if __name__ == "__main__":
+	main()
 			pass
 		return 'SQLite'
 
