@@ -1,1468 +1,488 @@
-"""JULIANA - Gestão Clínica (MVP)"""
-
 import streamlit as st
+import sqlite3
+import pathlib
+from datetime import datetime, date, time
+from enum import Enum
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
-from datetime import datetime, date, time
-import os, sys, pathlib, hashlib
-from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Optional, Any
 
+# Configurar página do Streamlit
+st.set_page_config(
+    page_title="JULIANA - Gestão Clínica",
+    page_icon="🧠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "gestao_clinica.db"
 DATE_FORMAT = "%d/%m/%Y"
 TIME_FORMAT = "%H:%M"
-MAX_UPLOAD_MB = 50
-"""Versão simplificada do app Juliana - SQLite only.
+PRIMARY_ACCENT = "#4DA768"
 
-Objetivo: remover dependências e CSS avançado que causavam conflitos no Streamlit Cloud
-e manter funcionalidades essenciais (atendimentos, notas, dashboard).
-"""
+class ModalidadeAtendimento(Enum):
+    CONSULTA = "Consulta"
+    AVALIACAO = "Avaliação"
+    RETORNO = "Retorno"
 
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-from datetime import datetime, date
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
-from pathlib import Path
+class Security:
+    @staticmethod
+    def sanitize_input(text):
+        if not text:
+            return ""
+        return str(text).strip()
+    @staticmethod
+    def generate_safe_filename(filename):
+        import re
+        safe = re.sub(r'[^\w\-_\.]', '_', str(filename))
+        return safe[:100]
+    @staticmethod
+    def validate_file_upload(filename, size_bytes, max_size_mb=50):
+        if not filename:
+            return False, "Nome do arquivo inválido"
+        if not filename.lower().endswith('.pdf'):
+            return False, "Apenas arquivos PDF são permitidos"
+        if size_bytes > max_size_mb * 1024 * 1024:
+            return False, f"Arquivo muito grande. Máximo: {max_size_mb}MB"
+        return True, "OK"
+    @staticmethod
+    def log_access(action, details):
+        try:
+            log_dir = BASE_DIR / "logs"
+            log_dir.mkdir(exist_ok=True)
+            with open(log_dir / "access.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().isoformat()} - {action}: {details}\n")
+        except Exception:
+            pass
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "juliana_clinica.db"
+security = Security()
 
-@dataclass
+class DatabaseManager:
+    @staticmethod
+    def initialize_database():
+        try:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS atendimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    empresa TEXT NOT NULL,
+                    nome TEXT NOT NULL,
+                    modalidade TEXT NOT NULL,
+                    data TEXT NOT NULL,
+                    hora TEXT NOT NULL,
+                    laudo_pdf TEXT,
+                    avaliacao_pdf TEXT,
+                    status TEXT DEFAULT 'Agendado',
+                    observacoes TEXT,
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao inicializar banco: {e}")
+            return False
+
+    @staticmethod
+    def get_all_appointments():
+        try:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, empresa, nome, modalidade, data, hora, 
+                       laudo_pdf, avaliacao_pdf, status, observacoes
+                FROM atendimentos ORDER BY data DESC, hora DESC
+            ''')
+            result = cursor.fetchall()
+            conn.close()
+            return result
+        except Exception as e:
+            st.error(f"Erro ao buscar atendimentos: {e}")
+            return []
+
+    @staticmethod
+    def add_appointment(appointment_data):
+        try:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO atendimentos 
+                (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                appointment_data.empresa,
+                appointment_data.nome,
+                appointment_data.modalidade,
+                appointment_data.data,
+                appointment_data.hora,
+                appointment_data.laudo_pdf,
+                appointment_data.avaliacao_pdf,
+                getattr(appointment_data, 'observacoes', '')
+            ))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao adicionar atendimento: {e}")
+            return False
+
+    @staticmethod
+    def delete_appointment(appointment_id):
+        try:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM atendimentos WHERE id = ?', (appointment_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao excluir atendimento: {e}")
+            return False
+
+    @staticmethod
+    def get_statistics():
+        try:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM atendimentos')
+            total = cursor.fetchone()[0]
+            cursor.execute('SELECT modalidade, COUNT(*) FROM atendimentos GROUP BY modalidade')
+            modalidades = dict(cursor.fetchall())
+            conn.close()
+            return {
+                "total_atendimentos": total,
+                "modalidades": modalidades
+            }
+        except Exception:
+            return {"total_atendimentos": 0, "modalidades": {}}
+
+def display_cards(cards):
+    cols = st.columns(len(cards))
+    for i, card in enumerate(cards):
+        with cols[i]:
+            st.metric(
+                label=f"{card.get('icon', '')} {card.get('title', '')}",
+                value=card.get('value', ''),
+                delta=card.get('delta', None)
+            )
+
+def render_page_header(title, subtitle, inverse=False):
+    st.markdown(f"## {title}")
+    st.caption(subtitle)
+
+def apply_custom_css(dark_mode=False, advanced=False):
+    st.markdown(
+        '''<style>
+        body, .main, .block-container {background-color: #73C883 !important;}
+        .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content {background: #4da768 !important; color: #fff !important;}
+        .stSidebar .stButton > button, .stSidebar input, .stSidebar select {background: #fff !important; color: #4da768 !important; border-radius: 6px !important;}
+        .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content, .stRadio label, .stRadio div, .stRadio span {color: #fff !important;}
+        .stDataFrame, .stTable, .stMarkdown table {background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(44,62,80,0.10); border: 1px solid #e1e8ed; margin-bottom: 18px; font-size: 15px;}
+        .stMarkdown table th, .stMarkdown table td {padding: 8px 14px; border-bottom: 1px solid #e1e8ed;}
+        .stMarkdown table th {background: #eafaf1; color: #2c3e50; font-weight: 700;}
+        .stMarkdown table tr:hover td {background: #f7f9fa;}
+        .stMarkdown table tr.important td {background: #ffeaa7 !important; color: #636e72 !important; font-weight: 600;}
+        h1, h2, h3, h4 {color: #2c3e50; font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; font-weight: 700;}
+        h3, .subtitle-highlight {color: #2c3e50 !important; background: linear-gradient(90deg, #eafaf1 0%, #73C883 100%); padding: 6px 18px; border-radius: 8px; font-size: 1.35em; font-weight: 700; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(44,62,80,0.07); display: inline-block;}
+        .stButton > button {background: linear-gradient(90deg, #4DA768 0%, #2ecc71 100%); color: white; border-radius: 6px; border: none; font-weight: 600; padding: 8px 20px; box-shadow: 0 2px 8px rgba(60,170,95,0.08); transition: background 0.2s;}
+        .stButton > button:hover {background: linear-gradient(90deg, #2ecc71 0%, #4DA768 100%);}
+        .stMetric {background: #eafaf1; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(44,62,80,0.07); margin-bottom: 8px;}
+        </style>''', unsafe_allow_html=True)
+
+def apply_plotly_theme(dark_mode=False):
+    pio.templates.default = "plotly_white"
+
+def save_uploaded_pdf(uploaded_file):
+    if uploaded_file is None:
+        return ""
+    try:
+        uploads_dir = BASE_DIR / "uploads"
+        uploads_dir.mkdir(exist_ok=True)
+        safe_name = security.generate_safe_filename(uploaded_file.name)
+        file_path = uploads_dir / safe_name
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        return str(file_path)
+    except Exception as e:
+        st.error(f"Erro ao salvar PDF: {e}")
+        return ""
+
+def verificar_conexao():
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        conn.close()
+        return True
+    except Exception:
+        return False
+
 class AtendimentoData:
-	empresa: str
-	nome: str
-	modalidade: str
-	data: str
-	hora: str
-	laudo_pdf: Optional[str] = None
-	avaliacao_pdf: Optional[str] = None
-	status: Optional[str] = "Agendado"
-	observacoes: Optional[str] = None
-
-
-def set_page():
-	st.set_page_config(page_title="JULIANA - Gestão Clínica", page_icon="🧠", layout="wide")
-
-
-def apply_css():
-	st.markdown(
-		"""
-	<style>
-	.header { background: linear-gradient(135deg,#4DA768,#7FD784); padding:12px; border-radius:10px; color:white; text-align:center }
-	.metric { padding:8px; border-radius:8px; background:#fff; border-left:4px solid #4DA768 }
-	</style>
-	""",
-		unsafe_allow_html=True,
-	)
-
-
-@st.cache_resource
-def get_db_manager():
-	# lazy import to avoid circulars
-	from db import DatabaseManager
-
-	return DatabaseManager(str(DB_PATH))
-
-
-def render_header():
-	st.markdown('<div class="header"><h1>🧠 JULIANA - Gestão Clínica</h1></div>', unsafe_allow_html=True)
-
-
-def render_dashboard(db):
-	render_header()
-	st.subheader("📊 Dashboard")
-	stats = db.get_stats()
-
-	c1, c2, c3, c4 = st.columns(4)
-	c1.metric("Atendimentos", stats.get("total_atendimentos", 0))
-	c2.metric("Empresas", stats.get("total_empresas", 0))
-	c3.metric("Pend. Laudo", stats.get("pendentes_laudo", 0))
-	c4.metric("Pend. Avaliação", stats.get("pendentes_avaliacao", 0))
-
-	# simples gráfico por empresa
-	appointments = db.get_all_appointments()
-	if appointments:
-		df = pd.DataFrame(appointments)
-		empresa_counts = df['empresa'].value_counts().head(10)
-		fig = px.bar(x=empresa_counts.values, y=empresa_counts.index, orientation='h', color_discrete_sequence=['#4DA768'])
-		fig.update_layout(height=400)
-		st.plotly_chart(fig, use_container_width=True)
-	else:
-		st.info("Nenhum atendimento cadastrado ainda.")
-
-
-def render_appointments(db):
-	st.subheader("📋 Atendimentos")
-	appointments = db.get_all_appointments()
-	if not appointments:
-		st.info("Nenhum atendimento")
-		return
-	df = pd.DataFrame(appointments)
-	empresa_filter = st.selectbox("Filtrar por Empresa", ['Todas'] + sorted(df['empresa'].unique().tolist()))
-	if empresa_filter != 'Todas':
-		df = df[df['empresa'] == empresa_filter]
-	status_filter = st.selectbox("Filtrar por Status", ['Todos'] + sorted(df['status'].unique().tolist()))
-	if status_filter != 'Todos':
-		df = df[df['status'] == status_filter]
-	st.dataframe(df[['id','empresa','nome','modalidade','data','hora','status']], use_container_width=True)
-
-
-def render_new_appointment(db):
-	st.subheader("➕ Novo Atendimento")
-	with st.form("novo"):
-		empresa = st.text_input("Empresa")
-		nome = st.text_input("Nome do Paciente")
-		modalidade = st.selectbox("Modalidade", ["Presencial","Online"]) 
-		data = st.date_input("Data", value=date.today())
-		hora = st.time_input("Hora")
-		status = st.selectbox("Status", ["Agendado","Realizado","Cancelado"]) 
-		observacoes = st.text_area("Observações")
-		submitted = st.form_submit_button("Salvar")
-		if submitted:
-			if not empresa or not nome:
-				st.error("Empresa e Nome são obrigatórios")
-			else:
-				ap = AtendimentoData(empresa=empresa, nome=nome, modalidade=modalidade, data=str(data), hora=str(hora), status=status, observacoes=observacoes)
-				ok = db.add_appointment(ap)
-				if ok:
-					st.success("Atendimento cadastrado")
-					st.experimental_rerun()
-				else:
-					st.error("Erro ao salvar")
-
-
-def render_notes(db):
-	st.subheader("📝 Notas")
-	notes = db.get_all_notes()
-	if not notes:
-		st.info("Nenhuma nota")
-		return
-	for n in notes:
-		with st.expander(n.get('titulo','')):
-			st.write(n.get('conteudo',''))
-
-
-def main():
-	set_page()
-	apply_css()
-	db = get_db_manager()
-
-	page = st.sidebar.radio("Navegação", ["Dashboard","Atendimentos","Novo Atendimento","Notas","Configurações"]) 
-	if page == "Dashboard":
-		render_dashboard(db)
-	elif page == "Atendimentos":
-		render_appointments(db)
-	elif page == "Novo Atendimento":
-		render_new_appointment(db)
-	elif page == "Notas":
-		render_notes(db)
-	else:
-		st.sidebar.markdown("Configurações de sistema")
-
-
-if __name__ == "__main__":
-	main()
-			pass
-		return 'SQLite'
-
-	@staticmethod
-	@st.cache_data(ttl=30)
-	def get_all_appointments() -> List[Dict[str, Any]]:
-		try:
-			return db.listar_atendimentos() or []
-		except Exception as e:
-			st.error(f"Erro ao buscar atendimentos: {e}")
-			return []
-
-	@staticmethod
-	@st.cache_data(ttl=60)
-	def get_statistics() -> Dict[str, Any]:
-		try:
-			return db.obter_estatisticas() or {"total_atendimentos": 0, "atendimentos_hoje": 0, "modalidades": {}}
-		except Exception as e:
-			st.error(f"Erro ao calcular estatísticas: {e}")
-			return {"total_atendimentos": 0, "atendimentos_hoje": 0, "modalidades": {}}
-
-	@staticmethod
-	def add_appointment(appointment_data: AtendimentoData) -> bool:
-		try:
-			success = db.inserir_atendimento(
-				appointment_data.empresa,
-				appointment_data.nome,
-				appointment_data.modalidade,
-				appointment_data.data,
-				appointment_data.hora,
-				appointment_data.laudo_pdf,
-				appointment_data.avaliacao_pdf
-			)
-			if success:
-				st.cache_data.clear()
-			return success
-		except Exception as e:
-			st.error(f"Erro ao adicionar atendimento: {e}")
-			return False
-
-	@staticmethod
-	def update_appointment(
-		apt_id: int,
-		empresa: Optional[str] = None,
-		nome: Optional[str] = None,
-		modalidade: Optional[str] = None,
-		data: Optional[str] = None,
-		hora: Optional[str] = None,
-		laudo_pdf: Optional[str] = None,
-		avaliacao_pdf: Optional[str] = None,
-		status: Optional[str] = None,
-		observacoes: Optional[str] = None,
-	) -> bool:
-		"""Atualiza um atendimento; apenas campos não-nulos são enviados ao DB."""
-		try:
-			campos: Dict[str, Any] = {}
-			if empresa is not None: campos["empresa"] = empresa
-			if nome is not None: campos["nome"] = nome
-			if modalidade is not None: campos["modalidade"] = modalidade
-			if data is not None: campos["data"] = data
-			if hora is not None: campos["hora"] = hora
-			if laudo_pdf is not None: campos["laudo_pdf"] = laudo_pdf
-			if avaliacao_pdf is not None: campos["avaliacao_pdf"] = avaliacao_pdf
-			if status is not None: campos["status"] = status
-			if observacoes is not None: campos["observacoes"] = observacoes
-			success = db.atualizar_atendimento(apt_id, **campos)
-			if success:
-				st.cache_data.clear()
-			return success
-		except Exception as e:
-			st.error(f"Erro ao atualizar atendimento: {e}")
-			return False
-
-	@staticmethod
-	def delete_appointment(apt_id: int) -> bool:
-		try:
-			success = db.excluir_atendimento(apt_id)
-			if success:
-				st.cache_data.clear()
-			return success
-		except Exception as e:
-			st.error(f"Erro ao excluir atendimento: {e}")
-			return False
-
-
-
-
-
-class UIComponents:
-	@staticmethod
-	def render_header(page: str) -> None:
-		# Páginas controlam seus próprios títulos/headers
-		pass
-
-	@staticmethod
-	def render_sidebar() -> Dict[str, Any]:
-		# Cabeçalho de navegação alinhado
-		st.sidebar.markdown("<div class='nav-header'>🧭 <span>Navegação</span></div>", unsafe_allow_html=True)
-		# Toggle Dark Mode (design intensificado) - estabilizado
-		if 'dark_mode' not in st.session_state:
-			st.session_state.dark_mode = False
-		
-		# Usar key estável para evitar recriar widget
-		dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, 
-									  help="Alternar modo escuro/claro (aplica tema avançado)",
-									  key="stable_dark_mode")
-		st.session_state.dark_mode = dark_mode
-		st.sidebar.caption("Interface avançada" if ADVANCED_UI else "Interface básica")
-		menu_items = [
-			"🏠 Painel",
-			"📝 Atendimentos",
-			"📊 Relatórios",
-			"📄 Carregar",
-			"⚙️ Configurações",
-		]
-		# Key estável para evitar recriar radio
-		page = st.sidebar.radio("", menu_items, index=0, key="stable_main_nav")
-
-		# Ações rápidas (contextuais) – somente em páginas operacionais
-		if page in ("📝 Atendimentos", "📊 Relatórios"):
-			with st.sidebar.expander("⚡ Ações Rápidas", expanded=False):
-				st.caption("Atalhos úteis:")
-				st.write("• Use filtros abaixo para refinar lista")
-				st.write("• Exporte dados no rodapé da página")
-
-		# Filtros contextuais (somente para Atendimentos e Relatórios)
-		date_filter = None
-		modalidade_filter = ""
-		empresa_filter = ""
-		paciente_filter = ""
-
-		# Preferências UI
-		# (Seção de aparência removida a pedido. Usando defaults: animações ON, modo compacto OFF, neon ON.)
-		if "ui_disable_anim" not in st.session_state:
-			st.session_state.ui_disable_anim = False
-		if "ui_compact_cards" not in st.session_state:
-			st.session_state.ui_compact_cards = False
-		if "ui_neon_cards" not in st.session_state:
-			st.session_state.ui_neon_cards = True
-		if page in ("📝 Atendimentos", "📊 Relatórios"):
-			st.sidebar.markdown("### 🔍 Filtros")
-			use_date_filter = st.sidebar.checkbox("Filtrar por data", value=False)
-			date_filter = st.sidebar.date_input("Data:") if use_date_filter else None
-			modalidade_filter = st.sidebar.selectbox(
-				"Modalidade:", [""] + [m.value for m in ModalidadeAtendimento], index=0,
-				format_func=lambda x: "Selecione..." if x == "" else x,
-			)
-			empresa_filter = st.sidebar.text_input("Empresa:", value="")
-			paciente_filter = st.sidebar.text_input("Paciente:", value="")
-
-		return {
-			"page": page,
-			"date_filter": date_filter,
-			"modalidade_filter": modalidade_filter,
-			"empresa_filter": empresa_filter,
-			"paciente_filter": paciente_filter,
-			"disable_anim": st.session_state.ui_disable_anim,
-			"compact_cards": st.session_state.ui_compact_cards,
-			"dark_mode": dark_mode,  # Usar variável local ao invés do session_state
-		}
-
-	@staticmethod
-	def render_appointment_form() -> Optional[AtendimentoData]:
-		with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
-			with st.form("appointment_form", clear_on_submit=True):
-				col1, col2 = st.columns(2)
-				with col1:
-					empresa = st.text_input("🏢 Empresa/Organização")
-					modalidade = st.selectbox("🏥 Modalidade", [m.value for m in ModalidadeAtendimento])
-					data_sel = st.date_input("📅 Data", min_value=date.today())
-				with col2:
-					nome = st.text_input("👤 Nome do Paciente")
-					hora_sel = st.time_input("🕐 Horário")
-				c1, c2, _ = st.columns([1, 1, 4])
-				with c1:
-					submitted = st.form_submit_button("💾 Salvar", type="primary")
-				with c2:
-					st.form_submit_button("🔄 Limpar")
-				if submitted:
-					if not empresa or not nome:
-						st.error("Preencha os campos obrigatórios.")
-					else:
-						return AtendimentoData(
-							empresa=empresa.strip(),
-							nome=nome.strip(),
-							modalidade=modalidade,
-							data=data_sel.strftime(DATE_FORMAT),
-							hora=hora_sel.strftime(TIME_FORMAT),
-						)
-		return None
-
+    def __init__(self, empresa, nome, modalidade, data, hora, laudo_pdf="", avaliacao_pdf="", observacoes=""):
+        self.empresa = empresa
+        self.nome = nome
+        self.modalidade = modalidade
+        self.data = data
+        self.hora = hora
+        self.laudo_pdf = laudo_pdf
+        self.avaliacao_pdf = avaliacao_pdf
+        self.observacoes = observacoes
 
 class DashboardPage:
-	@staticmethod
-	def render() -> None:
-		# Cabeçalho unificado (hero) do Dashboard
-		render_page_header("🧠 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
-
-		# Status de conexão
-		conn_ok = False
-		try:
-			conn_ok = db.verificar_conexao()
-		except Exception:
-			conn_ok = False
-		# Detecta tipo de backend (se módulo db_unified expõe USE_PG ou fallback)
-		backend = "SQLite"
-		try:
-			if hasattr(db, 'USE_PG') and getattr(db, 'USE_PG'):
-				backend = "Postgres"
-		except Exception:
-			backend = "SQLite"
-		badge_class = 'pg' if backend == 'Postgres' else 'sqlite'
-		st.caption(f"🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge {badge_class}'>{backend}</span>", unsafe_allow_html=True)
-
-		# Estatísticas + fallback direto dos registros para evitar zeros indevidos
-		try:
-			stats = DatabaseManager.get_statistics() or {}
-			appts = DatabaseManager.get_all_appointments() or []
-			total_at = len(appts)
-			empresas_unicas = {str(a[1]) for a in appts if len(a) > 1}
-			laudos_env = sum(1 for a in appts if len(a) > 6 and a[6])
-			avals_env = sum(1 for a in appts if len(a) > 7 and a[7])
-			total_emp = len(empresas_unicas)
-		except Exception as e:
-			st.error(f"Erro ao carregar estatísticas: {e}")
-			total_at = total_emp = laudos_env = avals_env = 0
-
-		# Pendências
-		try:
-			from services import pending_items
-			pend = pending_items()
-		except Exception:
-			pend = {"sem_laudo":0,"sem_avaliacao":0,"sem_ambos":0}
-
-		# Cards idênticos
-		cards = [
-			{"icon": "👥", "title": "Atendimentos", "value": total_at, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,2,3,5,4,6,7]},
-			{"icon": "🏢", "title": "Empresas", "value": total_emp, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,1,1,2,2,3,3]},
-			{"icon": "📄", "title": "Relatórios", "value": laudos_env, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,0,1,1,2,2,2]},
-			{"icon": "📝", "title": "Avaliações", "value": avals_env, "acc": PRIMARY_ACCENT, "soft": True, "spark": [0,1,0,1,1,1,2]},
-			{"icon": "⚠️", "title": "Pend. Laudo", "value": pend.get("sem_laudo",0), "acc": "#e67e22", "soft": True},
-			{"icon": "⚠️", "title": "Pend. Avaliação", "value": pend.get("sem_avaliacao",0), "acc": "#d35400", "soft": True},
-			{"icon": "⏳", "title": "Pend. Ambos", "value": pend.get("sem_ambos",0), "acc": "#c0392b", "soft": True},
-		]
-		display_cards(cards)
-
-		# Dica se não houver dados
-		if not total_at:
-			st.info("Sem dados ainda. Vá em ⚙️ Configurações > 'Popular dados de exemplo (demo)' para visualizar o painel.")
-
-		# Gráfico de modalidades
-		if stats.get("modalidades"):
-			vals = list(stats["modalidades"].values())
-			labels = list(stats["modalidades"].keys())
-			fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade")
-			fig.update_traces(textposition="inside", textinfo="percent+label", pull=[0.04]*len(vals))
-			fig.update_layout(legend_title_text="Modalidade", height=420)
-			st.plotly_chart(fig, use_container_width=True)
-
+    @staticmethod
+    def render() -> None:
+        render_page_header("🧠 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
+        conn_ok = verificar_conexao()
+        st.caption(f"🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge sqlite'>SQLite</span>", unsafe_allow_html=True)
+        try:
+            stats = DatabaseManager.get_statistics()
+            appointments = DatabaseManager.get_all_appointments()
+            total_appointments = len(appointments)
+            empresas_unicas = set()
+            laudos_enviados = 0
+            avaliacoes_enviadas = 0
+            for apt in appointments:
+                if len(apt) > 1:
+                    empresas_unicas.add(str(apt[1]))
+                if len(apt) > 6 and apt[6]:
+                    laudos_enviados += 1
+                if len(apt) > 7 and apt[7]:
+                    avaliacoes_enviadas += 1
+            total_empresas = len(empresas_unicas)
+        except Exception as e:
+            st.error(f"Erro ao carregar estatísticas: {e}")
+            total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
+        cards = [
+            {"icon": "👥", "title": "Atendimentos", "value": total_appointments, "acc": PRIMARY_ACCENT},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": PRIMARY_ACCENT},
+            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": PRIMARY_ACCENT},
+            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": PRIMARY_ACCENT},
+        ]
+        display_cards(cards)
+        if not total_appointments:
+            st.info("Sem dados ainda. Cadastre alguns atendimentos para visualizar o painel.")
+        if stats.get("modalidades"):
+            vals = list(stats["modalidades"].values())
+            labels = list(stats["modalidades"].keys())
+            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade")
+            fig.update_traces(textposition="inside", textinfo="percent+label")
+            fig.update_layout(legend_title_text="Modalidade", height=420)
+            st.plotly_chart(fig, use_container_width=True)
 
 class AppointmentsPage:
-	@staticmethod
-	def render(filters: Dict) -> None:
-		render_page_header("📝 Atendimentos", "Gerenciamento de Consultas e Procedimentos", inverse=True)
-		st.markdown("<div class='reports-scope'>", unsafe_allow_html=True)
+    @staticmethod
+    def render(filters):
+        render_page_header("📝 Atendimentos", "Gerenciamento de Consultas e Procedimentos")
+        with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
+            with st.form("appointment_form_new", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    empresa = st.text_input("🏢 Empresa/Organização")
+                    modalidade = st.selectbox("🏥 Modalidade", [m.value for m in ModalidadeAtendimento])
+                    data_sel = st.date_input("📅 Data", min_value=date.today())
+                with col2:
+                    nome = st.text_input("👤 Nome do Paciente")
+                    hora_sel = st.time_input("🕐 Horário")
+                st.markdown("#### 📎 Anexos (opcional)")
+                c1a, c2a = st.columns(2)
+                with c1a:
+                    up_laudo = st.file_uploader("📎 Laudo PDF", type=["pdf"], key="up_laudo_new")
+                    if up_laudo:
+                        size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
+                        st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
+                with c2a:
+                    up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
+                    if up_avaliacao:
+                        size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
+                        st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
+                observacoes = st.text_area("📝 Observações", placeholder="Observações adicionais...")
+                submitted = st.form_submit_button("💾 Salvar", type="primary")
+                if submitted:
+                    if not empresa or not nome:
+                        st.error("Preencha os campos obrigatórios (Empresa e Nome).")
+                    else:
+                        laudo_path = save_uploaded_pdf(up_laudo)
+                        avaliacao_path = save_uploaded_pdf(up_avaliacao)
+                        novo_atendimento = AtendimentoData(
+                            empresa=security.sanitize_input(empresa),
+                            nome=security.sanitize_input(nome),
+                            modalidade=modalidade,
+                            data=data_sel.strftime(DATE_FORMAT),
+                            hora=hora_sel.strftime(TIME_FORMAT),
+                            laudo_pdf=laudo_path,
+                            avaliacao_pdf=avaliacao_path,
+                            observacoes=security.sanitize_input(observacoes)
+                        )
+                        if DatabaseManager.add_appointment(novo_atendimento):
+                            security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
+                            st.success("✅ Atendimento cadastrado!")
+                            st.rerun()
+                        else:
+                            st.error("Erro ao cadastrar atendimento.")
+        AppointmentsPage._render_table(filters)
 
-		# Excluir (com snapshot para desfazer)
-		try:
-			appts = DatabaseManager.get_all_appointments()
-			if appts:
-				df_head = pd.DataFrame(
-					appts,
-					columns=[
-						"ID",
-						"Empresa",
-						"Nome",
-						"Modalidade",
-						"Data",
-						"Hora",
-						"Laudo PDF",
-						"Avaliação PDF",
-						"Status",
-						"Observações",
-					],
-				)
-				col_sel, col_del, col_undo = st.columns([3, 1, 1])
-				with col_sel:
-					labels = [
-						f"ID {int(r.ID)} — {r.Nome} • {r.Empresa} • {r.Data} {r.Hora}"
-						for _, r in df_head.iterrows()
-					]
-					opt = dict(zip(labels, df_head.ID.astype(int).tolist()))
-					chosen = st.selectbox("Selecione para excluir:", labels) if labels else None
-				with col_del:
-					if st.button("🗑️ Excluir") and chosen:
-						sel_id = opt.get(chosen)
-						if sel_id is None:
-							st.error("Seleção inválida.")
-						else:
-							snapshot = df_head[df_head.ID == sel_id].iloc[0].to_dict()
-							st.session_state["last_deleted_snapshot"] = snapshot
-							if DatabaseManager.delete_appointment(int(sel_id)):
-								st.success(f"Excluído ID {sel_id}.")
-								st.rerun()
-				with col_undo:
-					if st.session_state.get("last_deleted_snapshot"):
-						if st.button("↩️ Desfazer"):
-							s = st.session_state["last_deleted_snapshot"]
-							db.inserir_atendimento(
-								s.get("Empresa", ""),
-								s.get("Nome", ""),
-								s.get("Modalidade", ""),
-								s.get("Data", ""),
-								s.get("Hora", ""),
-								s.get("Laudo PDF"),
-							 s.get("Avaliação PDF"),
-								s.get("Observações"),
-							)
-							st.session_state.pop("last_deleted_snapshot", None)
-							st.success("Registro restaurado.")
-							st.rerun()
-		except Exception as e:
-			st.error(f"Erro ao montar exclusão/desfazer: {e}")
-
-		# Cadastro com anexos (Laudo/Avaliação)
-		with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
-			with st.form("appointment_form_new", clear_on_submit=True):
-				col1, col2 = st.columns(2)
-				with col1:
-					empresa = st.text_input("🏢 Empresa/Organização")
-					modalidade = st.selectbox("🏥 Modalidade", [m.value for m in ModalidadeAtendimento])
-					data_sel = st.date_input("📅 Data", min_value=date.today())
-				with col2:
-					nome = st.text_input("👤 Nome do Paciente")
-					hora_sel = st.time_input("🕐 Horário")
-
-				st.markdown("#### 📎 Anexos (opcional)")
-				c1a, c2a = st.columns(2)
-				with c1a:
-					up_laudo = st.file_uploader("📎 Laudo PDF", type=["pdf"], key="up_laudo_new", help="Limite de 50 MB por arquivo • PDF")
-					st.caption("Limite de 50 MB por arquivo • PDF")
-					if up_laudo is not None:
-						try:
-							size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
-							st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
-						except Exception:
-							st.caption(f"Selecionado: {up_laudo.name}")
-						st.markdown("<span class='uploader-badge'>✅ Arquivo selecionado</span>", unsafe_allow_html=True)
-						c_la1, c_la2 = st.columns([6,1])
-						with c_la2:
-							if st.button("🗑️", key="clear_up_laudo_new", help="Remover seleção"):
-								st.session_state["up_laudo_new"] = None
-								st.rerun()
-				with c2a:
-					up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new", help="Limite de 50 MB por arquivo • PDF")
-					st.caption("Limite de 50 MB por arquivo • PDF")
-					if up_avaliacao is not None:
-						try:
-							size_mb2 = len(up_avaliacao.getvalue()) / (1024 * 1024)
-							st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb2:.2f} MB")
-						except Exception:
-							st.caption(f"Selecionado: {up_avaliacao.name}")
-						st.markdown("<span class='uploader-badge'>✅ Arquivo selecionado</span>", unsafe_allow_html=True)
-						c_av1, c_av2 = st.columns([6,1])
-						with c_av2:
-							if st.button("🗑️", key="clear_up_aval_new", help="Remover seleção"):
-								st.session_state["up_aval_new"] = None
-								st.rerun()
-
-				c1, c2, _ = st.columns([1, 1, 4])
-				with c1:
-					submitted_new = st.form_submit_button("💾 Salvar", type="primary")
-				with c2:
-					st.form_submit_button("🔄 Limpar")
-
-				if submitted_new:
-					if not empresa or not nome:
-						st.error("Preencha os campos obrigatórios.")
-					else:
-						laudo_path = save_uploaded_pdf(up_laudo)
-						avaliacao_path = save_uploaded_pdf(up_avaliacao)
-
-						novo = AtendimentoData(
-							empresa=security.sanitize_input(empresa),
-							nome=security.sanitize_input(nome),
-							modalidade=modalidade,
-							data=data_sel.strftime(DATE_FORMAT),
-							hora=hora_sel.strftime(TIME_FORMAT),
-							laudo_pdf=laudo_path,
-							avaliacao_pdf=avaliacao_path,
-						)
-						if DatabaseManager.add_appointment(novo):
-							security.log_access("ADD_APPOINTMENT", f"{security.sanitize_input(nome)} - {security.sanitize_input(empresa)}")
-							st.success("✅ Atendimento cadastrado!")
-							st.rerun()
-
-		AppointmentsPage._render_table(filters)
-
-	@staticmethod
-	def _render_table(filters: Dict) -> None:
-		appts = DatabaseManager.get_all_appointments()
-		if not appts:
-			st.info("Nenhum atendimento encontrado.")
-			return
-
-		# Ações rápidas (recarregar / pendências / limpar)
-		a1, a2, a3, a4 = st.columns([1,1,1,2])
-		with a1:
-			if st.button("🔄 Recarregar", help="Recarrega dados do banco"):
-				st.cache_data.clear(); st.cache_resource.clear(); st.rerun()
-		with a2:
-			if st.button("⚠️ Sem Laudo", help="Filtrar atendimentos sem laudo"):
-				filters["quick"] = "sem_laudo"
-		with a3:
-			if st.button("⚠️ Sem Avaliação", help="Filtrar atendimentos sem avaliação"):
-				filters["quick"] = "sem_avaliacao"
-		with a4:
-			if st.button("🧹 Limpar Filtros"):
-				for k in ["modalidade_filter","date_filter","empresa_filter","paciente_filter","quick"]:
-					filters.pop(k, None)
-				st.rerun()
-
-		df = pd.DataFrame(appts, columns=[
-			"ID","Empresa","Nome","Modalidade","Data","Hora","Laudo PDF","Avaliação PDF","Status","Observações"
-		])
-
-		if filters.get("modalidade_filter"):
-			df = df[df["Modalidade"] == filters["modalidade_filter"]]
-		if filters.get("date_filter"):
-			try:
-				d = filters["date_filter"].strftime(DATE_FORMAT)
-				df = df[df["Data"] == d]
-			except Exception:
-				pass
-		emp = (filters.get("empresa_filter") or "").strip()
-		if emp:
-			df = df[df["Empresa"].str.contains(emp, case=False, na=False)]
-		pac = (filters.get("paciente_filter") or "").strip()
-		if pac:
-			df = df[df["Nome"].str.contains(pac, case=False, na=False)]
-
-		# Filtro rápido aplicado
-		quick = filters.get("quick")
-		if quick == "sem_laudo":
-			df = df[df["Laudo PDF"].isna() | (df["Laudo PDF"] == "")]
-		elif quick == "sem_avaliacao":
-			df = df[df["Avaliação PDF"].isna() | (df["Avaliação PDF"] == "")]
-
-		# Colunas visuais: mostrar feedback textual "SIM" (arquivo presente) ou "NÃO" (ausente)
-		# (Anteriormente era "OK"; ajustado conforme solicitação do usuário)
-		df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if bool(x) else "NÃO")
-		df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if bool(x) else "NÃO")
-
-		st.markdown("### 📋 Lista de Atendimentos")
-		df_show = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação"]].copy()
-		# Estilização: "SIM" em verde, "NÃO" em vermelho para facilitar leitura rápida
-		try:
-			def _style_flag(val: str) -> str:
-				val_norm = str(val).strip().upper()
-				if val_norm == "SIM":
-					return (
-						"background-color: rgba(60,170,95,0.22); "
-						"border: 1px solid rgba(60,170,95,0.55); "
-						"color: #0e4521; font-weight: 700; border-radius:6px; "
-						"box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);"
-					)
-				if val_norm == "NÃO":
-					return (
-						"background-color: rgba(200,60,60,0.15); "
-						"border: 1px solid rgba(200,60,60,0.45); "
-						"color: #6d1a1a; font-weight: 600; border-radius:6px; "
-						"box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);"
-					)
-				return ""
-			styler = df_show.style.map(_style_flag, subset=["Laudo", "Avaliação"])
-			st.dataframe(styler, use_container_width=True, height=400)
-		except Exception:
-			# Fallback sem estilo caso o Styler não seja suportado
-			st.dataframe(df_show, use_container_width=True, height=400)
-		csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
-		st.download_button("⬇️ Exportar CSV", data=csv_bytes, file_name="atendimentos.csv", mime="text/csv")
-
-		with st.expander("✏️ Editar Atendimento"):
-			ids = df["ID"].astype(int).tolist()
-			if not ids:
-				st.info("Sem registros para editar.")
-				return
-			sel = st.selectbox("Selecione (ID):", ids)
-			row = df[df["ID"] == sel].iloc[0]
-			try:
-				cur_date = datetime.strptime(row["Data"], DATE_FORMAT).date()
-			except Exception:
-				cur_date = date.today()
-			try:
-				h, m = (row["Hora"] or "09:00").split(":")
-				cur_time = time(int(h), int(m))
-			except Exception:
-				cur_time = time(9, 0)
-
-			with st.form("edit_form"):
-				c1, c2 = st.columns(2)
-				with c1:
-					empresa_n = st.text_input("🏢 Empresa", value=str(row["Empresa"]))
-					modalidade_n = st.selectbox(
-						"🏥 Modalidade",
-						[m.value for m in ModalidadeAtendimento],
-						index=max(
-							0,
-							[m.value for m in ModalidadeAtendimento].index(str(row["Modalidade"]))
-							if str(row["Modalidade"]) in [m.value for m in ModalidadeAtendimento]
-							else 0,
-						),
-					)
-					data_n = st.date_input("📅 Data", value=cur_date)
-				with c2:
-					nome_n = st.text_input("👤 Nome", value=str(row["Nome"]))
-					hora_n = st.time_input("🕒 Hora", value=cur_time)
-					status_n = st.selectbox(
-						"📌 Status",
-						["Agendado", "Concluído", "Cancelado"],
-						index=["Agendado", "Concluído", "Cancelado"].index(
-							str(row.get("Status", "Agendado")) if row.get("Status") else "Agendado"
-						),
-					)
-				obs_n = st.text_area("📝 Observações", value=str(row.get("Observações", "")))
-
-				st.markdown("#### 📎 Anexos do atendimento")
-				col_a1, col_a2 = st.columns(2)
-				with col_a1:
-					if row.get("Laudo PDF"):
-						st.caption(f"Atual: {os.path.basename(str(row['Laudo PDF']))}")
-
-						try:
-							with open(str(row["Laudo PDF"]), "rb") as f:
-								st.download_button("⬇️ Baixar Laudo", f.read(), file_name=os.path.basename(str(row["Laudo PDF"])) , key=f"dl_laudo_{sel}")
-						except Exception:
-							pass
-					up_laudo_edit = st.file_uploader("Substituir Laudo (PDF)", type=["pdf"], key=f"laudo_edit_{sel}", help="Limite de 50 MB por arquivo • PDF")
-					st.caption("Limite de 50 MB por arquivo • PDF")
-					if up_laudo_edit is not None:
-						try:
-							size_mb3 = len(up_laudo_edit.getvalue()) / (1024 * 1024)
-							st.caption(f"Selecionado: {up_laudo_edit.name} — {size_mb3:.2f} MB")
-						except Exception:
-							st.caption(f"Selecionado: {up_laudo_edit.name}")
-						st.markdown("<span class='uploader-badge'>✅ Arquivo selecionado</span>", unsafe_allow_html=True)
-						c_el1, c_el2 = st.columns([6,1])
-						with c_el2:
-							if st.button("🗑️", key=f"clear_laudo_{sel}", help="Remover seleção"):
-								st.session_state[f"laudo_edit_{sel}"] = None
-								st.rerun()
-				with col_a2:
-					if row.get("Avaliação PDF"):
-						st.caption(f"Atual: {os.path.basename(str(row['Avaliação PDF']))}")
-						try:
-							with open(str(row["Avaliação PDF"]), "rb") as f:
-								st.download_button("⬇️ Baixar Avaliação", f.read(), file_name=os.path.basename(str(row["Avaliação PDF"])) , key=f"dl_aval_{sel}")
-						except Exception:
-							pass
-					up_aval_edit = st.file_uploader("Substituir Avaliação (PDF)", type=["pdf"], key=f"aval_edit_{sel}", help="Limite de 50 MB por arquivo • PDF")
-					st.caption("Limite de 50 MB por arquivo • PDF")
-					if up_aval_edit is not None:
-						try:
-							size_mb4 = len(up_aval_edit.getvalue()) / (1024 * 1024)
-							st.caption(f"Selecionado: {up_aval_edit.name} — {size_mb4:.2f} MB")
-						except Exception:
-							st.caption(f"Selecionado: {up_aval_edit.name}")
-						st.markdown("<span class='uploader-badge'>✅ Arquivo selecionado</span>", unsafe_allow_html=True)
-						c_ea1, c_ea2 = st.columns([6,1])
-						with c_ea2:
-							if st.button("🗑️", key=f"clear_aval_{sel}", help="Remover seleção"):
-								st.session_state[f"aval_edit_{sel}"] = None
-								st.rerun()
-
-				submit_edit = st.form_submit_button("Salvar alterações", type="primary")
-				if submit_edit:
-					laudo_path_novo = row.get("Laudo PDF")
-					aval_path_novo = row.get("Avaliação PDF")
-					try:
-						if up_laudo_edit is not None:
-							ok, msg = security.validate_file_upload(up_laudo_edit.name, len(up_laudo_edit.getvalue()), max_size_mb=50)
-							if not ok:
-								st.error(f"Laudo: {msg}")
-								st.stop()
-							safe = security.generate_safe_filename(up_laudo_edit.name)
-							base_dir = os.path.dirname(__file__)
-							destp = os.path.join(base_dir, "uploads")
-							os.makedirs(destp, exist_ok=True)
-							laudo_path_novo = os.path.join(destp, safe)
-							with open(laudo_path_novo, "wb") as f:
-								f.write(up_laudo_edit.getbuffer())
-						if up_aval_edit is not None:
-							ok, msg = security.validate_file_upload(up_aval_edit.name, len(up_aval_edit.getvalue()), max_size_mb=50)
-							if not ok:
-								st.error(f"Avaliação: {msg}")
-								st.stop()
-							safe2 = security.generate_safe_filename(up_aval_edit.name)
-							base_dir = os.path.dirname(__file__)
-							destp2 = os.path.join(base_dir, "uploads")
-							os.makedirs(destp2, exist_ok=True)
-							aval_path_novo = os.path.join(destp2, safe2)
-							with open(aval_path_novo, "wb") as f:
-								f.write(up_aval_edit.getbuffer())
-					except Exception as e:
-						st.error(f"Falha ao salvar anexos: {e}")
-						st.stop()
-
-					ok = DatabaseManager.update_appointment(
-						int(sel),
-						empresa=security.sanitize_input(empresa_n or ""),
-						nome=security.sanitize_input(nome_n or ""),
-						modalidade=modalidade_n,
-						data=data_n.strftime(DATE_FORMAT),
-						hora=hora_n.strftime(TIME_FORMAT),
-						status=status_n,
-						observacoes=security.sanitize_input(obs_n or ""),
-						laudo_pdf=laudo_path_novo,
-						avaliacao_pdf=aval_path_novo,
-					)
-					if ok:
-						security.log_access("UPDATE_APPOINTMENT", f"ID {sel} - {nome_n}")
-						st.success("Atualizado!")
-						try:
-							if up_laudo_edit is not None:
-								p = save_uploaded_pdf(up_laudo_edit)
-								if p: laudo_path_novo = p
-							if up_aval_edit is not None:
-								p2 = save_uploaded_pdf(up_aval_edit)
-								if p2: aval_path_novo = p2
-						except Exception:
-							pass
-		tab1, tab2 = st.tabs(["Adicionar PDF", "Baixar PDFs"])
-		with tab1:
-			UploadPage._render_upload_form()
-		with tab2:
-			UploadPage._render_download_list()
-		st.markdown("</div>", unsafe_allow_html=True)
-
-	# (métodos de upload agora centralizados na classe UploadPage)
-
+    @staticmethod
+    def _render_table(filters):
+        appointments = DatabaseManager.get_all_appointments()
+        if not appointments:
+            st.info("Nenhum atendimento encontrado.")
+            return
+        df = pd.DataFrame(appointments, columns=[
+            "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora", 
+            "Laudo PDF", "Avaliação PDF", "Status", "Observações"
+        ])
+        if filters.get("modalidade_filter"):
+            df = df[df["Modalidade"] == filters["modalidade_filter"]]
+        df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
+        df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
+        st.markdown("### 📋 Lista de Atendimentos")
+        df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
+        st.dataframe(df_display, use_container_width=True, height=400)
+        csv_data = df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
 
 class SettingsPage:
-	@staticmethod
-	def render() -> None:
-		render_page_header("⚙️ Configurações", "Administração do Sistema", inverse=True)
-		# Determina backend novamente (escopo local)
-		backend = "SQLite"
-		try:
-			if hasattr(db, 'USE_PG') and getattr(db, 'USE_PG'):
-				backend = "Postgres"
-		except Exception:
-			backend = "SQLite"
-		# KPIs da seção Configurações
-		try:
-			conn_ok = db.verificar_conexao()
-			stats = DatabaseManager.get_statistics() or {}
-			cards = [
-				{"icon": "🔌", "title": "Banco de Dados", "value": ("Conectado" if conn_ok else "Offline"), "acc": PRIMARY_ACCENT},
-				{"icon": "🗄️", "title": backend, "value": "Postgres" if backend=="Postgres" else "SQLite", "acc": PRIMARY_ACCENT},
-				{"icon": "📦", "title": "Cache (itens)", "value": stats.get("total_atendimentos", 0), "acc": PRIMARY_ACCENT},
-			]
-			display_cards(cards)
-		except Exception:
-			pass
-		st.markdown("<div class='reports-scope'>", unsafe_allow_html=True)
-		col1, col2, col3, col4 = st.columns(4)
-		with col1:
-			if st.button("🔄 Limpar cache"):
-				st.cache_data.clear(); st.cache_resource.clear(); st.success("Cache limpo.")
-		with col2:
-			if st.button("🗄️ Verificar Banco"):
-				ok = db.verificar_conexao()
-				st.success("Conexão OK.") if ok else st.error("Falha na conexão.")
-		with col3:
-			if st.button("🔍 Testar Backend"):
-				info = getattr(db, 'get_backend_info', lambda: {"engine":"?"})()
-				st.info(f"Engine: {info.get('engine')} | URL definida: {info.get('url_present')}")
-		with col4:
-			if st.button("🛠️ Reinicializar"):
-				st.cache_resource.clear(); DatabaseManager.initialize_database(); st.success("Reinicializado.")
-
-		st.markdown("---")
-		# Diagnóstico detalhado do banco e segurança
-		with st.expander("📋 Diagnóstico do Sistema", expanded=False):
-			from json import dumps
-			# DB
-			try:
-				from db import get_db_diagnostics
-				db_diag = get_db_diagnostics()
-			except Exception as e:
-				db_diag = {"error":"falhou diagnóstico DB", "detail": str(e)}
-			# Security health (mock simplificado baseado em security module)
-			sec_health = {
-				"security_loaded": bool(security),
-				"logs_directory": os.path.isdir(os.path.join(os.path.dirname(__file__), 'logs')),
-				"log_file_writable": True,
-			}
-			# Disco livre
-			try:
-				import shutil, datetime as _dt
-				free_mb = int(shutil.disk_usage(os.path.dirname(__file__)).free/1024/1024)
-				sec_health["free_mb"] = free_mb
-				sec_health["timestamp"] = _dt.datetime.utcnow().isoformat()
-			except Exception:
-				pass
-			payload = {**db_diag, **sec_health}
-			st.code(dumps(payload, ensure_ascii=False, indent=2), language="json")
-		st.markdown("### 🩺 Diagnóstico do Sistema")
-		with st.expander("Executar / Ver resultado", expanded=False):
-			if st.button("▶️ Rodar Diagnóstico", key="run_diag"):
-				try:
-					import sqlite3, json, math, time as _t
-					inicio = _t.time()
-					resultado = {}
-					# Caminho do DB
-					resultado["db_path"] = getattr(db, "DATABASE_PATH", "?")
-					if os.path.exists(resultado["db_path"]):
-						resultado["db_exists"] = True
-						resultado["db_size_kb"] = os.path.getsize(resultado["db_path"]) // 1024
-					else:
-						resultado["db_exists"] = False
-					# Listar tabelas
-					resultado["tables"] = []
-					try:
-						with sqlite3.connect(resultado["db_path"]) as _c:
-							_c.row_factory = sqlite3.Row
-							cur = _c.cursor()
-							cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY 1")
-							tabs = [r[0] for r in cur.fetchall()]
-							for t in tabs:
-								try:
-									cnt = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-									resultado["tables"].append({"table": t, "rows": cnt})
-								except Exception:
-									resultado["tables"].append({"table": t, "rows": "?"})
-					except Exception as e_tab:
-						resultado["tables_error"] = str(e_tab)
-					# Security
-					resultado["security_loaded"] = bool(hasattr(security, "log_access"))
-					try:
-						if hasattr(security, "check_system_health"):
-							resultado["security_health"] = security.check_system_health()
-					except Exception as e_sec:
-						resultado["security_health_error"] = str(e_sec)
-					# Métricas simples
-					resultado["duration_ms"] = int((_t.time() - inicio) * 1000)
-					st.success("Diagnóstico concluído.")
-					st.json(resultado)
-				except Exception as e:
-					st.error(f"Falha no diagnóstico: {e}")
-		st.markdown("</div>", unsafe_allow_html=True)
-
+    @staticmethod
+    def render() -> None:
+        render_page_header("⚙️ Configurações", "Administração do Sistema")
+        conn_ok = verificar_conexao()
+        stats = DatabaseManager.get_statistics()
+        cards = [
+            {"icon": "🔌", "title": "Banco de Dados", "value": "Conectado" if conn_ok else "Offline"},
+            {"icon": "🗄️", "title": "SQLite", "value": "Ativo"},
+            {"icon": "📦", "title": "Atendimentos", "value": stats.get("total_atendimentos", 0)},
+        ]
+        display_cards(cards)
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if st.button("🔄 Limpar Cache"):
+                st.cache_data.clear()
+                st.cache_resource.clear()
+                st.success("Cache limpo!")
+        with col2:
+            if st.button("🗄️ Verificar Banco"):
+                if verificar_conexao():
+                    st.success("Conexão com banco OK!")
+                else:
+                    st.error("Falha na conexão com o banco.")
+        with col3:
+            if st.button("🛠️ Reinicializar DB"):
+                if DatabaseManager.initialize_database():
+                    st.success("Banco reinicializado!")
+                else:
+                    st.error("Erro ao reinicializar banco.")
+        with col4:
+            if st.button("📊 Estatísticas"):
+                st.json(stats)
 
 class ReportsPage:
-	@staticmethod
-	def render() -> None:
-		render_page_header("📊 Relatórios", "Análises e Exportações", inverse=True)
-		# Filtros adicionais
-		col1, col2 = st.columns(2)
-		with col1:
-			periodo = st.selectbox("Período", ["Últimos 7 dias", "Últimos 30 dias", "Ano atual", "Tudo"], index=1)
-		with col2:
-			formato = st.selectbox("Exportar como", ["CSV", "Excel"], index=0)
-
-		# Dados
-		appts = DatabaseManager.get_all_appointments() or []
-		if not appts:
-			st.info("Sem dados para relatório.")
-			return
-		df = pd.DataFrame(
-			appts,
-			columns=[
-				"ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
-				"Laudo PDF", "Avaliação PDF", "Status", "Observações",
-			],
-		)
-
-		# Converter Data e aplicar filtro por período
-		import pandas as _pd
-		_df = df.copy()
-		try:
-			_df["Data_dt"] = _pd.to_datetime(_df["Data"], format=DATE_FORMAT, errors="coerce")
-		except Exception:
-			_df["Data_dt"] = _pd.NaT
-		from datetime import datetime as _dt, timedelta as _td
-		now = _dt.now()
-		start = None
-		if periodo == "Últimos 7 dias":
-			start = now - _td(days=7)
-		elif periodo == "Últimos 30 dias":
-			start = now - _td(days=30)
-		elif periodo == "Ano atual":
-			start = _dt(now.year, 1, 1)
-		# "Tudo" não aplica filtro
-		if start is not None:
-			_df = _df[(_df["Data_dt"].notna()) & (_df["Data_dt"] >= start) & (_df["Data_dt"] <= now)]
-
-		# KPI simples (com filtro)
-		st.markdown("<div class='reports-scope'>", unsafe_allow_html=True)
-		st.markdown("### 📈 Resumo")
-		_total = len(_df)
-		_emp = _df["Empresa"].nunique()
-		_mod = _df["Modalidade"].nunique()
-		# Usar os mesmos cards modernos do painel para manter o padrão
-		cards = [
-			{"icon": "👥", "title": "Total de Atendimentos", "value": _total, "acc": PRIMARY_ACCENT},
-			{"icon": "🏢", "title": "Empresas", "value": _emp, "acc": PRIMARY_ACCENT},
-			{"icon": "🧾", "title": "Modalidades", "value": _mod, "acc": PRIMARY_ACCENT},
-		]
-		display_cards(cards)
-
-		# Gráfico Modalidades
-		try:
-			modal_counts = _df["Modalidade"].value_counts()
-			fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade")
-			fig.update_traces(hovertemplate="Modalidade=%{x}<br>Qtd=%{y}<extra></extra>")
-			fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=460)
-			st.plotly_chart(fig, use_container_width=True)
-		except Exception:
-			pass
-
-		# Exportação
-		st.markdown("### ⬇️ Exportar")
-		st.markdown("</div>", unsafe_allow_html=True)
-		if formato == "CSV":
-			data = _df.drop(columns=[c for c in ["Data_dt"] if c in _df.columns], errors="ignore").to_csv(index=False).encode("utf-8-sig")
-			st.download_button("Baixar CSV", data=data, file_name="relatorio_atendimentos.csv", mime="text/csv")
-		else:
-			try:
-				import io
-				buf = io.BytesIO()
-				with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
-					_df.drop(columns=[c for c in ["Data_dt"] if c in _df.columns], errors="ignore").to_excel(writer, index=False, sheet_name="Atendimentos")
-				buf.seek(0)
-				st.download_button("Baixar Excel", data=buf.getvalue(), file_name="relatorio_atendimentos.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-			except Exception as e:
-				st.error(f"Falha ao exportar Excel: {e}")
-
+    @staticmethod
+    def render() -> None:
+        render_page_header("📊 Relatórios", "Análises e Exportações")
+        col1, col2 = st.columns(2)
+        with col1:
+            periodo = st.selectbox("Período", ["Últimos 7 dias", "Últimos 30 dias", "Ano atual", "Tudo"])
+        with col2:
+            formato = st.selectbox("Formato", ["CSV", "Excel"])
+        appointments = DatabaseManager.get_all_appointments()
+        if not appointments:
+            st.info("Sem dados para relatório.")
+            return
+        df = pd.DataFrame(appointments, columns=[
+            "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+            "Laudo PDF", "Avaliação PDF", "Status", "Observações"
+        ])
+        st.markdown("### 📈 Resumo")
+        total_atendimentos = len(df)
+        total_empresas = df["Empresa"].nunique()
+        total_modalidades = df["Modalidade"].nunique()
+        cards = [
+            {"icon": "👥", "title": "Total Atendimentos", "value": total_atendimentos},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas},
+            {"icon": "🧾", "title": "Modalidades", "value": total_modalidades},
+        ]
+        display_cards(cards)
+        if not df.empty:
+            modal_counts = df["Modalidade"].value_counts()
+            fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade")
+            fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400)
+            st.plotly_chart(fig, use_container_width=True)
+        st.markdown("### ⬇️ Exportar Relatório")
+        if formato == "CSV":
+            csv_data = df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
 
 class UploadPage:
-	"""Página de Upload de PDFs (utiliza funções estáticas internas)."""
-
-	@staticmethod
-	def render() -> None:
-		render_page_header("📄 Carregar", "Gerencie arquivos PDF enviados", inverse=True)
-		st.markdown("<div class='reports-scope'>", unsafe_allow_html=True)
-		UploadPage._render_upload_form()
-		st.markdown("---")
-		UploadPage._render_download_list()
-		st.markdown("</div>", unsafe_allow_html=True)
-
-	@staticmethod
-	def _uploads_dir() -> str:
-		base_dir = os.path.dirname(__file__)
-		d = os.path.join(base_dir, "uploads")
-		os.makedirs(d, exist_ok=True)
-		return d
-
-	@staticmethod
-	def _render_upload_form() -> None:
-		up = st.file_uploader("📄 Selecione um PDF", type=["pdf"], help="Limite de 50 MB por arquivo • PDF", key="upload_pdf")
-		if up is None:
-			return
-		size_mb = len(up.getvalue()) / (1024 * 1024)
-		st.info(f"Arquivo: {up.name} — {size_mb:.2f} MB")
-		nome_seguro = security.generate_safe_filename(up.name)
-		destino = os.path.join(UploadPage._uploads_dir(), nome_seguro)
-		st.markdown("<span class='uploader-badge'>✅ Arquivo selecionado</span>", unsafe_allow_html=True)
-		c1, c2 = st.columns([6,1])
-		with c2:
-			if st.button("🗑️", key="clear_upload_pdf", help="Remover seleção"):
-				st.session_state["upload_pdf"] = None
-				st.rerun()
-		if st.button("Salvar PDF", type="primary"):
-			ok, msg = security.validate_file_upload(up.name, len(up.getvalue()), max_size_mb=MAX_UPLOAD_MB)
-			if not ok:
-				st.error(msg); return
-			with open(destino, "wb") as f:
-				f.write(up.getbuffer())
-			st.success("PDF salvo.")
-			st.download_button("Baixar agora", up.getvalue(), file_name=nome_seguro)
-
-	@staticmethod
-	def _render_download_list() -> None:
-		pasta = UploadPage._uploads_dir()
-		arqs = [f for f in os.listdir(pasta) if f.lower().endswith('.pdf')]
-		if not arqs:
-			st.info("Nenhum PDF encontrado."); return
-		for i, nome in enumerate(sorted(arqs, reverse=True)):
-			caminho = os.path.join(pasta, nome)
-			cols = st.columns([4,1,1])
-			with cols[0]:
-				st.write(f"📄 {nome}"); st.caption(f"{os.path.getsize(caminho)//1024} KB")
-			with cols[1]:
-				with open(caminho, 'rb') as f:
-					st.download_button('Baixar', f.read(), file_name=nome, key=f'dl_{i}')
-			with cols[2]:
-				if st.button('Excluir', key=f'rm_{i}'):
-					try:
-						os.remove(caminho); security.log_access('DELETE_PDF', nome); st.success('Arquivo excluído.'); st.rerun()
-					except Exception as e:
-						st.error(f'Falha ao excluir: {e}')
-
-
-class NotesPage:
-	"""Página de Bloco de Notas com filtros, lista, editor, histórico e exportação."""
-
-	TAG_PALETTE = ["#4DA768", "#2ecc71", "#27ae60", "#7FD784", "#3A8A56", "#16a085"]
-
-	@staticmethod
-	def _build_df(notas: List[tuple], query: str) -> pd.DataFrame:
-		cols = ["ID","Título","Conteúdo","Tags","Criada em","Atualizada em","Favorita"]
-		df = pd.DataFrame(notas, columns=cols) if notas else pd.DataFrame(columns=cols)
-		if query:
-			mask = df["Título"].str.contains(query, case=False, na=False) | df["Tags"].str.contains(query, case=False, na=False)
-			df = df[mask]
-		return df
-
-	@staticmethod
-	def _filters_ui(df: pd.DataFrame) -> Dict[str, Any]:
-		colf1, colf2, colf3, colf4 = st.columns([2,2,1,1])
-		with colf1:
-			all_tags = sorted({t.strip() for ts in df["Tags"].dropna().astype(str).tolist() for t in ts.split(',') if t.strip()})
-			selected_tags = st.multiselect("Filtrar por tags", options=all_tags, default=[])
-		with colf2:
-			ordenar = st.selectbox("Ordenar por", ["Atualizada (desc)", "Título (A→Z)", "Data criação (desc)"])
-		with colf3:
-			somente_fav = st.checkbox("Só favoritas 📌", value=False)
-		with colf4:
-			sem_tag = st.checkbox("Sem tag", value=False)
-		return {"tags": selected_tags, "ordenar": ordenar, "somente_fav": somente_fav, "sem_tag": sem_tag}
-
-	@staticmethod
-	def _apply_filters(df: pd.DataFrame, f: Dict[str, Any]) -> pd.DataFrame:
-		if f.get("sem_tag"):
-			df = df[df["Tags"].fillna("").astype(str).str.strip() == ""]
-		elif f.get("tags"):
-			selected_tags = f["tags"]
-			def _has_tags(tags_str: str) -> bool:
-				set_row = {t.strip().lower() for t in (tags_str or "").split(',') if t.strip()}
-				set_sel = {t.strip().lower() for t in selected_tags if t.strip()}
-				return set_sel.issubset(set_row)
-			df = df[df["Tags"].apply(_has_tags)]
-		if f.get("somente_fav"):
-			df = df[df["Favorita"].fillna(0).astype(int) == 1]
-		ordem = f.get("ordenar")
-		if ordem == "Título (A→Z)":
-			df = df.sort_values(by=["Título"], ascending=True)
-		elif ordem == "Data criação (desc)":
-			df = df.sort_values(by=["Criada em"], ascending=False)
-		else:
-			df = df.sort_values(by=["Favorita","Atualizada em"], ascending=[False, False])
-		return df
-
-	@staticmethod
-	def _badge_tags(tags: str) -> str:
-		if not tags or not str(tags).strip():
-			return ""
-		badges = []
-		for i, t in enumerate([x.strip() for x in str(tags).split(',') if x.strip()]):
-			c = NotesPage.TAG_PALETTE[i % len(NotesPage.TAG_PALETTE)]
-			badges.append(f"<span style='display:inline-block;margin:2px;padding:2px 8px;border-radius:999px;background:{c}20;color:{c};border:1px solid {c}55;font-weight:700;font-size:12px;'>{t}</span>")
-		return " ".join(badges)
-
-	@staticmethod
-	def _render_stats() -> None:
-		"""Exibe gráficos (tags e favoritas) com exportação de imagens."""
-		try:
-			notas_stats = db.listar_notas() or []
-			if not notas_stats:
-				return
-			import pandas as _pds, plotly.express as _px, collections
-			df_all = _pds.DataFrame(notas_stats, columns=["ID","Título","Conteúdo","Tags","Criada em","Atualizada em","Favorita"])
-			# Tags
-			all_tags: list[str] = []
-			for ts in df_all["Tags"].dropna().astype(str).tolist():
-				for t in [x.strip() for x in ts.split(',') if x.strip()]:
-					all_tags.append(t)
-			cnt = collections.Counter(all_tags)
-			if cnt:
-				st.markdown("### 🔖 Tags mais usadas")
-				tags_df = _pds.DataFrame(cnt.most_common(), columns=["Tag","Qtd"])
-				fig_tags = _px.bar(tags_df, x="Tag", y="Qtd", title="Frequência de Tags")
-				fig_tags.update_traces(hovertemplate="Tag=%{x}<br>Qtd=%{y}<extra></extra>")
-				fig_tags.update_layout(height=340, xaxis_tickangle=-25, margin=dict(t=60,l=40,r=20,b=70))
-				st.plotly_chart(fig_tags, use_container_width=True)
-				col_t1, col_t2 = st.columns(2)
-				with col_t1:
-					if st.button("💾 PNG Tags", key="exp_png_tags"):
-						try:
-							st.download_button("Baixar tags.png", data=fig_tags.to_image(format="png", scale=2), file_name="tags_frequencia.png", mime="image/png", key="dl_png_tags")
-						except Exception as e_img:
-							st.error(f"Falha PNG: {e_img}")
-				with col_t2:
-					if st.button("🖼️ SVG Tags", key="exp_svg_tags"):
-						try:
-							st.download_button("Baixar tags.svg", data=fig_tags.to_image(format="svg"), file_name="tags_frequencia.svg", mime="image/svg+xml", key="dl_svg_tags")
-						except Exception as e_svg:
-							st.error(f"Falha SVG: {e_svg}")
-			# Favoritas
-			fav_counts = df_all['Favorita'].fillna(0).astype(int).value_counts()
-			if not fav_counts.empty:
-				st.markdown("### ⭐ Distribuição de Favoritas")
-				fav_df = _pds.DataFrame({"Status":["Favoritas","Não Favoritas"], "Qtd":[int(fav_counts.get(1,0)), int(fav_counts.get(0,0))]})
-				fig_fav = _px.pie(fav_df, values="Qtd", names="Status", title="Notas Favoritas vs Não")
-				fig_fav.update_traces(textinfo="percent+label", pull=[0.05,0])
-				fig_fav.update_layout(height=340, legend_orientation='h', legend_y=-0.15)
-				st.plotly_chart(fig_fav, use_container_width=True)
-				col_f1, col_f2 = st.columns(2)
-				with col_f1:
-					if st.button("💾 PNG Favoritas", key="exp_png_fav"):
-						try:
-							st.download_button("Baixar favoritas.png", data=fig_fav.to_image(format="png", scale=2), file_name="notas_favoritas.png", mime="image/png", key="dl_png_fav")
-						except Exception as e_fp:
-							st.error(f"Falha PNG: {e_fp}")
-				with col_f2:
-					if st.button("🖼️ SVG Favoritas", key="exp_svg_fav"):
-						try:
-							st.download_button("Baixar favoritas.svg", data=fig_fav.to_image(format="svg"), file_name="notas_favoritas.svg", mime="image/svg+xml", key="dl_svg_fav")
-						except Exception as e_fs:
-							st.error(f"Falha SVG: {e_fs}")
-		except Exception as e:
-			st.info(f"(Estatísticas de notas indisponíveis: {e})")
-
-	@staticmethod
-	def _render_list(df: pd.DataFrame) -> None:
-		with st.expander("📚 Notas", expanded=True):
-			if df.empty:
-				st.caption("Nenhuma nota encontrada.")
-				return
-			st.caption(f"{len(df)} nota(s)")
-			for _, r in df.iterrows():
-				cols = st.columns([0.5, 4.5, 2.2, 1.2, 1.2])
-				pin_on = int(r.get("Favorita", 0)) == 1
-				with cols[0]:
-					st.write("📌" if pin_on else "")
-				with cols[1]:
-					st.markdown(f"**{r['Título']}**")
-					html = NotesPage._badge_tags(r.get("Tags", ""))
-					if html:
-						st.markdown(html, unsafe_allow_html=True)
-				with cols[2]:
-					st.caption(f"Atualizada em: {r['Atualizada em']}")
-				with cols[3]:
-					if st.button("Desafixar" if pin_on else "Fixar", key=f"pin_{int(r['ID'])}"):
-						try:
-							db.atualizar_nota(int(r['ID']), favorita=0 if pin_on else 1)
-							security.log_access("PIN_NOTE", f"ID {int(r['ID'])} -> {'OFF' if pin_on else 'ON'}")
-							# Evitar rerun imediato para reduzir conflitos DOM
-							st.session_state['_pin_changed'] = True
-						except Exception as e:
-							st.error(f"Falha ao atualizar pin: {e}")
-				with cols[4]:
-					if st.button("Editar", key=f"edit_{int(r['ID'])}"):
-						st.session_state['notes_selected_id'] = int(r['ID'])
-						st.session_state['notes_open_editor'] = True
-						# Evitar rerun imediato
-						st.session_state['_edit_requested'] = True
-			# Exportações
-			csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
-			st.download_button("⬇️ Exportar CSV", data=csv_bytes, file_name="notas.csv", mime="text/csv")
-
-	@staticmethod
-	def _html_to_md(html: str) -> str:
-		import re
-		md = re.sub(r"<\/?(strong|b)>", "**", html or "")
-		md = re.sub(r"<\/?(em|i)>", "*", md)
-		md = re.sub(r"<br\s*\/?>", "\n", md)
-		md = re.sub(r"<ul>|</ul>", "", md)
-		md = re.sub(r"<li>", "- ", md)
-		md = re.sub(r"</li>", "\n", md)
-		md = re.sub(r"<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", r"[\2](\1)", md)
-		md = re.sub(r"<[^>]+>", "", md)
-		return md
-
-	@staticmethod
-	def _content_key(nota_id: Optional[int]) -> str:
-		return f"note_content_{nota_id if nota_id is not None else 'new'}"
-
-	@staticmethod
-	def _toolbar_md(content_key: str) -> None:
-		st.caption("Dicas Markdown: **negrito**, *itálico*, - lista, [texto](url), # Título")
-		b1, b2, b3, b4, b5 = st.columns(5)
-		def _append(txt: str):
-			st.session_state[content_key] = (st.session_state.get(content_key, "") or "") + txt
-		with b1:
-			if st.button("B", key=f"md_b_{content_key}"):
-				_append("**texto**")
-		with b2:
-			if st.button("I", key=f"md_i_{content_key}"):
-				_append("*texto*")
-		with b3:
-			if st.button("#", key=f"md_h_{content_key}"):
-				_append("\n# Título\n")
-		with b4:
-			if st.button("Lista", key=f"md_l_{content_key}"):
-				_append("\n- item\n- item\n")
-		with b5:
-			if st.button("Link", key=f"md_link_{content_key}"):
-				_append("[texto](https://)")
-
-	@staticmethod
-	def _history_ui(df: pd.DataFrame, selected_id: Optional[int] = None) -> None:
-		if df.empty:
-			return
-		with st.expander("🕒 Histórico de versões"):
-			ids_h = [int(selected_id)] if selected_id is not None else df["ID"].astype(int).tolist()
-			if not ids_h:
-				return
-			sel_h = st.selectbox("Nota", ids_h, key="note_hist_sel")
-			reg = db.listar_historico_nota(int(sel_h)) or []
-			if not reg:
-				st.caption("Sem histórico ainda.")
-				return
-			cols = ["HistID","NotaID","Título","Conteúdo","Tags","Favorita","Data"]
-			_hist_df = pd.DataFrame(reg, columns=cols)
-			st.dataframe(_hist_df[["HistID","Título","Tags","Favorita","Data"]], use_container_width=True, height=220)
-			sel_hist = st.selectbox("Restaurar versão (HistID)", _hist_df["HistID"].astype(int).tolist())
-			if st.button("↩️ Restaurar versão"):
-				rowh = _hist_df[_hist_df["HistID"] == sel_hist].iloc[0]
-				db.inserir_historico_nota(int(sel_h), rowh["Título"], rowh["Conteúdo"], rowh["Tags"], int(rowh["Favorita"]))
-				db.atualizar_nota(int(sel_h), titulo=rowh["Título"], conteudo=rowh["Conteúdo"], tags=rowh["Tags"], favorita=int(rowh["Favorita"]))
-				st.success("Versão restaurada.")
-				st.rerun()
-
-	@staticmethod
-	def render() -> None:
-		render_page_header("🗒️ Bloco de Notas", "Anotações rápidas em Markdown")
-		# Layout em duas colunas: esquerda (filtros/lista), direita (editor/histórico)
-		col_left, col_right = st.columns([1.2, 2])
-
-		with col_left:
-			# Busca e novo
-			q = st.text_input("Buscar por título ou tag", value="")
-			new_open = st.button("➕ Nova nota", type="primary")
-			if new_open:
-				st.session_state['notes_selected_id'] = None
-				st.session_state['notes_open_editor'] = True
-				st.session_state['_new_note_requested'] = True
-			# Dados e filtros
-			notas = db.listar_notas() or []
-			df = NotesPage._build_df(notas, q)
-			filters = NotesPage._filters_ui(df)
-			df = NotesPage._apply_filters(df, filters)
-			NotesPage._render_list(df)
-
-		with col_right:
-			open_editor = st.session_state.get('notes_open_editor', False)
-			selected_id = st.session_state.get('notes_selected_id', None)
-			# Estatísticas
-			NotesPage._render_stats()
-
-			if open_editor:
-				# Carregar defaults
-				if selected_id is not None and not df.empty and (df["ID"].astype(int) == int(selected_id)).any():
-					row = df[df["ID"].astype(int) == int(selected_id)].iloc[0]
-					nota_id = int(row["ID"])
-					titulo_def = str(row["Título"]) or ""; tags_def = str(row["Tags"]) or ""; conteudo_def = str(row["Conteúdo"]) or ""; fav_def = bool(int(row.get("Favorita", 0)))
-					st.subheader(f"✏️ Editando: {titulo_def}")
-				else:
-					nota_id = None; titulo_def = ""; tags_def = ""; conteudo_def = ""; fav_def = False
-					st.subheader("🆕 Nova nota")
-
-				# Botão para fechar editor
-				if st.button("Fechar editor"):
-					st.session_state['notes_open_editor'] = False
-					st.session_state['notes_selected_id'] = None
-					st.session_state['_editor_closed'] = True
-
-				content_key = NotesPage._content_key(nota_id)
-				if content_key not in st.session_state:
-					st.session_state[content_key] = conteudo_def or ""
-				if st_quill is None:
-					NotesPage._toolbar_md(content_key)
-
-				with st.form("nota_form"):
-					c1, c2 = st.columns([2,1])
-					with c1:
-						titulo = st.text_input("Título", value=titulo_def, placeholder="Ex.: Reunião com empresa X")
-					with c2:
-						tags = st.text_input("Tags (separe por vírgula)", value=tags_def, placeholder="ex.: empresaX,financeiro")
-					conteudo = conteudo_def
-					if st_quill is not None:
-						st.caption("Editor rich-text (negrito, itálico, listas, links). O conteúdo é salvo como Markdown.")
-						q = st_quill(html=True, value=st.session_state[content_key], key=f"quill_{nota_id if nota_id is not None else 'new'}")
-						try:
-							conteudo = NotesPage._html_to_md(q or "")
-						except Exception:
-							conteudo = q or st.session_state[content_key] or ""
-						st.session_state[content_key] = conteudo
-					else:
-						conteudo = st.text_area("Conteúdo (Markdown)", value=st.session_state[content_key], height=220, placeholder="Escreva suas anotações aqui...")
-						st.session_state[content_key] = conteudo
-					fav = st.checkbox("Marcar como favorita (📌)", value=fav_def)
-					if tags:
-						st.markdown(NotesPage._badge_tags(tags), unsafe_allow_html=True)
-					col1, col2, col3 = st.columns(3)
-					with col1:
-						save = st.form_submit_button("💾 Salvar", type="primary")
-					with col2:
-						delete = st.form_submit_button("🗑️ Excluir")
-					with col3:
-						preview = st.form_submit_button("👁️ Pré-visualizar")
-
-				if preview:
-					st.markdown("---"); st.markdown("### Pré-visualização"); st.markdown(conteudo or "(vazio)")
-
-				if save:
-					if not titulo.strip():
-						st.error("Informe um título.")
-					else:
-						tit = security.sanitize_input(titulo); tgs = security.sanitize_input(tags)
-						if nota_id is None:
-							ok = db.inserir_nota(tit, conteudo, tgs, favorita=fav)
-							if ok:
-								security.log_access("ADD_NOTE", tit); st.success("Nota criada.")
-								st.session_state['notes_selected_id'] = None
-								st.session_state['notes_open_editor'] = False
-								st.rerun()
-							else:
-								st.error("Falha ao criar a nota.")
-						else:
-							try:
-								db.inserir_historico_nota(int(nota_id), titulo_def, conteudo_def, tags_def, 1 if fav_def else 0)
-							except Exception:
-								pass
-							ok = db.atualizar_nota(int(nota_id), titulo=tit, conteudo=conteudo, tags=tgs, favorita=1 if fav else 0)
-							if ok:
-								security.log_access("UPDATE_NOTE", f"ID {nota_id}"); st.success("Nota atualizada."); st.rerun()
-							else:
-								st.error("Falha ao atualizar a nota.")
-
-				if (nota_id is not None) and not save and not delete and not preview:
-					if (titulo != titulo_def) or (tags != tags_def) or (conteudo != conteudo_def) or (fav != fav_def):
-						try:
-							db.inserir_historico_nota(int(nota_id), titulo_def, conteudo_def, tags_def, 1 if fav_def else 0)
-							db.atualizar_nota(int(nota_id), titulo=security.sanitize_input(titulo), conteudo=conteudo, tags=security.sanitize_input(tags), favorita=1 if fav else 0)
-							st.toast("Alterações salvas automaticamente."); st.experimental_rerun()
-						except Exception:
-							pass
-
-				if delete and (nota_id is not None):
-					ok = db.excluir_nota(int(nota_id))
-					if ok:
-						security.log_access("DELETE_NOTE", f"ID {nota_id}"); st.success("Nota excluída.")
-						st.session_state['notes_selected_id'] = None
-						st.session_state['notes_open_editor'] = False
-						st.rerun()
-					else:
-						st.error("Falha ao excluir a nota.")
-
-				# Histórico e exportação da nota selecionada
-				NotesPage._history_ui(df, selected_id=nota_id if 'nota_id' in locals() else None)
-				st.markdown("---"); st.markdown("### ⬇️ Exportar Nota (Markdown)")
-				if 'nota_id' in locals() and nota_id is not None:
-					md = f"# {titulo_def}\n\n" + str(st.session_state.get(content_key, conteudo_def) or "")
-					st.download_button("Baixar .md", data=md.encode("utf-8"), file_name=f"nota_{nota_id}.md", mime="text/markdown")
-				else:
-					st.caption("Selecione uma nota ou crie uma nova para exportar.")
-
+    @staticmethod
+    def render() -> None:
+        render_page_header("📄 Upload de Arquivos", "Gerencie arquivos PDF")
+        uploaded_file = st.file_uploader("Escolha um arquivo PDF", type=["pdf"])
+        if uploaded_file:
+            size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+            st.info(f"Arquivo: {uploaded_file.name} — {size_mb:.2f} MB")
+            if st.button("Salvar Arquivo", type="primary"):
+                saved_path = save_uploaded_pdf(uploaded_file)
+                if saved_path:
+                    st.success(f"Arquivo salvo em: {saved_path}")
+        st.markdown("### 📁 Arquivos Salvos")
+        uploads_dir = BASE_DIR / "uploads"
+        if uploads_dir.exists():
+            pdf_files = list(uploads_dir.glob("*.pdf"))
+            if pdf_files:
+                for pdf_file in pdf_files:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        size_kb = pdf_file.stat().st_size // 1024
+                        st.write(f"📄 {pdf_file.name} ({size_kb} KB)")
+                    with col2:
+                        with open(pdf_file, 'rb') as f:
+                            st.download_button(
+                                "Baixar", 
+                                data=f.read(), 
+                                file_name=pdf_file.name,
+                                key=f"download_{pdf_file.name}"
+                            )
+            else:
+                st.info("Nenhum arquivo encontrado.")
+        else:
+            st.info("Diretório de uploads não existe ainda.")
 
 class ClinicalManagementApp:
-	def run(self) -> None:
-		configure_page()
-		if not DatabaseManager.initialize_database():
-			st.stop()
-		filters = UIComponents.render_sidebar()
-		# Aplicar CSS após saber se dark mode está ativo
-		is_dark = filters.get("dark_mode", False)
-		apply_custom_css(dark_mode=is_dark, advanced=ADVANCED_UI)
-		apply_plotly_theme(dark_mode=is_dark)
-		page = filters["page"]
-		UIComponents.render_header(page)
-		if page == "🏠 Painel":
-			DashboardPage.render()
-		elif page == "📝 Atendimentos":
-			AppointmentsPage.render(filters)
-		elif page == "📊 Relatórios":
-			ReportsPage.render()
-		elif page == "📄 Carregar":
-			UploadPage.render()
-		# Bloco de Notas removido conforme solicitação
-		elif page == "⚙️ Configurações":
-			SettingsPage.render()
-
+    def __init__(self):
+        pass
+    def run(self):
+        if not DatabaseManager.initialize_database():
+            st.error("Erro ao inicializar banco de dados.")
+            st.stop()
+        apply_custom_css()
+        apply_plotly_theme()
+        with st.sidebar:
+            st.markdown("## 🧠 JULIANA")
+            st.markdown("*Gestão Clínica*")
+            conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
+            st.caption(f"Status: {conn_status}")
+            pages = {
+                "🏠 Dashboard": "dashboard",
+                "📝 Atendimentos": "appointments",
+                "📊 Relatórios": "reports",
+                "📄 Upload": "upload",
+                "⚙️ Configurações": "settings"
+            }
+            selected_page = st.radio("Navegação", list(pages.keys()), index=0)
+            page_key = pages[selected_page]
+        if page_key == "dashboard":
+            DashboardPage.render()
+        elif page_key == "appointments":
+            AppointmentsPage.render({})
+        elif page_key == "reports":
+            ReportsPage.render()
+        elif page_key == "upload":
+            UploadPage.render()
+        elif page_key == "settings":
+            SettingsPage.render()
 
 if __name__ == "__main__":
-	try:
-		ClinicalManagementApp().run()
-	except Exception as e:
-		# Log simples em arquivo para investigar falhas no deploy (ex.: Streamlit Cloud)
-		try:
-			import traceback, os
-			log_dir = os.path.join(os.path.dirname(__file__), 'logs')
-			os.makedirs(log_dir, exist_ok=True)
-			with open(os.path.join(log_dir, 'boot_error.log'), 'a', encoding='utf-8') as lf:
-				lf.write(f"\n[{datetime.now().isoformat()}] ERRO FATAL APP\n")
-				lf.write(''.join(traceback.format_exception(e)))
-		except Exception:
-			pass
-		st.error("Falha inesperada ao iniciar o aplicativo. Verifique logs/boot_error.log")
+    ClinicalManagementApp().run()
