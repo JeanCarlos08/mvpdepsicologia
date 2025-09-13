@@ -176,7 +176,7 @@ def render_page_header(title, subtitle, inverse=False):
 def apply_custom_css(dark_mode=False, advanced=False):
     st.markdown(
         '''<style>
-        body, .main, .block-container {background-color: #73C883 !important;}
+    body, .main, .block-container {background-color: #A3E4C9 !important;}
         .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content {background: #4da768 !important; color: #fff !important;}
         .stSidebar .stButton > button, .stSidebar input, .stSidebar select {background: #fff !important; color: #4da768 !important; border-radius: 6px !important;}
         .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content, .stRadio label, .stRadio div, .stRadio span {color: #fff !important;}
