@@ -196,7 +196,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
             padding: 14px 18px;
             box-shadow: 0 2px 12px rgba(44,62,80,0.07);
             margin-bottom: 10px;
-            border: 1px solid #e1e8ed;
+            border: 1.5px solid #222;
             color: #1a355e !important;
             transition: box-shadow 0.2s;
         }
