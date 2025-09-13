@@ -476,8 +476,8 @@ class ClinicalManagementApp:
         with st.sidebar:
             st.markdown("## 🧠 JULIANA")
             st.markdown("*Gestão Clínica*")
-            conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
-            st.caption(f"Status: {conn_status}")
+            conn_status = f"<span style='color:#6BB6F8; font-size:1.2em;'>●</span> Conectado" if verificar_conexao() else f"<span style='color:#d32f2f; font-size:1.2em;'>●</span> Desconectado"
+            st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
             pages = {
                 "🏠 Dashboard": "dashboard",
                 "📝 Atendimentos": "appointments",
