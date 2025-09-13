@@ -189,20 +189,20 @@ def apply_custom_css(dark_mode=False, advanced=False):
         h3, .subtitle-highlight {color: #2c3e50 !important; background: linear-gradient(90deg, #eafaf1 0%, #73C883 100%); padding: 6px 18px; border-radius: 8px; font-size: 1.35em; font-weight: 700; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(44,62,80,0.07); display: inline-block;}
         .stButton > button {background: linear-gradient(90deg, #4DA768 0%, #2ecc71 100%); color: white; border-radius: 6px; border: none; font-weight: 600; padding: 8px 20px; box-shadow: 0 2px 8px rgba(60,170,95,0.08); transition: background 0.2s;}
         .stButton > button:hover {background: linear-gradient(90deg, #2ecc71 0%, #4DA768 100%);}
-        /* Card dashboard degradê azul meio invisível */
+        /* Card dashboard degradê azul mais suave */
         .stMetric {
-            background: linear-gradient(135deg, #4DA7F8 0%, rgba(77,167,248,0.12) 70%, rgba(255,255,255,0.0) 100%);
+            background: linear-gradient(135deg, #6BB6F8 0%, rgba(77,167,248,0.08) 60%, rgba(255,255,255,0.0) 100%);
             border-radius: 12px;
             padding: 14px 18px;
-            box-shadow: 0 2px 12px rgba(44,62,80,0.09);
+            box-shadow: 0 2px 12px rgba(44,62,80,0.07);
             margin-bottom: 10px;
             border: 1px solid #e1e8ed;
             color: #1a355e !important;
             transition: box-shadow 0.2s;
         }
         .stMetric:hover {
-            box-shadow: 0 4px 18px rgba(44,62,80,0.18);
-            background: linear-gradient(135deg, #4DA7F8 0%, rgba(77,167,248,0.22) 70%, rgba(255,255,255,0.0) 100%);
+            box-shadow: 0 4px 18px rgba(44,62,80,0.13);
+            background: linear-gradient(135deg, #6BB6F8 0%, rgba(77,167,248,0.16) 60%, rgba(255,255,255,0.0) 100%);
         }
         </style>''', unsafe_allow_html=True)
 
