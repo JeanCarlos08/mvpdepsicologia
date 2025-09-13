@@ -177,7 +177,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
     st.markdown(
         '''<style>
     body, .main, .block-container {background-color: #73C883 !important;}
-    .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content {background: #A3D9B1 !important; color: #fff !important;}
+    .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content {background: #4da768 !important; color: #fff !important;}
         .stSidebar .stButton > button, .stSidebar input, .stSidebar select {background: #fff !important; color: #4da768 !important; border-radius: 6px !important;}
         .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content, .stRadio label, .stRadio div, .stRadio span {color: #fff !important;}
         .stDataFrame, .stTable, .stMarkdown table {background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(44,62,80,0.10); border: 1px solid #e1e8ed; margin-bottom: 18px; font-size: 15px;}
