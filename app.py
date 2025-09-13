@@ -170,8 +170,8 @@ def display_cards(cards):
             )
 
 def render_page_header(title, subtitle, inverse=False):
-    st.markdown(f"## {title}")
-    st.caption(subtitle)
+    st.markdown(f"<h2 style='color: #fff; font-weight: 700;'>{title}</h2>", unsafe_allow_html=True)
+    st.caption(f"<span style='color: #fff; font-size: 1.1em;'>{subtitle}</span>", unsafe_allow_html=True)
 
 def apply_custom_css(dark_mode=False, advanced=False):
     st.markdown(
@@ -250,7 +250,7 @@ class DashboardPage:
     def render() -> None:
         render_page_header("🧠 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.caption(f"🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge sqlite'>SQLite</span>", unsafe_allow_html=True)
+        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge sqlite'>SQLite</span></span>", unsafe_allow_html=True)
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
