@@ -22,9 +22,10 @@ TIME_FORMAT = "%H:%M"
 PRIMARY_ACCENT = "#4DA768"
 
 class ModalidadeAtendimento(Enum):
-    CONSULTA = "Consulta"
-    AVALIACAO = "Avaliação"
-    RETORNO = "Retorno"
+    ADMISSIONAL = "Admissional"
+    DEMISSIONAL = "Demissional"
+    PERIODO = "Período"
+    MUDANCA_FUNCAO = "Mudança de função"
 
 class Security:
     @staticmethod
@@ -295,6 +296,7 @@ class AppointmentsPage:
                 col1, col2 = st.columns(2)
                 with col1:
                     empresa = st.text_input("🏢 Empresa/Organização")
+                    # Modalidades padronizadas (ignoramos outras entradas do DB)
                     modalidade = st.selectbox("🏥 Modalidade", [m.value for m in ModalidadeAtendimento])
                     data_sel = st.date_input("📅 Data", min_value=date.today())
                 with col2:
