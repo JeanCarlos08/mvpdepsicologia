@@ -16,6 +16,32 @@ except Exception:
     # dotenv ausente ou falha ao carregar — continue normalmente (espera variáveis de ambiente do sistema)
     pass
 
+# Fallback simples: se python-dotenv não estiver presente e houver um arquivo .env na raiz,
+# vamos carregar chaves básicas (APP_ADMIN_USER/APP_ADMIN_PASS) para o ambiente.
+def _fallback_load_dotenv(env_path: pathlib.Path | None = None) -> None:
+    try:
+        root = pathlib.Path(__file__).resolve().parent
+        env_path = env_path or (root / '.env')
+        if not env_path.exists():
+            return
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, val = line.split('=', 1)
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                # only set if not already in environment
+                if key and val and os.getenv(key) is None:
+                    os.environ[key] = val
+    except Exception:
+        # Não falhar na inicialização por causa desse fallback
+        pass
+
+# Executar fallback imediatamente para garantir que variáveis definidas em .env sejam visíveis
+_fallback_load_dotenv()
+
 # Configurar página do Streamlit
 st.set_page_config(
     page_title="JULIANA - Gestão Clínica",
@@ -424,17 +450,37 @@ class AppointmentsPage:
         if not appointments:
             st.info("Nenhum atendimento encontrado.")
             return
-        df = pd.DataFrame(appointments, columns=[
-            "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora", 
-            "Laudo PDF", "Avaliação PDF", "Status", "Observações"
-        ])
+
+        df = pd.DataFrame(
+            appointments,
+            columns=[
+                "ID",
+                "Empresa",
+                "Nome",
+                "Modalidade",
+                "Data",
+                "Hora",
+                "Laudo PDF",
+                "Avaliação PDF",
+                "Status",
+                "Observações",
+            ],
+        )
+
         if filters.get("modalidade_filter"):
             df = df[df["Modalidade"] == filters["modalidade_filter"]]
+
         df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
         df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
-        st.markdown("<h3 class='card-title' style='color:#000000 !important;'>📋 Lista de Atendimentos</h3>", unsafe_allow_html=True)
+
+        st.markdown(
+            "<h3 class='card-title' style='color:#000000 !important;'>📋 Lista de Atendimentos</h3>",
+            unsafe_allow_html=True,
+        )
+
         df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
         st.dataframe(df_display, use_container_width=True, height=400)
+
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
         st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
 
@@ -442,12 +488,17 @@ class SettingsPage:
     @staticmethod
     def render() -> None:
         render_page_header("⚙️ Configurações", "Administração do Sistema")
+
         # Forçar paleta visual apenas para a página de configurações
         # Injetar uma classe no <body> para escopo confiável dos estilos (override do estilo global)
         try:
-            components.html("""<script>try{document.body.classList.add('page-settings');}catch(e){};</script>""", height=0)
+            components.html(
+                """<script>try{document.body.classList.add('page-settings');}catch(e){};</script>""",
+                height=0,
+            )
         except Exception:
             pass
+
         st.markdown(
             """
 <style>
@@ -474,7 +525,12 @@ class SettingsPage:
 """,
             unsafe_allow_html=True,
         )
-        st.markdown("<div class='settings-page page-settings' style='padding:6px;border-radius:6px;'>", unsafe_allow_html=True)
+
+        st.markdown(
+            "<div class='settings-page page-settings' style='padding:6px;border-radius:6px;'>",
+            unsafe_allow_html=True,
+        )
+
         conn_ok = verificar_conexao()
         stats = DatabaseManager.get_statistics()
         cards = [
@@ -482,28 +538,35 @@ class SettingsPage:
             {"icon": "🗄️", "title": "SQLite", "value": "Ativo"},
             {"icon": "📦", "title": "Atendimentos", "value": stats.get("total_atendimentos", 0)},
         ]
+
         display_cards(cards)
+
         col1, col2, col3, col4 = st.columns(4)
+
         with col1:
             if st.button("🔄 Limpar Cache"):
                 st.cache_data.clear()
                 st.cache_resource.clear()
                 st.success("Cache limpo!")
+
         with col2:
             if st.button("🗄️ Verificar Banco"):
                 if verificar_conexao():
                     st.success("Conexão com banco OK!")
                 else:
                     st.error("Falha na conexão com o banco.")
+
         with col3:
             if st.button("🛠️ Reinicializar DB"):
                 if DatabaseManager.initialize_database():
                     st.success("Banco reinicializado!")
                 else:
                     st.error("Erro ao reinicializar banco.")
+
         with col4:
             if st.button("📊 Estatísticas"):
                 st.json(stats)
+
         st.markdown("</div>", unsafe_allow_html=True)
 
 class ReportsPage:
@@ -595,6 +658,13 @@ class AuthPage:
                         user = st.text_input('Usuário')
                         pwd = st.text_input('Senha', type='password')
                         submitted = st.form_submit_button('Login')
+                        # Diagnostic (dev only): mostrar se variáveis de admin estão definidas
+                        try:
+                            _dbg_admin_user = os.getenv('APP_ADMIN_USER')
+                            _dbg_admin_pass_set = bool(os.getenv('APP_ADMIN_PASS'))
+                            st.caption(f"DEBUG: APP_ADMIN_USER set: {bool(_dbg_admin_user)}, APP_ADMIN_PASS set: {_dbg_admin_pass_set}")
+                        except Exception:
+                            pass
                         if submitted:
                                 admin_user = os.getenv('APP_ADMIN_USER', '').strip()
                                 admin_pass = os.getenv('APP_ADMIN_PASS', '').strip()
