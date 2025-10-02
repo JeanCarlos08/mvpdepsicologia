@@ -32,9 +32,15 @@ def _fallback_load_dotenv(env_path: pathlib.Path | None = None) -> None:
                 key, val = line.split('=', 1)
                 key = key.strip()
                 val = val.strip().strip('"').strip("'")
-                # only set if not already in environment
-                if key and val and os.getenv(key) is None:
-                    os.environ[key] = val
+                # only set if not already present (treat empty string as unset)
+                # algumas execuções de Streamlit podem deixar a variável definida mas vazia;
+                # considerar isso como não-configurada para permitir o fallback do .env
+                if key and val and not os.getenv(key):
+                    try:
+                        os.environ[key] = val
+                    except Exception:
+                        # Não falhar a inicialização por causa de problemas ao setar env
+                        pass
     except Exception:
         # Não falhar na inicialização por causa desse fallback
         pass
