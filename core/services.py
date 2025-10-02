@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List
 try:
 	import db_unified as db  # type: ignore
 except Exception:
-	import db  # type: ignore as db
+	import db as db  # type: ignore as db
 
 
 def create_atendimento(*, empresa: str, nome: str, modalidade: str, data: str, hora: str,

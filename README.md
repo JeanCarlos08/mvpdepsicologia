@@ -25,6 +25,16 @@ DATABASE_URL=postgresql://usuario:senha@host:5432/nome_banco?sslmode=require
 4. O app detecta automaticamente e mostra badge “Postgres”.
 5. Se a URL estiver ausente ou inválida, cai em SQLite sem quebrar.
 
+---
+## 🔐 Autenticação mínima (recomendado antes de expor o app)
+Para proteger o acesso mínimo, defina credenciais administrativas no arquivo `.env`:
+```env
+APP_ADMIN_USER=seu_usuario
+APP_ADMIN_PASS=sua_senha
+DATABASE_URL=postgresql://usuario:senha@host:5432/nome_banco
+```
+Se as credenciais não estiverem definidas, o app ficará acessível sem bloqueio (modo dev) — não recomendado em produção.
+
 ### Estrutura esperada de tabelas (Postgres)
 `atendimentos`, `notas`, `notas_historico` (FK automática em `notas_historico.nota_id`).
 

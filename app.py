@@ -6,6 +6,15 @@ from enum import Enum
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+import os
+import streamlit.components.v1 as components
+# Carrega .env automaticamente em tempo de execução (se python-dotenv estiver instalado)
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    # dotenv ausente ou falha ao carregar — continue normalmente (espera variáveis de ambiente do sistema)
+    pass
 
 # Configurar página do Streamlit
 st.set_page_config(
@@ -192,18 +201,87 @@ def apply_custom_css(dark_mode=False, advanced=False):
         .stButton > button:hover {background: linear-gradient(90deg, #2ecc71 0%, #4DA768 100%);}
         /* Card dashboard degradê azul mais suave */
         .stMetric {
-            background: linear-gradient(135deg, #6BB6F8 0%, rgba(77,167,248,0.08) 60%, rgba(255,255,255,0.0) 100%);
+            background: linear-gradient(135deg, rgba(77,167,120,0.12) 0%, rgba(77,167,248,0.08) 60%, rgba(255,255,255,0.0) 100%);
             border-radius: 12px;
             padding: 14px 18px;
             box-shadow: 0 2px 12px rgba(44,62,80,0.07);
             margin-bottom: 10px;
             border: 1.5px solid #222;
-            color: #1a355e !important;
             transition: box-shadow 0.2s;
+        }
+        /* Forçar todas as cores de texto dentro do card para branco (label, value, delta) */
+        .stMetric, .stMetric * {
+            color: #ffffff !important;
+        }
+        /* Garantir que a caption do dashboard / badge do DB também fiquem em branco */
+        .stCaption, .stCaption span, .stCaption * {
+            color: #ffffff !important;
+        }
+        span.db-badge, span.db-badge.sqlite, .db-badge, .db-badge.sqlite {
+            color: #ffffff !important;
+        }
+        /* Estilizar campos de formulário / área de autenticação para a paleta profissional */
+        .stForm, .stForm .stTextInput, .stForm .stTextArea, .stForm .stSelectbox, .stForm .stDateInput, .stForm .stTimeInput {
+            background: linear-gradient(180deg, rgba(0,191,255,0.04), rgba(77,167,248,0.02));
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div, .stDateInput>div>div>input, .stTimeInput>div>div>input {
+            background: rgba(255,255,255,0.04) !important;
+            color: #000000 !important; /* Texto digitado: preto */
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 6px !important;
+            padding: 8px !important;
+        }
+        /* Para o formulário de autenticação, força texto preto e fundo claro para facilitar digitação
+           Seletores específicos para a estrutura interna gerada pelo Streamlit */
+        .auth-card input, .auth-card textarea,
+        .auth-card .stTextInput>div>div>input, .auth-card .stTextArea>div>div>textarea,
+        .auth-card .stTextInput>div>div>input[type="password"] {
+            color: #000000 !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(0,0,0,0.08) !important;
+            caret-color: #000000 !important;
+        }
+    .auth-card .stTextInput>div>div>input::placeholder, .auth-card .stTextArea>div>div>textarea::placeholder { color: #888888 !important; }
+        /* Reforço adicional para navegadores que usam -webkit-text-fill-color e seletores distintos */
+        .auth-card :where(input, textarea) {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important; /* Safari/Chrome */
+            background: #ffffff !important;
+            caret-color: #000000 !important;
+        }
+        .auth-card input::placeholder, .auth-card textarea::placeholder { color: rgba(0,0,0,0.45) !important; }
+        /* Labels e textos informativos dentro do card devem ser brancos para contraste com o tema */
+        .auth-card .stTextInput>div>label, .auth-card .stForm label, .auth-card .stMarkdown, .auth-card div[data-testid='stCaption'] {
+            color: #ffffff !important;
+        }
+        .stTextInput>div>label, .stForm label, .stCaption, .stMarkdown h2, .stMarkdown h3 {
+            color: #ffffff !important;
+        }
+        /* Forçar título dos cards para preto quando necessário */
+        .card-title { color: #000000 !important; }
+        .stTextInput>div>div>input::placeholder, .stTextArea>div>div>textarea::placeholder {
+            color: #888888 !important; /* Placeholder: cinza */
+        }
+        /* Botão de login/ações com variação da paleta */
+        .stButton > button {
+            background: linear-gradient(90deg, #2196F3 0%, #00BFFF 100%); /* azul profissional */
+            color: #ffffff !important;
+            border-radius: 8px !important;
+            padding: 8px 18px !important;
+            font-weight: 700 !important;
+        }
+        .stButton > button:hover { opacity: 0.95; transform: translateY(-1px); }
+        /* Small privacy/login area highlight removed (use AuthPage render instead) */
+        /* seletores mais específicos caso alguma versão do streamlit use nomes diferentes */
+        .stMetric .stMetricValue, .stMetric .stMetricDelta, .stMetric .stMetricLabel {
+            color: #ffffff !important;
         }
         .stMetric:hover {
             box-shadow: 0 4px 18px rgba(44,62,80,0.13);
-            background: linear-gradient(135deg, #6BB6F8 0%, rgba(77,167,248,0.16) 60%, rgba(255,255,255,0.0) 100%);
+            background: linear-gradient(135deg, rgba(77,167,248,0.16) 0%, rgba(255,255,255,0.0) 100%);
         }
         </style>''', unsafe_allow_html=True)
 
@@ -354,7 +432,7 @@ class AppointmentsPage:
             df = df[df["Modalidade"] == filters["modalidade_filter"]]
         df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
         df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
-        st.markdown("### 📋 Lista de Atendimentos")
+        st.markdown("<h3 class='card-title' style='color:#000000 !important;'>📋 Lista de Atendimentos</h3>", unsafe_allow_html=True)
         df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
         st.dataframe(df_display, use_container_width=True, height=400)
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
@@ -364,6 +442,39 @@ class SettingsPage:
     @staticmethod
     def render() -> None:
         render_page_header("⚙️ Configurações", "Administração do Sistema")
+        # Forçar paleta visual apenas para a página de configurações
+        # Injetar uma classe no <body> para escopo confiável dos estilos (override do estilo global)
+        try:
+            components.html("""<script>try{document.body.classList.add('page-settings');}catch(e){};</script>""", height=0)
+        except Exception:
+            pass
+        st.markdown(
+            """
+<style>
+/* Usar body.page-settings para ter mais especificidade e garantir override do estilo global */
+.page-settings .stButton>button {
+    background: linear-gradient(90deg, #4DA768 0%, #2ecc71 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.page-settings .stButton>button:hover { opacity: 0.95 !important; transform: translateY(-1px) !important; background: linear-gradient(90deg, rgba(77,167,120,0.14) 0%, rgba(58,158,95,0.14) 100%) !important; }
+.page-settings .stJson, .page-settings pre {
+    background: #f6fbf7 !important; /* tom suave compatível */
+    border-radius: 8px !important;
+    color: #4DA768 !important;
+}
+.page-settings .stSuccess, .page-settings .stSuccess>div { background: rgba(77,167,120,0.08) !important; color: #4DA768 !important; }
+.page-settings .stError, .page-settings .stError>div { background: rgba(223,50,80,0.06) !important; }
+/* Garantir que os cards também usem hover verde dentro da página de configurações */
+.page-settings .stMetric:hover {
+    box-shadow: 0 4px 18px rgba(44,62,80,0.13) !important;
+    background: linear-gradient(135deg, rgba(77,167,120,0.12) 0%, rgba(255,255,255,0.0) 100%) !important;
+}
+</style>
+""",
+            unsafe_allow_html=True,
+        )
+        st.markdown("<div class='settings-page page-settings' style='padding:6px;border-radius:6px;'>", unsafe_allow_html=True)
         conn_ok = verificar_conexao()
         stats = DatabaseManager.get_statistics()
         cards = [
@@ -393,6 +504,7 @@ class SettingsPage:
         with col4:
             if st.button("📊 Estatísticas"):
                 st.json(stats)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 class ReportsPage:
     @staticmethod
@@ -466,10 +578,143 @@ class UploadPage:
         else:
             st.info("Diretório de uploads não existe ainda.")
 
+
+class AuthPage:
+    @staticmethod
+    def render():
+                """Renderiza a página de autenticação — não força bloqueio, apenas oferece formulário."""
+                render_page_header("🔐 Autenticação", "Área de login (opcional)")
+                st.markdown("<div style='color: #ffffff;'>Use variáveis de ambiente <code>APP_ADMIN_USER</code> e <code>APP_ADMIN_PASS</code> para configurar credenciais.</div>", unsafe_allow_html=True)
+                # Formulário que grava autenticação em session_state
+                if 'user_authenticated' not in st.session_state:
+                        st.session_state['user_authenticated'] = False
+                if 'user_name' not in st.session_state:
+                        st.session_state['user_name'] = ''
+                st.markdown("<div class='auth-card' style='padding:10px;border-radius:8px;'>", unsafe_allow_html=True)
+                with st.form('auth_form'):
+                        user = st.text_input('Usuário')
+                        pwd = st.text_input('Senha', type='password')
+                        submitted = st.form_submit_button('Login')
+                        if submitted:
+                                admin_user = os.getenv('APP_ADMIN_USER', '').strip()
+                                admin_pass = os.getenv('APP_ADMIN_PASS', '').strip()
+                                if admin_user and admin_pass:
+                                        if user == admin_user and pwd == admin_pass:
+                                                st.session_state['user_authenticated'] = True
+                                                st.session_state['user_name'] = user
+                                                security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
+                                                st.success('Login bem sucedido — você será redirecionado.')
+                                                # Forçar reload imediato no cliente para reduzir latência percebida
+                                                try:
+                                                    components.html('<script>window.location.reload();</script>', height=0)
+                                                except Exception:
+                                                    # fallback: tentar experimental_rerun() e depois st.stop()
+                                                    try:
+                                                        rerun = getattr(st, 'experimental_rerun', None)
+                                                        if callable(rerun):
+                                                            rerun()
+                                                        else:
+                                                            raise AttributeError('experimental_rerun ausente')
+                                                    except Exception:
+                                                        try:
+                                                            st.stop()
+                                                        except Exception:
+                                                            pass
+                                        else:
+                                                st.error('Credenciais inválidas')
+                                                security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
+                                else:
+                                        st.warning('Credenciais admin não configuradas — modo aberto do sistema.')
+                st.markdown("</div>", unsafe_allow_html=True)
+                # Injetar JS via components para garantir estilo nos inputs do auth-card
+                js = r"""
+<script>
+(function(){
+    try{
+        function applyAuthStyles(wrap){
+            if(!wrap) return;
+            const inputs = wrap.querySelectorAll('input, textarea');
+            inputs.forEach(i=>{
+                try{
+                    i.style.setProperty('color', '#000000', 'important');
+                    i.style.setProperty('background', '#ffffff', 'important');
+                    i.style.setProperty('caret-color', '#000000', 'important');
+                    i.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
+                    i.style.setProperty('border', '1px solid rgba(0,0,0,0.08)', 'important');
+                }catch(e){}
+            });
+            let style = document.getElementById('auth-card-placeholder-style');
+            if(!style){
+                style = document.createElement('style');
+                style.id = 'auth-card-placeholder-style';
+                style.innerHTML = '.auth-card input::placeholder, .auth-card textarea::placeholder{ color: rgba(0,0,0,0.45) !important; }';
+                // Evitar append se já estiver presente por outro processo concorrente
+                if(!document.head.contains(style)){
+                    document.head.appendChild(style);
+                }
+            } else {
+                // Se existir mas não estiver no head, tentar anexar com segurança
+                if(!document.head.contains(style)){
+                    try{
+                        document.head.appendChild(style);
+                    }catch(e){/* ignore */}
+                }
+            }
+        }
+
+        const observer = new MutationObserver(function(mutations){
+            const wrap = document.querySelector('.auth-card');
+            if(wrap){
+                applyAuthStyles(wrap);
+                // Aplicado com sucesso — desconectar observer para evitar múltiplas alterações
+                try{ observer.disconnect(); }catch(e){}
+                try{ if(typeof intervalId !== 'undefined') clearInterval(intervalId); }catch(e){}
+            }
+        });
+        try{ observer.observe(document.body, { childList: true, subtree: true }); }catch(e){}
+
+        // Apply once now
+        const wrapNow = document.querySelector('.auth-card');
+        if(wrapNow){
+            applyAuthStyles(wrapNow);
+            try{ observer.disconnect(); }catch(e){}
+        }
+        // Fallback: reaplicar por alguns ciclos e adicionar listener para Enter
+        let tries = 0; const maxTries = 6;
+        const intervalId = setInterval(()=>{
+            const w = document.querySelector('.auth-card');
+            if(w){
+                applyAuthStyles(w);
+                try{ clearInterval(intervalId); }catch(e){}
+                // adicionar listener para Enter -> clicar no botão Login (ignora textarea)
+                try{
+                    w.addEventListener('keydown', function(ev){
+                        if(ev.key === 'Enter' && ev.target && ev.target.tagName !== 'TEXTAREA'){
+                            const btn = w.querySelector('button');
+                            if(btn){ btn.click(); ev.preventDefault(); }
+                        }
+                    });
+                }catch(e){}
+            }
+            tries++;
+            if(tries>=maxTries) try{ clearInterval(intervalId); }catch(e){}
+        }, 300);
+
+    }catch(e){console.log(e)}
+})();
+</script>
+"""
+                try:
+                        components.html(js, height=10)
+                except Exception:
+                        # fallback silencioso se components não puder executar
+                        pass
+
 class ClinicalManagementApp:
     def __init__(self):
         pass
     def run(self):
+        # Inicialização do DB e temas
         if not DatabaseManager.initialize_database():
             st.error("Erro ao inicializar banco de dados.")
             st.stop()
@@ -480,6 +725,25 @@ class ClinicalManagementApp:
             st.markdown("*Gestão Clínica*")
             conn_status = f"<span style='color:#00BFFF; font-size:1.2em;'>●</span> Conectado" if verificar_conexao() else f"<span style='color:#d32f2f; font-size:1.2em;'>●</span> Desconectado"
             st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
+            # Logout rápido
+            if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
+                st.write(f"Usuário: {st.session_state.get('user_name', '')}")
+                if st.button('🔓 Logout'):
+                    security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
+                    st.session_state['user_authenticated'] = False
+                    st.session_state['user_name'] = ''
+                    # Reiniciar a interface; experimental_rerun pode não existir em algumas versões do Streamlit
+                    try:
+                        rerun = getattr(st, 'experimental_rerun', None)
+                        if callable(rerun):
+                            rerun()
+                        else:
+                            raise AttributeError('experimental_rerun ausente')
+                    except Exception:
+                        try:
+                            st.stop()
+                        except Exception:
+                            pass
             pages = {
                 "🏠 Dashboard": "dashboard",
                 "📝 Atendimentos": "appointments",
@@ -487,18 +751,35 @@ class ClinicalManagementApp:
                 "📄 Upload": "upload",
                 "⚙️ Configurações": "settings"
             }
-            selected_page = st.radio("Navegação", list(pages.keys()), index=0)
+            # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
+            selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
             page_key = pages[selected_page]
         if page_key == "dashboard":
-            DashboardPage.render()
+            # Proteção: redireciona para AuthPage se não autenticado
+            if not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                DashboardPage.render()
         elif page_key == "appointments":
-            AppointmentsPage.render({})
+            if not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                AppointmentsPage.render({})
         elif page_key == "reports":
-            ReportsPage.render()
+            if not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                ReportsPage.render()
         elif page_key == "upload":
-            UploadPage.render()
+            if not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                UploadPage.render()
         elif page_key == "settings":
-            SettingsPage.render()
+            if not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                SettingsPage.render()
 
 if __name__ == "__main__":
     ClinicalManagementApp().run()
