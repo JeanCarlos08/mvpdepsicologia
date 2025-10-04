@@ -1,143 +1,99 @@
 # 🧠 JULIANA - Gestão Clínica (MVP)
 
-Aplicação Streamlit para gestão básica de atendimentos, laudos e notas clínicas.
-Suporta dois backends de banco de dados:
-
-- SQLite (padrão, zero-config)
-- PostgreSQL (Neon ou local) via `db_unified.py` (fallback automático)
+Aplicação Streamlit para gestão de atendimentos, laudos e notas clínicas. O backend agora utiliza **exclusivamente PostgreSQL** via `psycopg2`, com configuração feita por variáveis de ambiente ou `st.secrets` (quando publicado no Streamlit Cloud).
 
 ---
-## 🚀 Execução local (SQLite padrão)
+## ⚙️ Pré-requisitos
+- Python 3.10+
+- Servidor PostgreSQL (local, Docker, ou serviço gerenciado como Neon/Render/Railway)
+
+---
+## � Configuração do banco
+1. Copie o arquivo `.env.example` para `.env` e preencha com os valores do seu ambiente.
+2. As variáveis aceitas são:
+	- `DB_HOST`
+	- `DB_PORT`
+	- `DB_NAME`
+	- `DB_USER`
+	- `DB_PASSWORD`
+3. Como alternativa, use uma única `DATABASE_URL` (ou `POSTGRES_URL`) no formato `postgresql://usuario:senha@host:porta/banco`.
+4. Em produção (Streamlit Cloud), configure os mesmos valores em **st.secrets**.
+
+> **Erro comum**: “Variável 'db_host' não configurada. Defina em um arquivo .env ou em st.secrets.”  
+> ✅ Solução: verifique se copiou `.env.example` para `.env` e se o app foi reiniciado após ajustar as credenciais.
+
+---
+## 🚀 Execução local
 ```powershell
 pip install -r requirements.txt
 streamlit run app.py
 ```
-Acesse: http://localhost:8501 (ou porta exibida).
+O app carrega o esquema automaticamente na primeira execução.
 
 ---
-## 🐘 Usando PostgreSQL / Neon
-1. Criar `.env` na raiz:
-```env
-DATABASE_URL=postgresql://usuario:senha@host:5432/nome_banco?sslmode=require
-```
-2. Instalar dependências (já listadas): `psycopg2-binary` e `python-dotenv`.
-3. Rodar normalmente: `streamlit run app.py`.
-4. O app detecta automaticamente e mostra badge “Postgres”.
-5. Se a URL estiver ausente ou inválida, cai em SQLite sem quebrar.
-
----
-## 🔐 Autenticação mínima (recomendado antes de expor o app)
-Para proteger o acesso mínimo, defina credenciais administrativas no arquivo `.env`:
+## 🔐 Autenticação (opcional, recomendado)
+Defina no `.env` (ou em st.secrets):
 ```env
 APP_ADMIN_USER=seu_usuario
 APP_ADMIN_PASS=sua_senha
-DATABASE_URL=postgresql://usuario:senha@host:5432/nome_banco
 ```
-Se as credenciais não estiverem definidas, o app ficará acessível sem bloqueio (modo dev) — não recomendado em produção.
-
-### Estrutura esperada de tabelas (Postgres)
-`atendimentos`, `notas`, `notas_historico` (FK automática em `notas_historico.nota_id`).
+Sem essas variáveis o app inicia em modo aberto (apenas para desenvolvimento).
 
 ---
-## 🔄 Migração SQLite → Postgres
-Script: `scripts/migrate_sqlite_to_postgres.py`
-
-Passos:
-1. Garanta `.env` com `DATABASE_URL` válido.
-2. (Opcional) Faça backup: copie `gestao_clinica.db` para `backups/gestao_clinica_<data>.db`.
+## 🔄 Migração do SQLite legado
+Se ainda possuir dados no arquivo `gestao_clinica.db`, utilize o script `migrate_sqlite_to_postgres.py`:
+1. Garanta que o PostgreSQL esteja acessível e configurado nas variáveis de ambiente.
+2. (Opcional) Faça backup do arquivo SQLite original.
 3. Execute:
 ```powershell
-python scripts/migrate_sqlite_to_postgres.py
+python migrate_sqlite_to_postgres.py
 ```
-4. Verifique contagens no Postgres (psql):
-```sql
-SELECT COUNT(*) FROM atendimentos; SELECT COUNT(*) FROM notas; SELECT COUNT(*) FROM notas_historico;
-```
-5. Abra o app e confirme badge “Postgres”.
+4.Confira no Postgres: `SELECT COUNT(*) FROM atendimentos;` (etc.).
 
-O script:
-- Cria o schema se necessário
-- Copia dados sem sobrescrever IDs existentes
-- Ignora tabelas vazias
+O script cria o schema, copia registros e evita duplicidades.
 
 ---
-## 🧩 Principais arquivos
-| Arquivo | Função |
-|---------|--------|
-| `app.py` | Interface Streamlit principal |
-| `db.py` | Implementação original SQLite |
-| `db_unified.py` | Camada unificada (Postgres + fallback) |
-| `security.py` | Sanitização, validação de uploads e logging |
-| `scripts/migrate_sqlite_to_postgres.py` | Migração de dados |
-| `requirements.txt` | Dependências |
-| `Dockerfile` | Build container |
-| `Procfile` | Deploy em plataformas tipo Heroku/Render |
+## 📂 Estrutura principal
+| Arquivo | Descrição |
+|---------|-----------|
+| `app.py` | Interface Streamlit |
+| `db.py` | Camada de acesso ao Postgres (`psycopg2`) |
+| `security.py` | Sanitização, uploads e logs |
+| `migrate_sqlite_to_postgres.py` | Migração de dados legado |
+| `requirements.txt` | Dependências do projeto |
+| `.env.example` | Modelo de variáveis de ambiente |
 
-Uploads e banco local são ignorados no Git (`uploads/`, `*.db`).
+Uploads (`uploads/`) e o banco legado (`*.db`) continuam ignorados pelo Git.
 
 ---
-## 🛡️ Segurança / Logs
-- Logs em `logs/security.log`.
-- Sanitização básica de entradas (remoção de caracteres perigosos).
-- Validação de PDF por extensão e tamanho.
-
----
-## 🗄️ Fallback Inteligente
-| Situação | Ação |
-|----------|------|
-| `DATABASE_URL` definido e driver ok | Usa Postgres |
-| URL inválida ou driver ausente | Reverte para SQLite |
-| Erro de conexão Posterior | Mantém SQLite para continuidade |
-
----
-## 🔧 Manutenção
-Limpar caches Streamlit (em Configurações ou manual):
+## 🛡️ Boas práticas
+- Logs de acesso: `logs/access.log`
+- Sanitização de entradas e validação de PDFs embutidas
+- Limpeza de cache Streamlit (quando necessário):
 ```powershell
 streamlit cache clear
 ```
 
-Reinicializar (cria tabelas SQLite se faltarem) via botão em ⚙️ Configurações.
-
 ---
-## 🐳 Docker
+## 🐳 Executando com Docker
 ```powershell
 docker build -t gestao-clinica .
-docker run -p 8501:8501 gestao-clinica
-```
-Definir variável em runtime (Postgres):
-```powershell
-docker run -e DATABASE_URL="postgresql://..." -p 8501:8501 gestao-clinica
+docker run -p 8501:8501 --env-file .env gestao-clinica
 ```
 
 ---
-## ✅ Checklist de Deploy (Neon)
-1. Criar projeto Neon e copiar URL.
-2. Definir `DATABASE_URL` em variáveis de ambiente da plataforma.
-3. Executar migração (local ou container one-off).
-4. Subir container / app (Procfile ou Dockerfile).
-5. Testar CRUD + uploads.
-6. Verificar logs e badge de backend.
-7. Fazer backup periódico (dump SQL ou export CSV).
+## ✅ Checklist rápido de deploy
+1. Provisionar Postgres e obter a URL de conexão.
+2. Definir as variáveis no ambiente de execução (ou st.secrets).
+3. Executar `migrate_sqlite_to_postgres.py` se houver dados legados.
+4. Subir a aplicação (`streamlit run app.py`, Procfile, Docker etc.).
+5. Validar badge “Postgres” no dashboard e testar CRUD/Uploads.
 
 ---
-## 🛠️ Próximas evoluções sugeridas
-- Agenda semanal visual
-- Painel de pendências (laudo/avaliação faltantes)
-- Notificações (WhatsApp / e-mail)
-- Export PDF consolidado
-- Busca fuzzy/acento-insensível
-- OCR de PDFs (indexação)
+## 🆘 Suporte
+1. Verifique se o banco está acessível (`st.sidebar` mostra status de conexão).
+2. Confira as variáveis de ambiente e o `.env`.
+3. Consulte os logs em `logs/access.log`.
 
 ---
-## Licença
-Uso interno clínico (MVP). Definir licença formal posteriormente.
-
----
-## Suporte
-Em caso de erro, verificar primeiro:
-1. Badge de backend (Postgres ou SQLite)
-2. Log: `logs/security.log`
-3. Conexão: botão “Testar Backend” em ⚙️ Configurações.
-
----
-_Este README foi gerado automaticamente para refletir o estado atual do projeto._
+_Atualizado para o fluxo pós-migração para PostgreSQL._
