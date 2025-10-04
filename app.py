@@ -1,5 +1,5 @@
 import streamlit as st
-import sqlite3
+import db
 import pathlib
 from datetime import datetime, date, time
 from enum import Enum
@@ -56,8 +56,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Inicializar esquema do banco (cria tabelas caso ainda não existam)
+try:
+    db.create_tables_if_needed()
+except Exception:
+    # Não interromper a interface: DatabaseManager.initialize_database mantém a mesma responsabilidade
+    pass
+
 BASE_DIR = pathlib.Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "gestao_clinica.db"
 DATE_FORMAT = "%d/%m/%Y"
 TIME_FORMAT = "%H:%M"
 PRIMARY_ACCENT = "#4DA768"
@@ -104,43 +110,17 @@ class DatabaseManager:
     @staticmethod
     def initialize_database():
         try:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS atendimentos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    empresa TEXT NOT NULL,
-                    nome TEXT NOT NULL,
-                    modalidade TEXT NOT NULL,
-                    data TEXT NOT NULL,
-                    hora TEXT NOT NULL,
-                    laudo_pdf TEXT,
-                    avaliacao_pdf TEXT,
-                    status TEXT DEFAULT 'Agendado',
-                    observacoes TEXT,
-                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            conn.commit()
-            conn.close()
+            # Cria tabelas no Postgres conforme metadata do db.py
+            db.create_tables_if_needed()
             return True
         except Exception as e:
-            st.error(f"Erro ao inicializar banco: {e}")
+            st.error(f"Erro ao inicializar banco (DB): {e}")
             return False
 
     @staticmethod
     def get_all_appointments():
         try:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT id, empresa, nome, modalidade, data, hora, 
-                       laudo_pdf, avaliacao_pdf, status, observacoes
-                FROM atendimentos ORDER BY data DESC, hora DESC
-            ''')
-            result = cursor.fetchall()
-            conn.close()
-            return result
+            return db.listar_atendimentos()
         except Exception as e:
             st.error(f"Erro ao buscar atendimentos: {e}")
             return []
@@ -148,13 +128,7 @@ class DatabaseManager:
     @staticmethod
     def add_appointment(appointment_data):
         try:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO atendimentos 
-                (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            db.inserir_atendimento(
                 appointment_data.empresa,
                 appointment_data.nome,
                 appointment_data.modalidade,
@@ -163,9 +137,7 @@ class DatabaseManager:
                 appointment_data.laudo_pdf,
                 appointment_data.avaliacao_pdf,
                 getattr(appointment_data, 'observacoes', '')
-            ))
-            conn.commit()
-            conn.close()
+            )
             return True
         except Exception as e:
             st.error(f"Erro ao adicionar atendimento: {e}")
@@ -174,12 +146,7 @@ class DatabaseManager:
     @staticmethod
     def delete_appointment(appointment_id):
         try:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM atendimentos WHERE id = ?', (appointment_id,))
-            conn.commit()
-            conn.close()
-            return True
+            return db.excluir_atendimento(appointment_id)
         except Exception as e:
             st.error(f"Erro ao excluir atendimento: {e}")
             return False
@@ -187,17 +154,14 @@ class DatabaseManager:
     @staticmethod
     def get_statistics():
         try:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM atendimentos')
-            total = cursor.fetchone()[0]
-            cursor.execute('SELECT modalidade, COUNT(*) FROM atendimentos GROUP BY modalidade')
-            modalidades = dict(cursor.fetchall())
-            conn.close()
-            return {
-                "total_atendimentos": total,
-                "modalidades": modalidades
-            }
+            rows = db.listar_atendimentos()
+            total = len(rows)
+            modalidades = {}
+            for r in rows:
+                mod = r[3] if len(r) > 3 else None
+                if mod:
+                    modalidades[mod] = modalidades.get(mod, 0) + 1
+            return {"total_atendimentos": total, "modalidades": modalidades}
         except Exception:
             return {"total_atendimentos": 0, "modalidades": {}}
 
@@ -336,14 +300,7 @@ def save_uploaded_pdf(uploaded_file):
         return ""
 
 def verificar_conexao():
-    try:
-        conn = sqlite3.connect(str(DB_PATH))
-        cursor = conn.cursor()
-        cursor.execute('SELECT 1')
-        conn.close()
-        return True
-    except Exception:
-        return False
+    return db.verificar_conexao()
 
 class AtendimentoData:
     def __init__(self, empresa, nome, modalidade, data, hora, laudo_pdf="", avaliacao_pdf="", observacoes=""):
@@ -361,7 +318,7 @@ class DashboardPage:
     def render() -> None:
         render_page_header("🧠 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge sqlite'>SQLite</span></span>", unsafe_allow_html=True)
+        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>🔌 Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge postgres'>Postgres</span></span>", unsafe_allow_html=True)
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
@@ -541,7 +498,7 @@ class SettingsPage:
         stats = DatabaseManager.get_statistics()
         cards = [
             {"icon": "🔌", "title": "Banco de Dados", "value": "Conectado" if conn_ok else "Offline"},
-            {"icon": "🗄️", "title": "SQLite", "value": "Ativo"},
+            {"icon": "🗄️", "title": "Postgres", "value": "Ativo"},
             {"icon": "📦", "title": "Atendimentos", "value": stats.get("total_atendimentos", 0)},
         ]
 
