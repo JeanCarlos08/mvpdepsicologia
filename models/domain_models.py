@@ -1,5 +1,5 @@
-"""Modelos de domínio (DTOs) para o núcleo da aplicação.
-Separar dessas estruturas facilita validação futura e testes.
+﻿"""Modelos de dom├¡nio (DTOs) para o n├║cleo da aplica├º├úo.
+Separar dessas estruturas facilita valida├º├úo futura e testes.
 """
 from __future__ import annotations
 from dataclasses import dataclass
