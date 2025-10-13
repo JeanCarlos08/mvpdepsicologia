@@ -19,17 +19,16 @@ Aplicação Streamlit para gestão clínica com autenticação simples e Postgre
 
 ## Como iniciar
 - Duplo clique em `INICIAR_SISTEMA.bat`
-- Ou: `python -m streamlit run core/app.py`
+- Ou: `python -m streamlit run app.py`
 
 ## Login
 - Usuário: admin
 - Senha: admin123
 
 ## Estrutura
-- core/app.py → App Streamlit
-- core/services.py → Regras de negócio
-- core/security.py → Sanitização e logs
-- db_unified.py → Acesso ao PostgreSQL
+- app.py → App Streamlit (clássico)
+- db.py → Acesso ao banco (PostgreSQL com fallback para SQLite)
+- security.py → Utilitários
 - uploads/ → PDFs enviados
 
 ## Notas

@@ -21,6 +21,6 @@ cd /d "%~dp0"
 set PGCLIENTENCODING=UTF8
 set PYTHONIOENCODING=utf-8
 
-python -m streamlit run core/app.py
+python -m streamlit run app.py
 
 pause
