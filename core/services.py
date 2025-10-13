@@ -7,55 +7,36 @@ Objetivos:
 
 from __future__ import annotations
 from typing import Optional, Dict, Any, List
+import sys
+from pathlib import Path
 
-try:
-	import db_unified as db  # type: ignore
-except Exception:
-	import db as db  # type: ignore as db
+# Adicionar diretório pai ao path para importar db_unified
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import db_unified as db  # Postgres-only
 
 def create_atendimento(*, empresa: str, nome: str, modalidade: str, data: str, hora: str,
-					   laudo_pdf: Optional[str] = None, avaliacao_pdf: Optional[str] = None,
-					   observacoes: Optional[str] = None) -> bool:
-	"""Cria um atendimento delegando ao repositório de dados.
-	Retorna True/False para simplicidade (poderia lançar exceções específicas)."""
-	return db.inserir_atendimento(empresa, nome, modalidade, data, hora,
-								   laudo_pdf, avaliacao_pdf, observacoes)
-
+                       laudo_pdf: Optional[str] = None, avaliacao_pdf: Optional[str] = None,
+                       observacoes: Optional[str] = None) -> bool:
+    """Cria um novo atendimento."""
+    new_id = db.inserir_atendimento(
+        empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes
+    )
+    return bool(new_id)
 
 def list_atendimentos() -> List[Dict[str, Any]]:
-	"""Retorna lista de atendimentos como dicionários uniformes.
-	Para SQLite retornamos tuplas -> normalizamos em dict."""
-	rows = db.listar_atendimentos()
-	if not rows:
-		return []
-	first = rows[0]
-	# Heurística: se for tupla do SQLite (len >=9) mapear manualmente.
-	if isinstance(first, tuple):
-		keys = ["id","empresa","nome","modalidade","data","hora","laudo_pdf","avaliacao_pdf","status","observacoes"]
-		out: List[Dict[str, Any]] = []
-		for r in rows:
-			d = {}
-			for i, k in enumerate(keys):
-				if i < len(r):
-					d[k] = r[i]
-			out.append(d)
-		return out
-	# Já é lista de dicts (Postgres via db_unified retorna assim)
-	return rows  # type: ignore
-
+    """Lista todos os atendimentos."""
+    return db.listar_atendimentos()
 
 def pending_items() -> Dict[str, int]:
-	"""Calcula pendências: sem laudo, sem avaliação, ambos.
-	Usado para painel de pendências."""
-	data = list_atendimentos()
-	sem_laudo = sum(1 for r in data if not r.get("laudo_pdf"))
-	sem_av = sum(1 for r in data if not r.get("avaliacao_pdf"))
-	ambos = sum(1 for r in data if (not r.get("laudo_pdf") and not r.get("avaliacao_pdf")))
-	return {"sem_laudo": sem_laudo, "sem_avaliacao": sem_av, "sem_ambos": ambos}
-
+    """Retorna estatísticas de pendências."""
+    data = list_atendimentos()
+    return {
+        "sem_laudo": sum(1 for r in data if not r.get("laudo_pdf")),
+        "sem_avaliacao": sum(1 for r in data if not r.get("avaliacao_pdf")),
+        "sem_ambos": sum(1 for r in data if not r.get("laudo_pdf") and not r.get("avaliacao_pdf")),
+    }
 
 __all__ = [
-	'create_atendimento','list_atendimentos','pending_items'
+    'create_atendimento', 'list_atendimentos', 'pending_items'
 ]
-
