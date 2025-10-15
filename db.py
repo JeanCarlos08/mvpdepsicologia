@@ -1,5 +1,4 @@
 ﻿import os
-import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -13,11 +12,11 @@ except Exception:  # pragma: no cover
 	st = None
 
 try:
-    import psycopg2
-    import psycopg2.extras
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    POSTGRES_AVAILABLE = False
+	import psycopg2
+	import psycopg2.extras
+	POSTGRES_AVAILABLE = True
+except ImportError:  # pragma: no cover
+	POSTGRES_AVAILABLE = False
 
 # Carrega um .env que esteja no mesmo diret├│rio deste arquivo, independente do CWD.
 _LOCAL_ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -34,17 +33,13 @@ except Exception:
 _REQUIRED_KEYS = ("db_host", "db_port", "db_name", "db_user", "db_password")
 _URL_KEYS = ("database_url", "db_url", "postgres_url", "postgresql_url")
 _DB_CACHE: Optional[Dict[str, str]] = None
-_USE_SQLITE_FALLBACK = False
-_SQLITE_DB = Path(__file__).resolve().parent / "gestao_clinica_fallback.db"
 
 
 def _load_db_config() -> Dict[str, str]:
-	global _DB_CACHE, _USE_SQLITE_FALLBACK
-	if _DB_CACHE is not None and not _USE_SQLITE_FALLBACK:
+	"""Carrega configuração obrigatória do PostgreSQL; falha se ausente."""
+	global _DB_CACHE
+	if _DB_CACHE is not None:
 		return _DB_CACHE
-
-	if _USE_SQLITE_FALLBACK:
-		return {"sqlite_path": str(_SQLITE_DB)}
 
 	secrets = getattr(st, "secrets", None)
 	config = None
@@ -52,15 +47,14 @@ def _load_db_config() -> Dict[str, str]:
 		try:
 			config = _build_config_from_mapping(secrets)
 		except Exception:
-			# Ignora falha ao ler st.secrets quando n├úo existe secrets.toml
 			config = None
 	if config is None:
 		config = _build_config_from_mapping(os.environ)
 
 	if config is None:
-		print("ÔÜá´©Å PostgreSQL n├úo configurado, usando SQLite como fallback")
-		_USE_SQLITE_FALLBACK = True
-		return {"sqlite_path": str(_SQLITE_DB)}
+		raise RuntimeError(
+			"Banco não configurado. Defina DATABASE_URL ou as variáveis db_host, db_port, db_name, db_user, db_password."
+		)
 
 	_DB_CACHE = config
 	return config
@@ -100,15 +94,15 @@ def _build_config_from_mapping(source: Optional[Mapping[str, Any]]) -> Optional[
 def _parse_database_url(url: str) -> Dict[str, str]:
 	parsed = urlparse(url)
 	if parsed.scheme not in {"postgres", "postgresql"}:
-		raise RuntimeError("DATABASE_URL inv├ílida: utilize postgres:// ou postgresql://")
+		raise RuntimeError("DATABASE_URL inválida: utilize postgres:// ou postgresql://")
 
 	host = parsed.hostname
 	if not host:
-		raise RuntimeError("DATABASE_URL inv├ílida: host ausente.")
+		raise RuntimeError("DATABASE_URL inválida: host ausente.")
 
 	path = parsed.path.lstrip("/")
 	if not path:
-		raise RuntimeError("DATABASE_URL inv├ílida: nome do banco ausente.")
+		raise RuntimeError("DATABASE_URL inválida: nome do banco ausente.")
 
 	return {
 		"db_host": host,
@@ -120,32 +114,20 @@ def _parse_database_url(url: str) -> Dict[str, str]:
 
 
 def get_connection():
-	"""Retorna uma nova conex├úo (PostgreSQL ou SQLite fallback)."""
-	global _USE_SQLITE_FALLBACK
-	
-	cfg = _load_db_config()
-	
-	if _USE_SQLITE_FALLBACK or "sqlite_path" in cfg:
-		return sqlite3.connect(cfg["sqlite_path"])
-	
+	"""Retorna uma nova conexão PostgreSQL (somente Postgres)."""
 	if not POSTGRES_AVAILABLE:
-		print("ÔÜá´©Å psycopg2 n├úo dispon├¡vel, usando SQLite")
-		_USE_SQLITE_FALLBACK = True
-		return sqlite3.connect(str(_SQLITE_DB))
-	
-	try:
-		return psycopg2.connect(
-			host=cfg["db_host"],
-			port=cfg["db_port"],
-			dbname=cfg["db_name"],
-			user=cfg["db_user"],
-			password=cfg["db_password"],
-			cursor_factory=psycopg2.extras.RealDictCursor,
+		raise ImportError(
+			"psycopg2 não instalado. Instale 'psycopg2-binary' e configure o PostgreSQL."
 		)
-	except Exception as e:
-		print(f"ÔÜá´©Å Erro PostgreSQL ({e}), usando SQLite fallback")
-		_USE_SQLITE_FALLBACK = True
-		return sqlite3.connect(str(_SQLITE_DB))
+	cfg = _load_db_config()
+	return psycopg2.connect(
+		host=cfg["db_host"],
+		port=cfg["db_port"],
+		dbname=cfg["db_name"],
+		user=cfg["db_user"],
+		password=cfg["db_password"],
+		cursor_factory=psycopg2.extras.RealDictCursor,
+	)
 
 
 # Compatibilidade com a grafia solicitada
@@ -169,12 +151,8 @@ def _connection_scope(commit: bool = True):
 
 
 def _get_cursor(conn):
-	"""Retorna cursor compat├¡vel (dict-like para PostgreSQL, row_factory para SQLite)."""
-	if _USE_SQLITE_FALLBACK or isinstance(conn, sqlite3.Connection):
-		conn.row_factory = sqlite3.Row
-		return conn.cursor()
-	else:
-		return conn.cursor()
+	"""Retorna cursor PostgreSQL (RealDictCursor já configurado na conexão)."""
+	return conn.cursor()
 
 
 SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
@@ -204,39 +182,11 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 	""",
 )
 
-SCHEMA_STATEMENTS_SQLITE: Tuple[str, ...] = (
-	"""
-	CREATE TABLE IF NOT EXISTS atendimentos (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		empresa TEXT NOT NULL,
-		nome TEXT NOT NULL,
-		modalidade TEXT NOT NULL,
-		data TEXT NOT NULL,
-		hora TEXT NOT NULL,
-		laudo_pdf TEXT,
-		avaliacao_pdf TEXT,
-		status TEXT DEFAULT 'Agendado',
-		observacoes TEXT,
-		criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	""",
-	"""
-	CREATE TABLE IF NOT EXISTS notas (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		titulo TEXT NOT NULL,
-		conteudo TEXT,
-		tags TEXT,
-		favorita INTEGER DEFAULT 0
-	);
-	""",
-)
-
 
 def ensure_schema() -> None:
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
-		statements = SCHEMA_STATEMENTS_SQLITE if _USE_SQLITE_FALLBACK else SCHEMA_STATEMENTS_POSTGRES
-		for statement in statements:
+		for statement in SCHEMA_STATEMENTS_POSTGRES:
 			cur.execute(statement)
 
 
@@ -265,30 +215,18 @@ def inserir_atendimento(
 	observacoes: Optional[str] = None,
 	status: Optional[str] = None,
 ) -> int:
-	if _USE_SQLITE_FALLBACK:
-		query = """
-		INSERT INTO atendimentos
-		(empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'Agendado'))
-		"""
-		params = (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
-		with _connection_scope() as conn:
-			cur = _get_cursor(conn)
-			cur.execute(query, params)
-			return cur.lastrowid or 0
-	else:
-		query = """
-		INSERT INTO atendimentos
-		(empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
-		VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 'Agendado'))
-		RETURNING id
-		"""
-		params = (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
-		with _connection_scope() as conn:
-			cur = _get_cursor(conn)
-			cur.execute(query, params)
-			result = cur.fetchone()
-			return int(result["id"]) if result else 0
+	query = """
+	INSERT INTO atendimentos
+	(empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 'Agendado'))
+	RETURNING id
+	"""
+	params = (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute(query, params)
+		result = cur.fetchone()
+		return int(result["id"]) if result else 0
 
 
 def listar_atendimentos() -> List[Tuple]:
@@ -302,20 +240,12 @@ def listar_atendimentos() -> List[Tuple]:
 		cur = _get_cursor(conn)
 		cur.execute(query)
 		rows = cur.fetchall()
-		if _USE_SQLITE_FALLBACK:
-			return [tuple(row[col] for col in columns) for row in rows]
-		else:
-			return [tuple(row[col] for col in columns) for row in rows]
+		return [tuple(row[col] for col in columns) for row in rows]
 
 
 def excluir_atendimento(atendimento_id: int) -> bool:
-	if _USE_SQLITE_FALLBACK:
-		query = "DELETE FROM atendimentos WHERE id = ?"
-		params = (atendimento_id,)
-	else:
-		query = "DELETE FROM atendimentos WHERE id = %s"
-		params = (atendimento_id,)
-		
+	query = "DELETE FROM atendimentos WHERE id = %s"
+	params = (atendimento_id,)
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		cur.execute(query, params)
@@ -324,9 +254,6 @@ def excluir_atendimento(atendimento_id: int) -> bool:
 
 def get_db_diagnostics() -> Dict[str, str]:
 	try:
-		if _USE_SQLITE_FALLBACK:
-			return {"backend": "SQLite", "database": str(_SQLITE_DB), "status": "fallback"}
-		
 		cfg = _load_db_config()
 		with _connection_scope(commit=False) as conn:
 			cur = _get_cursor(conn)
@@ -334,15 +261,12 @@ def get_db_diagnostics() -> Dict[str, str]:
 			tables = [row["table_name"] for row in cur.fetchall()]
 		return {"backend": "PostgreSQL", "tables": ", ".join(sorted(tables)), "host": cfg["db_host"], "database": cfg["db_name"]}
 	except Exception as exc:
-		return {"backend": "SQLite (erro PostgreSQL)", "error": str(exc)}
+		return {"backend": "PostgreSQL", "error": str(exc)}
 
 
 def debug_config_snapshot() -> Dict[str, str]:
-	"""Retorna um snapshot das chaves detect├íveis para diagn├│stico r├ípido."""
-	if _USE_SQLITE_FALLBACK:
-		return {"backend": "SQLite", "sqlite_path": str(_SQLITE_DB)}
-	
-	info: Dict[str, str] = {}
+	"""Retorna um snapshot das chaves detectáveis para diagnóstico rápido."""
+	info: Dict[str, str] = {"backend": "PostgreSQL"}
 	normalized = _normalize_mapping(os.environ)
 	for key in _REQUIRED_KEYS:
 		info[key] = "OK" if key in normalized else "MISSING"
