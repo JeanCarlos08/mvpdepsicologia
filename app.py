@@ -602,7 +602,7 @@ class UploadPage:
             else:
                 st.info("Nenhum arquivo encontrado.")
         else:
-            st.info("Diret├│rio de uploads n├úo existe ainda.")
+            st.info("Diretório de uploads não existe ainda.")
 
 
 class AuthPage:
