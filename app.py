@@ -50,8 +50,8 @@ _fallback_load_dotenv()
 
 # Configurar p├ígina do Streamlit
 st.set_page_config(
-    page_title="JULIANA - Gest├úo Cl├¡nica",
-    page_icon="­ƒºá",
+    page_title="JULIANA - Gestão Clínica",
+    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -71,8 +71,8 @@ PRIMARY_ACCENT = "#4DA768"
 class ModalidadeAtendimento(Enum):
     ADMISSIONAL = "Admissional"
     DEMISSIONAL = "Demissional"
-    PERIODO = "Per├¡odo"
-    MUDANCA_FUNCAO = "Mudan├ºa de fun├º├úo"
+    PERIODO = "Período"
+    MUDANCA_FUNCAO = "Mudança de função"
 
 class Security:
     @staticmethod
@@ -316,9 +316,9 @@ class AtendimentoData:
 class DashboardPage:
     @staticmethod
     def render() -> None:
-        render_page_header("­ƒºá JULIANA - Gest├úo Cl├¡nica", "Dashboard Executivo ÔÇö Indicadores e m├®tricas principais do sistema", inverse=True)
+        render_page_header("🩺 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>­ƒöî Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge postgres'>Postgres</span></span>", unsafe_allow_html=True)
+        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>🗄️ Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge postgres'>Postgres</span></span>", unsafe_allow_html=True)
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
@@ -335,13 +335,13 @@ class DashboardPage:
                     avaliacoes_enviadas += 1
             total_empresas = len(empresas_unicas)
         except Exception as e:
-            st.error(f"Erro ao carregar estat├¡sticas: {e}")
+            st.error(f"Erro ao carregar estatísticas: {e}")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         cards = [
-            {"icon": "­ƒæÑ", "title": "Atendimentos", "value": total_appointments, "acc": PRIMARY_ACCENT},
-            {"icon": "­ƒÅó", "title": "Empresas", "value": total_empresas, "acc": PRIMARY_ACCENT},
-            {"icon": "­ƒôä", "title": "Relat├│rios", "value": laudos_enviados, "acc": PRIMARY_ACCENT},
-            {"icon": "­ƒôØ", "title": "Avalia├º├Áes", "value": avaliacoes_enviadas, "acc": PRIMARY_ACCENT},
+            {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": PRIMARY_ACCENT},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": PRIMARY_ACCENT},
+            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": PRIMARY_ACCENT},
+            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": PRIMARY_ACCENT},
         ]
         display_cards(cards)
         if not total_appointments:
@@ -349,7 +349,7 @@ class DashboardPage:
         if stats.get("modalidades"):
             vals = list(stats["modalidades"].values())
             labels = list(stats["modalidades"].keys())
-            fig = px.pie(values=vals, names=labels, title="Distribui├º├úo por Modalidade")
+            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade")
             fig.update_traces(textposition="inside", textinfo="percent+label")
             fig.update_layout(legend_title_text="Modalidade", height=420)
             st.plotly_chart(fig, use_container_width=True)
@@ -357,35 +357,35 @@ class DashboardPage:
 class AppointmentsPage:
     @staticmethod
     def render(filters):
-        render_page_header("­ƒôØ Atendimentos", "Gerenciamento de Consultas e Procedimentos")
-        with st.expander("Ô×ò Cadastrar Novo Atendimento", expanded=False):
+        render_page_header("📅 Atendimentos", "Gerenciamento de Consultas e Procedimentos")
+        with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
             with st.form("appointment_form_new", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    empresa = st.text_input("­ƒÅó Empresa/Organiza├º├úo")
+                    empresa = st.text_input("🏢 Empresa/Organização")
                     # Modalidades padronizadas (ignoramos outras entradas do DB)
-                    modalidade = st.selectbox("­ƒÅÑ Modalidade", [m.value for m in ModalidadeAtendimento])
-                    data_sel = st.date_input("­ƒôà Data", min_value=date.today())
+                    modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento])
+                    data_sel = st.date_input("📅 Data", min_value=date.today())
                 with col2:
-                    nome = st.text_input("­ƒæñ Nome do Paciente")
-                    hora_sel = st.time_input("­ƒòÉ Hor├írio")
-                st.markdown("#### ­ƒôÄ Anexos (opcional)")
+                    nome = st.text_input("👤 Nome do Paciente")
+                    hora_sel = st.time_input("⏰ Horário")
+                st.markdown("#### 📎 Anexos (opcional)")
                 c1a, c2a = st.columns(2)
                 with c1a:
-                    up_laudo = st.file_uploader("­ƒôÄ Laudo PDF", type=["pdf"], key="up_laudo_new")
+                    up_laudo = st.file_uploader("📄 Laudo PDF", type=["pdf"], key="up_laudo_new")
                     if up_laudo:
                         size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
-                        st.caption(f"Selecionado: {up_laudo.name} ÔÇö {size_mb:.2f} MB")
+                        st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
                 with c2a:
-                    up_avaliacao = st.file_uploader("­ƒôØ Avalia├º├úo PDF", type=["pdf"], key="up_aval_new")
+                    up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
                     if up_avaliacao:
                         size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
-                        st.caption(f"Selecionado: {up_avaliacao.name} ÔÇö {size_mb:.2f} MB")
-                observacoes = st.text_area("­ƒôØ Observa├º├Áes", placeholder="Observa├º├Áes adicionais...")
-                submitted = st.form_submit_button("­ƒÆ¥ Salvar", type="primary")
+                        st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
+                observacoes = st.text_area("🗒️ Observações", placeholder="Observações adicionais...")
+                submitted = st.form_submit_button("💾 Salvar", type="primary")
                 if submitted:
                     if not empresa or not nome:
-                        st.error("Preencha os campos obrigat├│rios (Empresa e Nome).")
+                        st.error("Preencha os campos obrigatórios (Empresa e Nome).")
                     else:
                         laudo_path = save_uploaded_pdf(up_laudo)
                         avaliacao_path = save_uploaded_pdf(up_avaliacao)
@@ -401,7 +401,7 @@ class AppointmentsPage:
                         )
                         if DatabaseManager.add_appointment(novo_atendimento):
                             security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
-                            st.success("Ô£à Atendimento cadastrado!")
+                            st.success("✅ Atendimento cadastrado!")
                             st.rerun()
                         else:
                             st.error("Erro ao cadastrar atendimento.")
@@ -424,33 +424,33 @@ class AppointmentsPage:
                 "Data",
                 "Hora",
                 "Laudo PDF",
-                "Avalia├º├úo PDF",
+                "Avaliação PDF",
                 "Status",
-                "Observa├º├Áes",
+                "Observações",
             ],
         )
 
         if filters.get("modalidade_filter"):
             df = df[df["Modalidade"] == filters["modalidade_filter"]]
 
-        df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "N├âO")
-        df["Avalia├º├úo"] = df["Avalia├º├úo PDF"].apply(lambda x: "SIM" if x else "N├âO")
+        df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
+        df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
 
         st.markdown(
-            "<h3 class='card-title' style='color:#000000 !important;'>­ƒôï Lista de Atendimentos</h3>",
+            "<h3 class='card-title' style='color:#000000 !important;'>📋 Lista de Atendimentos</h3>",
             unsafe_allow_html=True,
         )
 
-        df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avalia├º├úo", "Status"]].copy()
+        df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
         st.dataframe(df_display, use_container_width=True, height=400)
 
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("Ô¼ç´©Å Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
+        st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
 
 class SettingsPage:
     @staticmethod
     def render() -> None:
-        render_page_header("ÔÜÖ´©Å Configura├º├Áes", "Administra├º├úo do Sistema")
+        render_page_header("⚙️ Configurações", "Administração do Sistema")
 
         # For├ºar paleta visual apenas para a p├ígina de configura├º├Áes
         # Injetar uma classe no <body> para escopo confi├ível dos estilos (override do estilo global)
@@ -497,9 +497,9 @@ class SettingsPage:
         conn_ok = verificar_conexao()
         stats = DatabaseManager.get_statistics()
         cards = [
-            {"icon": "­ƒöî", "title": "Banco de Dados", "value": "Conectado" if conn_ok else "Offline"},
-            {"icon": "­ƒùä´©Å", "title": "Postgres", "value": "Ativo"},
-            {"icon": "­ƒôª", "title": "Atendimentos", "value": stats.get("total_atendimentos", 0)},
+            {"icon": "🗄️", "title": "Banco de Dados", "value": "Conectado" if conn_ok else "Offline"},
+            {"icon": "🐘", "title": "Postgres", "value": "Ativo"},
+            {"icon": "📋", "title": "Atendimentos", "value": stats.get("total_atendimentos", 0)},
         ]
 
         display_cards(cards)
@@ -507,27 +507,27 @@ class SettingsPage:
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            if st.button("­ƒöä Limpar Cache"):
+            if st.button("🧹 Limpar Cache"):
                 st.cache_data.clear()
                 st.cache_resource.clear()
                 st.success("Cache limpo!")
 
         with col2:
-            if st.button("­ƒùä´©Å Verificar Banco"):
+            if st.button("🩺 Verificar Banco"):
                 if verificar_conexao():
-                    st.success("Conex├úo com banco OK!")
+                    st.success("Conexão com banco OK!")
                 else:
-                    st.error("Falha na conex├úo com o banco.")
+                    st.error("Falha na conexão com o banco.")
 
         with col3:
-            if st.button("­ƒøá´©Å Reinicializar DB"):
+            if st.button("♻️ Reinicializar DB"):
                 if DatabaseManager.initialize_database():
                     st.success("Banco reinicializado!")
                 else:
                     st.error("Erro ao reinicializar banco.")
 
         with col4:
-            if st.button("­ƒôè Estat├¡sticas"):
+            if st.button("📊 Estatísticas"):
                 st.json(stats)
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -535,28 +535,28 @@ class SettingsPage:
 class ReportsPage:
     @staticmethod
     def render() -> None:
-        render_page_header("­ƒôè Relat├│rios", "An├ílises e Exporta├º├Áes")
+        render_page_header("📊 Relatórios", "Análises e Exportações")
         col1, col2 = st.columns(2)
         with col1:
-            periodo = st.selectbox("Per├¡odo", ["├Ültimos 7 dias", "├Ültimos 30 dias", "Ano atual", "Tudo"])
+            periodo = st.selectbox("Período", ["Últimos 7 dias", "Últimos 30 dias", "Ano atual", "Tudo"])
         with col2:
             formato = st.selectbox("Formato", ["CSV", "Excel"])
         appointments = DatabaseManager.get_all_appointments()
         if not appointments:
-            st.info("Sem dados para relat├│rio.")
+            st.info("Sem dados para relatório.")
             return
         df = pd.DataFrame(appointments, columns=[
             "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
-            "Laudo PDF", "Avalia├º├úo PDF", "Status", "Observa├º├Áes"
+            "Laudo PDF", "Avaliação PDF", "Status", "Observações"
         ])
-        st.markdown("### ­ƒôê Resumo")
+        st.markdown("### 🧾 Resumo")
         total_atendimentos = len(df)
         total_empresas = df["Empresa"].nunique()
         total_modalidades = df["Modalidade"].nunique()
         cards = [
-            {"icon": "­ƒæÑ", "title": "Total Atendimentos", "value": total_atendimentos},
-            {"icon": "­ƒÅó", "title": "Empresas", "value": total_empresas},
-            {"icon": "­ƒº¥", "title": "Modalidades", "value": total_modalidades},
+            {"icon": "📋", "title": "Total Atendimentos", "value": total_atendimentos},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas},
+            {"icon": "🧾", "title": "Modalidades", "value": total_modalidades},
         ]
         display_cards(cards)
         if not df.empty:
@@ -564,7 +564,7 @@ class ReportsPage:
             fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade")
             fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400)
             st.plotly_chart(fig, use_container_width=True)
-        st.markdown("### Ô¼ç´©Å Exportar Relat├│rio")
+        st.markdown("### ⬇️ Exportar Relatório")
         if formato == "CSV":
             csv_data = df.to_csv(index=False).encode("utf-8-sig")
             st.download_button("Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
@@ -572,16 +572,16 @@ class ReportsPage:
 class UploadPage:
     @staticmethod
     def render() -> None:
-        render_page_header("­ƒôä Upload de Arquivos", "Gerencie arquivos PDF")
+        render_page_header("📤 Upload de Arquivos", "Gerencie arquivos PDF")
         uploaded_file = st.file_uploader("Escolha um arquivo PDF", type=["pdf"])
         if uploaded_file:
             size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
-            st.info(f"Arquivo: {uploaded_file.name} ÔÇö {size_mb:.2f} MB")
+            st.info(f"Arquivo: {uploaded_file.name} — {size_mb:.2f} MB")
             if st.button("Salvar Arquivo", type="primary"):
                 saved_path = save_uploaded_pdf(uploaded_file)
                 if saved_path:
                     st.success(f"Arquivo salvo em: {saved_path}")
-        st.markdown("### ­ƒôü Arquivos Salvos")
+        st.markdown("### 📁 Arquivos Salvos")
         uploads_dir = BASE_DIR / "uploads"
         if uploads_dir.exists():
             pdf_files = list(uploads_dir.glob("*.pdf"))
@@ -590,7 +590,7 @@ class UploadPage:
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         size_kb = pdf_file.stat().st_size // 1024
-                        st.write(f"­ƒôä {pdf_file.name} ({size_kb} KB)")
+                        st.write(f"📄 {pdf_file.name} ({size_kb} KB)")
                     with col2:
                         with open(pdf_file, 'rb') as f:
                             st.download_button(
@@ -608,59 +608,56 @@ class UploadPage:
 class AuthPage:
     @staticmethod
     def render():
-                """Renderiza a p├ígina de autentica├º├úo ÔÇö n├úo for├ºa bloqueio, apenas oferece formul├írio."""
-                render_page_header("­ƒöÉ Autentica├º├úo", "├ürea de login (opcional)")
-                st.markdown("<div style='color: #ffffff;'>Use vari├íveis de ambiente <code>APP_ADMIN_USER</code> e <code>APP_ADMIN_PASS</code> para configurar credenciais.</div>", unsafe_allow_html=True)
-                # Formul├írio que grava autentica├º├úo em session_state
-                if 'user_authenticated' not in st.session_state:
-                        st.session_state['user_authenticated'] = False
-                if 'user_name' not in st.session_state:
-                        st.session_state['user_name'] = ''
-                st.markdown("<div class='auth-card' style='padding:10px;border-radius:8px;'>", unsafe_allow_html=True)
-                with st.form('auth_form'):
-                        user = st.text_input('Usu├írio')
-                        pwd = st.text_input('Senha', type='password')
-                        submitted = st.form_submit_button('Login')
-                        # Diagnostic (dev only): mostrar se vari├íveis de admin est├úo definidas
+        """Renderiza a página de autenticação — não força bloqueio, apenas oferece formulário."""
+        render_page_header("🔒 Autenticação", "Área de login (opcional)")
+        st.markdown(
+            "<div style='color: #ffffff;'>Use as variáveis de ambiente <code>APP_ADMIN_USER</code> e <code>APP_ADMIN_PASS</code> para configurar credenciais.</div>",
+            unsafe_allow_html=True,
+        )
+        # Formulário que grava autenticação em session_state
+        if 'user_authenticated' not in st.session_state:
+            st.session_state['user_authenticated'] = False
+        if 'user_name' not in st.session_state:
+            st.session_state['user_name'] = ''
+
+        st.markdown("<div class='auth-card' style='padding:10px;border-radius:8px;'>", unsafe_allow_html=True)
+        with st.form('auth_form'):
+            user = st.text_input('Usuário')
+            pwd = st.text_input('Senha', type='password')
+            submitted = st.form_submit_button('Entrar', type='primary')
+
+            if submitted:
+                admin_user = os.getenv('APP_ADMIN_USER', '').strip()
+                admin_pass = os.getenv('APP_ADMIN_PASS', '').strip()
+                if admin_user and admin_pass:
+                    if user == admin_user and pwd == admin_pass:
+                        st.session_state['user_authenticated'] = True
+                        st.session_state['user_name'] = user
+                        security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
+                        st.success('Login bem-sucedido — você será redirecionado.')
+                        # Reload imediato para refletir estado
                         try:
-                            _dbg_admin_user = os.getenv('APP_ADMIN_USER')
-                            _dbg_admin_pass_set = bool(os.getenv('APP_ADMIN_PASS'))
-                            st.caption(f"DEBUG: APP_ADMIN_USER set: {bool(_dbg_admin_user)}, APP_ADMIN_PASS set: {_dbg_admin_pass_set}")
+                            components.html('<script>window.location.reload();</script>', height=0)
                         except Exception:
-                            pass
-                        if submitted:
-                                admin_user = os.getenv('APP_ADMIN_USER', '').strip()
-                                admin_pass = os.getenv('APP_ADMIN_PASS', '').strip()
-                                if admin_user and admin_pass:
-                                        if user == admin_user and pwd == admin_pass:
-                                                st.session_state['user_authenticated'] = True
-                                                st.session_state['user_name'] = user
-                                                security.log_access('AUTH_LOGIN', f'Usu├írio {user} autenticado via AuthPage')
-                                                st.success('Login bem sucedido ÔÇö voc├¬ ser├í redirecionado.')
-                                                # For├ºar reload imediato no cliente para reduzir lat├¬ncia percebida
-                                                try:
-                                                    components.html('<script>window.location.reload();</script>', height=0)
-                                                except Exception:
-                                                    # fallback: tentar experimental_rerun() e depois st.stop()
-                                                    try:
-                                                        rerun = getattr(st, 'experimental_rerun', None)
-                                                        if callable(rerun):
-                                                            rerun()
-                                                        else:
-                                                            raise AttributeError('experimental_rerun ausente')
-                                                    except Exception:
-                                                        try:
-                                                            st.stop()
-                                                        except Exception:
-                                                            pass
-                                        else:
-                                                st.error('Credenciais inv├ílidas')
-                                                security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
+                            try:
+                                rerun = getattr(st, 'experimental_rerun', None)
+                                if callable(rerun):
+                                    rerun()
                                 else:
-                                        st.warning('Credenciais admin n├úo configuradas ÔÇö modo aberto do sistema.')
-                st.markdown("</div>", unsafe_allow_html=True)
-                # Injetar JS via components para garantir estilo nos inputs do auth-card
-                js = r"""
+                                    raise AttributeError('experimental_rerun ausente')
+                            except Exception:
+                                try:
+                                    st.stop()
+                                except Exception:
+                                    pass
+                    else:
+                        st.error('Credenciais inválidas')
+                        security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
+                else:
+                    st.warning('Credenciais de administrador não configuradas — sistema em modo aberto.')
+        st.markdown("</div>", unsafe_allow_html=True)
+        # Injetar JS via components para garantir estilo nos inputs do auth-card
+        js = r"""
 <script>
 (function(){
     try{
@@ -737,11 +734,11 @@ class AuthPage:
 })();
 </script>
 """
-                try:
-                        components.html(js, height=10)
-                except Exception:
-                        # fallback silencioso se components n├úo puder executar
-                        pass
+        try:
+            components.html(js, height=10)
+        except Exception:
+            # fallback silencioso se components não puder executar
+            pass
 
 class ClinicalManagementApp:
     def __init__(self):
@@ -754,15 +751,15 @@ class ClinicalManagementApp:
         apply_custom_css()
         apply_plotly_theme()
         with st.sidebar:
-            st.markdown("## ­ƒºá JULIANA")
-            st.markdown("*Gest├úo Cl├¡nica*")
-            conn_status = f"<span style='color:#00BFFF; font-size:1.2em;'>ÔùÅ</span> Conectado" if verificar_conexao() else f"<span style='color:#d32f2f; font-size:1.2em;'>ÔùÅ</span> Desconectado"
+            st.markdown("## 🩺 JULIANA")
+            st.markdown("*Gestão Clínica*")
+            conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
             st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
             # Logout r├ípido
             if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
-                st.write(f"Usu├írio: {st.session_state.get('user_name', '')}")
-                if st.button('­ƒöô Logout'):
-                    security.log_access('AUTH_LOGOUT', f"Usu├írio {st.session_state.get('user_name','')} deslogado")
+                st.write(f"Usuário: {st.session_state.get('user_name', '')}")
+                if st.button('🚪 Logout'):
+                    security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
                     st.session_state['user_authenticated'] = False
                     st.session_state['user_name'] = ''
                     # Reiniciar a interface; experimental_rerun pode n├úo existir em algumas vers├Áes do Streamlit
@@ -778,14 +775,14 @@ class ClinicalManagementApp:
                         except Exception:
                             pass
             pages = {
-                "­ƒÅá Dashboard": "dashboard",
-                "­ƒôØ Atendimentos": "appointments",
-                "­ƒôè Relat├│rios": "reports",
-                "­ƒôä Upload": "upload",
-                "ÔÜÖ´©Å Configura├º├Áes": "settings"
+                "🏠 Dashboard": "dashboard",
+                "📅 Atendimentos": "appointments",
+                "📊 Relatórios": "reports",
+                "📤 Upload": "upload",
+                "⚙️ Configurações": "settings"
             }
             # Fornecer key ├║nica para evitar StreamlitDuplicateElementId em casos de re-render
-            selected_page = st.radio("Navega├º├úo", list(pages.keys()), index=0, key='nav_radio')
+            selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
             page_key = pages[selected_page]
         if page_key == "dashboard":
             # Prote├º├úo: redireciona para AuthPage se n├úo autenticado
