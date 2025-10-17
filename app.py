@@ -8,45 +8,8 @@ import plotly.express as px
 import plotly.io as pio
 import os
 import streamlit.components.v1 as components
-# Carrega .env automaticamente em tempo de execu├º├úo (se python-dotenv estiver instalado)
-try:
-    from dotenv import load_dotenv  # type: ignore
-    load_dotenv()
-except Exception:
-    # dotenv ausente ou falha ao carregar ÔÇö continue normalmente (espera vari├íveis de ambiente do sistema)
-    pass
-
-# Fallback simples: se python-dotenv n├úo estiver presente e houver um arquivo .env na raiz,
-# vamos carregar chaves b├ísicas (APP_ADMIN_USER/APP_ADMIN_PASS) para o ambiente.
-def _fallback_load_dotenv(env_path: pathlib.Path | None = None) -> None:
-    try:
-        root = pathlib.Path(__file__).resolve().parent
-        env_path = env_path or (root / '.env')
-        if not env_path.exists():
-            return
-        with open(env_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#') or '=' not in line:
-                    continue
-                key, val = line.split('=', 1)
-                key = key.strip()
-                val = val.strip().strip('"').strip("'")
-                # only set if not already present (treat empty string as unset)
-                # algumas execu├º├Áes de Streamlit podem deixar a vari├ível definida mas vazia;
-                # considerar isso como n├úo-configurada para permitir o fallback do .env
-                if key and val and not os.getenv(key):
-                    try:
-                        os.environ[key] = val
-                    except Exception:
-                        # N├úo falhar a inicializa├º├úo por causa de problemas ao setar env
-                        pass
-    except Exception:
-        # N├úo falhar na inicializa├º├úo por causa desse fallback
-        pass
-
-# Executar fallback imediatamente para garantir que vari├íveis definidas em .env sejam vis├¡veis
-_fallback_load_dotenv()
+# Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
+# ...restante do arquivo permanece inalterado...
 
 # Configurar p├ígina do Streamlit
 st.set_page_config(
@@ -744,10 +707,14 @@ class ClinicalManagementApp:
     def __init__(self):
         pass
     def run(self):
-        # Inicializa├º├úo do DB e temas
-        if not DatabaseManager.initialize_database():
-            st.error("Erro ao inicializar banco de dados.")
-            st.stop()
+        # Inicialização do DB e temas (não bloquear a UI se o banco estiver offline)
+        db_ok = False
+        try:
+            db_ok = DatabaseManager.initialize_database()
+        except Exception:
+            db_ok = False
+        if not db_ok:
+            st.warning("Banco de dados indisponível no momento. Você ainda pode fazer login e acessar Configurações; demais páginas exigem conexão.")
         apply_custom_css()
         apply_plotly_theme()
         with st.sidebar:
@@ -785,7 +752,7 @@ class ClinicalManagementApp:
             selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
             page_key = pages[selected_page]
         if page_key == "dashboard":
-            # Prote├º├úo: redireciona para AuthPage se n├úo autenticado
+            # Proteção: redireciona para AuthPage se não autenticado
             if not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
@@ -810,6 +777,22 @@ class ClinicalManagementApp:
                 AuthPage.render()
             else:
                 SettingsPage.render()
+
+        # Rodapé com dicas rápidas sobre DB
+        try:
+            st.divider()
+        except Exception:
+            st.markdown("---")
+        conn_ok = verificar_conexao()
+        if not conn_ok:
+            with st.expander("Ajuda rápida: ativar PostgreSQL", expanded=False):
+                st.markdown(
+                    "- Abra o menu Iniciar e digite: services.msc\n"
+                    "- Procure o serviço: postgresql-x64-18\n"
+                    "- Clique com o botão direito e escolha: Iniciar\n"
+                    "- Caso não exista o banco, no pgAdmin crie: gestao_clinica\n"
+                    "- Usuário: admin | Senha: admin123"
+                )
 
 if __name__ == "__main__":
     ClinicalManagementApp().run()

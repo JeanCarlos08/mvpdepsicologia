@@ -12,10 +12,10 @@ Aplicação Streamlit para gestão clínica com autenticação simples e Postgre
 2. Configure o `.env` (já incluso):
    - APP_ADMIN_USER=admin
    - APP_ADMIN_PASS=admin123
-   - DATABASE_URL=postgresql://admin:MinhaSenhaSegura123@127.0.0.1:5432/gestao_clinica
+   - DATABASE_URL=postgresql://admin:admin123@127.0.0.1:5432/gestao_clinica
 3. Banco de dados:
-   - O sistema tenta criar automaticamente o banco `gestao_clinica` na primeira execução (se houver permissão).
-   - Alternativa: criar manualmente no pgAdmin: `CREATE DATABASE gestao_clinica;`
+   - O app exige PostgreSQL ativo e credenciais válidas.
+   - Crie o banco previamente no pgAdmin/psql: `CREATE DATABASE gestao_clinica;`
 
 ## Como iniciar
 - Duplo clique em `INICIAR_SISTEMA.bat`
@@ -27,10 +27,9 @@ Aplicação Streamlit para gestão clínica com autenticação simples e Postgre
 
 ## Estrutura
 - app.py → App Streamlit (clássico)
-- db.py → Acesso ao banco (PostgreSQL com fallback para SQLite)
-- security.py → Utilitários
+- db.py → Acesso ao banco (PostgreSQL)
 - uploads/ → PDFs enviados
 
 ## Notas
-- O app inicia mesmo sem o banco conectado e exibe aviso.
+- O app exige PostgreSQL configurado e ativo.
 - Encoding ajustado para Windows/UTF-8.

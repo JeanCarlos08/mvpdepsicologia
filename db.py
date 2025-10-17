@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 from urllib.parse import unquote, urlparse
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # mantido por compatibilidade, mas não será usado aqui
 
 try:  # Streamlit Cloud fornece st.secrets
 	import streamlit as st  # type: ignore
@@ -18,17 +18,53 @@ try:
 except ImportError:  # pragma: no cover
 	POSTGRES_AVAILABLE = False
 
-# Carrega um .env que esteja no mesmo diret├│rio deste arquivo, independente do CWD.
+# Carrega um .env da pasta do arquivo, independente do CWD, com fallback de encoding
 _LOCAL_ENV_PATH = Path(__file__).resolve().parent / ".env"
-try:
-	if _LOCAL_ENV_PATH.exists():
-		load_dotenv(dotenv_path=_LOCAL_ENV_PATH, override=False)
-	else:
-		# fallback para comportamento padr├úo (procura em CWD e pais)
-		load_dotenv()
-except Exception:
-	# N├úo bloquear inicializa├º├úo se houver falha ao ler .env
-	pass
+
+# Forçar encoding de cliente e mensagens para evitar erros de decodificação em respostas do servidor
+os.environ.setdefault("PGCLIENTENCODING", "UTF8")
+os.environ.setdefault("LC_MESSAGES", "C")  # mensagens em ASCII/inglês
+
+def _load_env_with_fallback() -> None:
+	"""Carrega variáveis do .env de forma tolerante a encoding (UTF-8 -> Latin-1).
+
+	Evita depender do python-dotenv para leitura com encoding rígido, prevenindo
+	UnicodeDecodeError quando o arquivo estiver salvo como ANSI/Latin-1.
+	"""
+	try:
+		if not _LOCAL_ENV_PATH.exists():
+			# Não há .env local; não força load_dotenv genérico para evitar ler um .env externo
+			return
+
+		# Primeiro tenta UTF-8 estrito; se falhar, usa Latin-1
+		try:
+			content = _LOCAL_ENV_PATH.read_text(encoding="utf-8")
+		except UnicodeDecodeError:
+			content = _LOCAL_ENV_PATH.read_text(encoding="latin-1", errors="strict")
+
+		for raw in content.splitlines():
+			line = raw.strip()
+			if not line or line.startswith('#') or '=' not in line:
+				continue
+			key, val = line.split('=', 1)
+			key = key.strip()
+			val = val.strip()
+			# remover comentário inline simples (quando não está entre aspas)
+			if '#' in val and not (val.startswith('"') or val.startswith("'")):
+				val = val.split('#', 1)[0].strip()
+			# remover aspas simples/duplas em volta do valor
+			val = val.strip('"').strip("'")
+			if key and val and not os.getenv(key):
+				try:
+					os.environ[key] = val
+				except Exception:
+					# não bloquear por falhas ao setar env
+					pass
+	except Exception:
+		# não bloquear em eventuais falhas; continue com variáveis já existentes
+		pass
+
+_load_env_with_fallback()
 
 _REQUIRED_KEYS = ("db_host", "db_port", "db_name", "db_user", "db_password")
 _URL_KEYS = ("database_url", "db_url", "postgres_url", "postgresql_url")
@@ -120,14 +156,30 @@ def get_connection():
 			"psycopg2 não instalado. Instale 'psycopg2-binary' e configure o PostgreSQL."
 		)
 	cfg = _load_db_config()
-	return psycopg2.connect(
-		host=cfg["db_host"],
-		port=cfg["db_port"],
-		dbname=cfg["db_name"],
-		user=cfg["db_user"],
-		password=cfg["db_password"],
-		cursor_factory=psycopg2.extras.RealDictCursor,
-	)
+	try:
+		conn = psycopg2.connect(
+			host=cfg["db_host"],
+			port=cfg["db_port"],
+			dbname=cfg["db_name"],
+			user=cfg["db_user"],
+			password=cfg["db_password"],
+			cursor_factory=psycopg2.extras.RealDictCursor,
+		)
+	except UnicodeDecodeError:
+		# Mensagens do servidor com acentuação em algumas instalações podem
+		# disparar erro ao decodificar; normalize para uma mensagem segura.
+		raise RuntimeError(
+			"Falha ao conectar ao PostgreSQL: verifique usuário/senha e existência do banco (mensagem do servidor tinha acentuação)."
+		)
+	except Exception as e:
+		# Reempacotar com mensagem clara, sem forçar decodificação adicional
+		raise RuntimeError(f"Falha ao conectar ao PostgreSQL: {e}")
+	try:
+		# garantir client_encoding consistente
+		conn.set_client_encoding('UTF8')
+	except Exception:
+		pass
+	return conn
 
 
 # Compatibilidade com a grafia solicitada
