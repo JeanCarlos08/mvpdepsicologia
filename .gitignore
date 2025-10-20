@@ -1,60 +1,49 @@
-########################################
-# .gitignore consolidado — Projeto Python/Streamlit
-########################################
-
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*.class
+*.so
 .Python
-
-# Ambientes virtuais
-.venv/
+env/
 venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# IDE/SO
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-
-# Variáveis de ambiente (não versionar segredos)
+# Ambiente
 .env
-.env.*
-!.env.example
-
-# Caches e temporários
-.cache/
-*.tmp
-*.temp
-
-# Bancos de dados locais
-*.db
-*.sqlite*
-*.sqlite3
 
 # Logs
 logs/
 *.log
-audit.log
-security.log
 
-# Uploads (manter pasta no repo com .gitkeep)
+# Uploads
 uploads/
-!uploads/.gitkeep
-# PDFs (evita versionar anexos sensíveis)
-*.pdf
 
-# Chaves/segurança
-*.key
-*.pem
-encryption.key
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Config secreta do Streamlit
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
 .streamlit/secrets.toml
-
-# Artefatos específicos do projeto (ignore se existir)
-gestao_clinica_juliana/

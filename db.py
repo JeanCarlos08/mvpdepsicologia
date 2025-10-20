@@ -232,6 +232,16 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 		favorita INTEGER DEFAULT 0
 	);
 	""",
+	"""
+	CREATE TABLE IF NOT EXISTS arquivos (
+		id SERIAL PRIMARY KEY,
+		filename VARCHAR(255) NOT NULL,
+		content BYTEA NOT NULL,
+		content_type VARCHAR(100),
+		size INTEGER,
+		criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	);
+	""",
 )
 
 
@@ -326,3 +336,70 @@ def debug_config_snapshot() -> Dict[str, str]:
 		if alias in normalized:
 			info[alias] = "FOUND"
 	return info
+
+
+# ---------- Arquivos (BYTEA) ----------
+def salvar_arquivo(filename: str, content: bytes, content_type: Optional[str] = None) -> int:
+	"""Salva um arquivo (PDF) no banco e retorna o id gerado."""
+	query = """
+	INSERT INTO arquivos (filename, content, content_type, size)
+	VALUES (%s, %s, %s, %s)
+	RETURNING id
+	"""
+	params = (filename, psycopg2.Binary(content), content_type or "application/pdf", len(content))
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute(query, params)
+		row = cur.fetchone()
+		return int(row["id"]) if row else 0
+
+
+def obter_arquivo_por_id(file_id: int) -> Optional[Dict[str, Any]]:
+	"""Obtém um arquivo pelo id."""
+	query = "SELECT id, filename, content, content_type, size, criado_em FROM arquivos WHERE id = %s"
+	with _connection_scope(commit=False) as conn:
+		cur = _get_cursor(conn)
+		cur.execute(query, (file_id,))
+		row = cur.fetchone()
+		return dict(row) if row else None
+
+
+def listar_arquivos() -> List[Dict[str, Any]]:
+	"""Lista arquivos disponíveis (sem trazer o conteúdo)."""
+	query = "SELECT id, filename, content_type, size, criado_em FROM arquivos ORDER BY criado_em DESC, id DESC"
+	with _connection_scope(commit=False) as conn:
+		cur = _get_cursor(conn)
+		cur.execute(query)
+		rows = cur.fetchall()
+		return [dict(r) for r in rows]
+
+
+def excluir_arquivo(file_id: int) -> bool:
+	"""Exclui um arquivo pelo id na tabela arquivos."""
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute("DELETE FROM arquivos WHERE id = %s", (file_id,))
+		return cur.rowcount > 0
+
+
+def desassociar_arquivo_de_atendimentos(file_id: int) -> int:
+	"""Remove referências db:<id> de laudo_pdf e avaliacao_pdf. Retorna total de campos afetados."""
+	marker = f"db:{file_id}"
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute("UPDATE atendimentos SET laudo_pdf = NULL WHERE laudo_pdf = %s", (marker,))
+		c1 = cur.rowcount or 0
+		cur.execute("UPDATE atendimentos SET avaliacao_pdf = NULL WHERE avaliacao_pdf = %s", (marker,))
+		c2 = cur.rowcount or 0
+		return int(c1 + c2)
+
+
+def limpar_anexo_atendimento(atendimento_id: int, campo: str) -> bool:
+	"""Limpa um campo de anexo (laudo_pdf|avaliacao_pdf) de um atendimento específico."""
+	campo = (campo or "").strip().lower()
+	if campo not in ("laudo_pdf", "avaliacao_pdf"):
+		raise ValueError("Campo inválido: use 'laudo_pdf' ou 'avaliacao_pdf'")
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute(f"UPDATE atendimentos SET {campo} = NULL WHERE id = %s", (atendimento_id,))
+		return cur.rowcount > 0

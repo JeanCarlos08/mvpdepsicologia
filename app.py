@@ -248,15 +248,24 @@ def apply_plotly_theme(dark_mode=False):
     pio.templates.default = "plotly_white"
 
 def save_uploaded_pdf(uploaded_file):
+    """Salva PDF no banco (BYTEA) e retorna um marcador 'db:<id>'.
+
+    Compatibilidade: registros antigos que apontam para caminho no disco continuam funcionando.
+    """
     if uploaded_file is None:
         return ""
     try:
+        safe_name = security.generate_safe_filename(uploaded_file.name)
+        file_bytes = uploaded_file.getvalue()
+        file_id = db.salvar_arquivo(safe_name, file_bytes, content_type="application/pdf")
+        if file_id:
+            return f"db:{file_id}"
+        # fallback improvável; manter compat com disco se algo falhar
         uploads_dir = BASE_DIR / "uploads"
         uploads_dir.mkdir(exist_ok=True)
-        safe_name = security.generate_safe_filename(uploaded_file.name)
         file_path = uploads_dir / safe_name
         with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+            f.write(file_bytes)
         return str(file_path)
     except Exception as e:
         st.error(f"Erro ao salvar PDF: {e}")
@@ -410,6 +419,80 @@ class AppointmentsPage:
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
         st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
 
+        # Downloads de anexos diretamente na lista
+        def _download_button_from_ref(ref: str, label: str, key: str):
+            if not ref:
+                return
+            try:
+                if isinstance(ref, str) and ref.startswith("db:"):
+                    fid = int(str(ref).split(":", 1)[1])
+                    reg = db.obter_arquivo_por_id(fid)
+                    if reg:
+                        st.download_button(
+                            label=label,
+                            data=reg["content"],
+                            file_name=reg.get("filename", "arquivo.pdf"),
+                            mime=reg.get("content_type", "application/pdf"),
+                            key=key
+                        )
+                else:
+                    # caminho em disco (compatibilidade)
+                    if os.path.exists(str(ref)):
+                        with open(ref, "rb") as f:
+                            st.download_button(
+                                label=label,
+                                data=f.read(),
+                                file_name=os.path.basename(str(ref)),
+                                mime="application/pdf",
+                                key=key
+                            )
+            except Exception as e:
+                st.caption(f"Não foi possível preparar o download ({label}): {e}")
+
+        with st.expander("📎 Anexos por atendimento (download/excluir)", expanded=False):
+            for row in appointments:
+                # Indices conforme colunas retornadas por listar_atendimentos
+                aid = row[0]
+                empresa = row[1]
+                nome = row[2]
+                laudo_ref = row[6]
+                aval_ref = row[7]
+                c1, c2, c3, c4, c5 = st.columns([3, 2, 2, 1.2, 1.2])
+                with c1:
+                    st.write(f"📄 {nome} — {empresa}")
+                with c2:
+                    if laudo_ref:
+                        _download_button_from_ref(laudo_ref, "⬇️ Laudo", key=f"dl_laudo_{aid}")
+                    else:
+                        st.caption("Laudo: —")
+                with c3:
+                    if aval_ref:
+                        _download_button_from_ref(aval_ref, "⬇️ Avaliação", key=f"dl_aval_{aid}")
+                    else:
+                        st.caption("Avaliação: —")
+                with c4:
+                    if isinstance(laudo_ref, str) and laudo_ref.startswith("db:"):
+                        if st.button("🗑️ Laudo", key=f"rm_laudo_{aid}"):
+                            try:
+                                fid = int(laudo_ref.split(":",1)[1])
+                                db.limpar_anexo_atendimento(aid, "laudo_pdf")
+                                db.excluir_arquivo(fid)
+                                st.success("Laudo excluído")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao excluir laudo: {e}")
+                with c5:
+                    if isinstance(aval_ref, str) and aval_ref.startswith("db:"):
+                        if st.button("🗑️ Aval.", key=f"rm_aval_{aid}"):
+                            try:
+                                fid = int(aval_ref.split(":",1)[1])
+                                db.limpar_anexo_atendimento(aid, "avaliacao_pdf")
+                                db.excluir_arquivo(fid)
+                                st.success("Avaliação excluída")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao excluir avaliação: {e}")
+
 class SettingsPage:
     @staticmethod
     def render() -> None:
@@ -543,29 +626,37 @@ class UploadPage:
             if st.button("Salvar Arquivo", type="primary"):
                 saved_path = save_uploaded_pdf(uploaded_file)
                 if saved_path:
-                    st.success(f"Arquivo salvo em: {saved_path}")
+                    if saved_path.startswith("db:"):
+                        st.success("Arquivo salvo no banco de dados.")
+                    else:
+                        st.success(f"Arquivo salvo em: {saved_path}")
         st.markdown("### 📁 Arquivos Salvos")
-        uploads_dir = BASE_DIR / "uploads"
-        if uploads_dir.exists():
-            pdf_files = list(uploads_dir.glob("*.pdf"))
-            if pdf_files:
-                for pdf_file in pdf_files:
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        size_kb = pdf_file.stat().st_size // 1024
-                        st.write(f"📄 {pdf_file.name} ({size_kb} KB)")
-                    with col2:
-                        with open(pdf_file, 'rb') as f:
+        # Listar do banco
+        try:
+            arquivos = db.listar_arquivos()
+        except Exception as e:
+            arquivos = []
+            st.warning(f"Falha ao listar arquivos do banco: {e}")
+        if arquivos:
+            for arq in arquivos:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    size_kb = (arq.get("size") or 0) // 1024
+                    st.write(f"📄 {arq.get('filename','arquivo.pdf')} ({size_kb} KB)")
+                with col2:
+                    file_id = arq.get("id")
+                    if file_id and st.button("Baixar", key=f"dl_db_{file_id}"):
+                        reg = db.obter_arquivo_por_id(int(file_id))
+                        if reg:
                             st.download_button(
-                                "Baixar", 
-                                data=f.read(), 
-                                file_name=pdf_file.name,
-                                key=f"download_{pdf_file.name}"
+                                label="Clique para baixar",
+                                data=reg["content"],
+                                file_name=reg.get("filename","arquivo.pdf"),
+                                mime=reg.get("content_type","application/pdf"),
+                                key=f"download_data_{file_id}"
                             )
-            else:
-                st.info("Nenhum arquivo encontrado.")
         else:
-            st.info("Diretório de uploads não existe ainda.")
+            st.info("Nenhum arquivo no banco ainda.")
 
 
 class AuthPage:
