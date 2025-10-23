@@ -8,10 +8,11 @@ import plotly.express as px
 import plotly.io as pio
 import os
 import streamlit.components.v1 as components
+import base64
 # Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
 # ...restante do arquivo permanece inalterado...
 
-# Configurar p├ígina do Streamlit
+# Configurar página do Streamlit
 st.set_page_config(
     page_title="JULIANA - Gestão Clínica",
     page_icon="🩺",
@@ -19,11 +20,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicializar esquema do banco (cria tabelas caso ainda n├úo existam)
+# Inicializar esquema do banco (cria tabelas caso ainda não existam)
 try:
     db.create_tables_if_needed()
 except Exception:
-    # N├úo interromper a interface: DatabaseManager.initialize_database mant├®m a mesma responsabilidade
+    # Não interromper a interface: DatabaseManager.initialize_database mantém a mesma responsabilidade
     pass
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
@@ -51,11 +52,11 @@ class Security:
     @staticmethod
     def validate_file_upload(filename, size_bytes, max_size_mb=50):
         if not filename:
-            return False, "Nome do arquivo inv├ílido"
+            return False, "Nome do arquivo inválido"
         if not filename.lower().endswith('.pdf'):
-            return False, "Apenas arquivos PDF s├úo permitidos"
+            return False, "Apenas arquivos PDF são permitidos"
         if size_bytes > max_size_mb * 1024 * 1024:
-            return False, f"Arquivo muito grande. M├íximo: {max_size_mb}MB"
+            return False, f"Arquivo muito grande. Máximo: {max_size_mb}MB"
         return True, "OK"
     @staticmethod
     def log_access(action, details):
@@ -158,7 +159,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
         h3, .subtitle-highlight {color: #2c3e50 !important; background: linear-gradient(90deg, #eafaf1 0%, #73C883 100%); padding: 6px 18px; border-radius: 8px; font-size: 1.35em; font-weight: 700; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(44,62,80,0.07); display: inline-block;}
         .stButton > button {background: linear-gradient(90deg, #4DA768 0%, #2ecc71 100%); color: white; border-radius: 6px; border: none; font-weight: 600; padding: 8px 20px; box-shadow: 0 2px 8px rgba(60,170,95,0.08); transition: background 0.2s;}
         .stButton > button:hover {background: linear-gradient(90deg, #2ecc71 0%, #4DA768 100%);}
-        /* Card dashboard degrad├¬ azul mais suave */
+        /* Card dashboard degradê azul mais suave */
         .stMetric {
             background: linear-gradient(135deg, rgba(77,167,120,0.12) 0%, rgba(77,167,248,0.08) 60%, rgba(255,255,255,0.0) 100%);
             border-radius: 12px;
@@ -168,18 +169,18 @@ def apply_custom_css(dark_mode=False, advanced=False):
             border: 1.5px solid #222;
             transition: box-shadow 0.2s;
         }
-        /* For├ºar todas as cores de texto dentro do card para branco (label, value, delta) */
+        /* Forçar todas as cores de texto dentro do card para branco (label, value, delta) */
         .stMetric, .stMetric * {
             color: #ffffff !important;
         }
-        /* Garantir que a caption do dashboard / badge do DB tamb├®m fiquem em branco */
+        /* Garantir que a caption do dashboard / badge do DB também fiquem em branco */
         .stCaption, .stCaption span, .stCaption * {
             color: #ffffff !important;
         }
         span.db-badge, span.db-badge.sqlite, .db-badge, .db-badge.sqlite {
             color: #ffffff !important;
         }
-        /* Estilizar campos de formul├írio / ├írea de autentica├º├úo para a paleta profissional */
+        /* Estilizar campos de formulário / área de autenticação para a paleta profissional */
         .stForm, .stForm .stTextInput, .stForm .stTextArea, .stForm .stSelectbox, .stForm .stDateInput, .stForm .stTimeInput {
             background: linear-gradient(180deg, rgba(0,191,255,0.04), rgba(77,167,248,0.02));
             border-radius: 10px;
@@ -193,8 +194,8 @@ def apply_custom_css(dark_mode=False, advanced=False):
             border-radius: 6px !important;
             padding: 8px !important;
         }
-        /* Para o formul├írio de autentica├º├úo, for├ºa texto preto e fundo claro para facilitar digita├º├úo
-           Seletores espec├¡ficos para a estrutura interna gerada pelo Streamlit */
+        /* Para o formulário de autenticação, força texto preto e fundo claro para facilitar digitação
+           Seletores específicos para a estrutura interna gerada pelo Streamlit */
         .auth-card input, .auth-card textarea,
         .auth-card .stTextInput>div>div>input, .auth-card .stTextArea>div>div>textarea,
         .auth-card .stTextInput>div>div>input[type="password"] {
@@ -204,7 +205,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
             caret-color: #000000 !important;
         }
     .auth-card .stTextInput>div>div>input::placeholder, .auth-card .stTextArea>div>div>textarea::placeholder { color: #888888 !important; }
-        /* Refor├ºo adicional para navegadores que usam -webkit-text-fill-color e seletores distintos */
+        /* Reforço adicional para navegadores que usam -webkit-text-fill-color e seletores distintos */
         .auth-card :where(input, textarea) {
             color: #000000 !important;
             -webkit-text-fill-color: #000000 !important; /* Safari/Chrome */
@@ -219,12 +220,12 @@ def apply_custom_css(dark_mode=False, advanced=False):
         .stTextInput>div>label, .stForm label, .stCaption, .stMarkdown h2, .stMarkdown h3 {
             color: #ffffff !important;
         }
-        /* For├ºar t├¡tulo dos cards para preto quando necess├írio */
+        /* Forçar título dos cards para preto quando necessário */
         .card-title { color: #000000 !important; }
         .stTextInput>div>div>input::placeholder, .stTextArea>div>div>textarea::placeholder {
             color: #888888 !important; /* Placeholder: cinza */
         }
-        /* Bot├úo de login/a├º├Áes com varia├º├úo da paleta */
+        /* Botão de login/ações com variação da paleta */
         .stButton > button {
             background: linear-gradient(90deg, #2196F3 0%, #00BFFF 100%); /* azul profissional */
             color: #ffffff !important;
@@ -234,7 +235,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
         }
         .stButton > button:hover { opacity: 0.95; transform: translateY(-1px); }
         /* Small privacy/login area highlight removed (use AuthPage render instead) */
-        /* seletores mais espec├¡ficos caso alguma vers├úo do streamlit use nomes diferentes */
+        /* seletores mais específicos caso alguma versão do streamlit use nomes diferentes */
         .stMetric .stMetricValue, .stMetric .stMetricDelta, .stMetric .stMetricLabel {
             color: #ffffff !important;
         }
@@ -330,6 +331,26 @@ class AppointmentsPage:
     @staticmethod
     def render(filters):
         render_page_header("📅 Atendimentos", "Gerenciamento de Consultas e Procedimentos")
+
+        # Filtros rápidos (busca, modalidade, status, período)
+        with st.expander("🔎 Filtros", expanded=True):
+            colf1, colf2, colf3, colf4 = st.columns([2,2,2,2])
+            with colf1:
+                q = st.text_input("Pesquisar (Nome/Empresa)", key="flt_q").strip()
+            with colf2:
+                mod_opts = ["(Todas)"] + [m.value for m in ModalidadeAtendimento]
+                mod_sel = st.selectbox("Modalidade", mod_opts, key="flt_mod")
+            with colf3:
+                status_sel = st.selectbox("Status", ["(Todos)", "Agendado", "Atendido", "Concluído", "Cancelado"], key="flt_status")
+            with colf4:
+                d1 = st.date_input("Data inicial", value=None, key="flt_dini")
+                d2 = st.date_input("Data final", value=None, key="flt_dfim")
+
+            filters["q"] = q
+            filters["modalidade_filter"] = None if mod_sel == "(Todas)" else mod_sel
+            filters["status_filter"] = None if status_sel == "(Todos)" else status_sel
+            filters["date_start"] = d1
+            filters["date_end"] = d2
         with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
             with st.form("appointment_form_new", clear_on_submit=True):
                 col1, col2 = st.columns(2)
@@ -404,6 +425,22 @@ class AppointmentsPage:
 
         if filters.get("modalidade_filter"):
             df = df[df["Modalidade"] == filters["modalidade_filter"]]
+        if filters.get("status_filter"):
+            df = df[df["Status"] == filters["status_filter"]]
+        if filters.get("q"):
+            q = filters["q"].lower()
+            df = df[df["Nome"].str.lower().str.contains(q) | df["Empresa"].str.lower().str.contains(q)]
+        # Filtrar por período (datas armazenadas como dd/mm/yyyy)
+        try:
+            df["_data_dt"] = pd.to_datetime(df["Data"], dayfirst=True, errors="coerce")
+            d1 = filters.get("date_start")
+            d2 = filters.get("date_end")
+            if d1:
+                df = df[df["_data_dt"] >= pd.to_datetime(d1)]
+            if d2:
+                df = df[df["_data_dt"] <= pd.to_datetime(d2)]
+        except Exception:
+            pass
 
         df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
         df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
@@ -413,11 +450,19 @@ class AppointmentsPage:
             unsafe_allow_html=True,
         )
 
-        df_display = df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
-        st.dataframe(df_display, use_container_width=True, height=400)
+        # Paginação simples
+        total_rows = len(df)
+        page_size = st.selectbox("Tamanho da página", [10, 20, 50, 100], index=1, key="pg_size")
+        total_pages = max(1, (total_rows + page_size - 1) // page_size)
+        page = st.number_input("Página", min_value=1, max_value=total_pages, value=1, step=1, key="pg_num")
+        start, end = (page - 1) * page_size, min(page * page_size, total_rows)
+        page_df = df.iloc[start:end]
+
+        df_display = page_df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
+        st.dataframe(df_display, use_container_width=True, height=360)
 
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos.csv", mime="text/csv")
+        st.download_button("⬇️ Exportar CSV (todos os filtrados)", data=csv_data, file_name="atendimentos_filtrados.csv", mime="text/csv")
 
         # Downloads de anexos diretamente na lista
         def _download_button_from_ref(ref: str, label: str, key: str):
@@ -449,15 +494,19 @@ class AppointmentsPage:
             except Exception as e:
                 st.caption(f"Não foi possível preparar o download ({label}): {e}")
 
-        with st.expander("📎 Anexos por atendimento (download/excluir)", expanded=False):
-            for row in appointments:
+        # Mapear linhas paginadas para tuplas originais
+        id_set = set(page_df["ID"].tolist())
+        page_rows = [r for r in appointments if r[0] in id_set]
+
+        with st.expander("📎 Gerenciar por atendimento (visualizar/download/editar/status/exportar)", expanded=False):
+            for row in page_rows:
                 # Indices conforme colunas retornadas por listar_atendimentos
                 aid = row[0]
                 empresa = row[1]
                 nome = row[2]
                 laudo_ref = row[6]
                 aval_ref = row[7]
-                c1, c2, c3, c4, c5 = st.columns([3, 2, 2, 1.2, 1.2])
+                c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.4])
                 with c1:
                     st.write(f"📄 {nome} — {empresa}")
                 with c2:
@@ -471,6 +520,12 @@ class AppointmentsPage:
                     else:
                         st.caption("Avaliação: —")
                 with c4:
+                    if laudo_ref and st.button("👁️ Ver Laudo", key=f"pv_laudo_{aid}"):
+                        _preview_pdf_from_ref(laudo_ref, title=f"Laudo - {nome}")
+                with c5:
+                    if aval_ref and st.button("👁️ Ver Aval.", key=f"pv_aval_{aid}"):
+                        _preview_pdf_from_ref(aval_ref, title=f"Avaliação - {nome}")
+                with c6:
                     if isinstance(laudo_ref, str) and laudo_ref.startswith("db:"):
                         if st.button("🗑️ Laudo", key=f"rm_laudo_{aid}"):
                             try:
@@ -481,7 +536,7 @@ class AppointmentsPage:
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Erro ao excluir laudo: {e}")
-                with c5:
+                with c7:
                     if isinstance(aval_ref, str) and aval_ref.startswith("db:"):
                         if st.button("🗑️ Aval.", key=f"rm_aval_{aid}"):
                             try:
@@ -492,14 +547,222 @@ class AppointmentsPage:
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Erro ao excluir avaliação: {e}")
+                with c8:
+                    if st.button("✏️ Editar", key=f"edit_{aid}"):
+                        st.session_state[f"edit_open_{aid}"] = True
+                with c9:
+                    with st.popover(f"⚙️ Status", use_container_width=True):
+                        st.caption("Atualizar status")
+                        for stx in ["Agendado", "Atendido", "Concluído", "Cancelado"]:
+                            if st.button(stx, key=f"st_{stx}_{aid}"):
+                                try:
+                                    db.atualizar_status(aid, stx)
+                                    st.success(f"Status atualizado para {stx}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao atualizar status: {e}")
+
+                # Editor inline por atendimento
+                if st.session_state.get(f"edit_open_{aid}"):
+                    with st.expander(f"Editar atendimento #{aid}", expanded=True):
+                        with st.form(f"form_edit_{aid}"):
+                            colu1, colu2, colu3 = st.columns(3)
+                            with colu1:
+                                nv_empresa = st.text_input("Empresa", value=str(empresa))
+                                nv_modal = st.selectbox("Modalidade", [m.value for m in ModalidadeAtendimento], index= [m.value for m in ModalidadeAtendimento].index(str(row[3])) if row[3] in [m.value for m in ModalidadeAtendimento] else 0)
+                                nv_status = st.selectbox("Status", ["Agendado","Atendido","Concluído","Cancelado"], index=["Agendado","Atendido","Concluído","Cancelado"].index(str(row[8])) if row[8] in ["Agendado","Atendido","Concluído","Cancelado"] else 0)
+                            with colu2:
+                                nv_nome = st.text_input("Nome", value=str(nome))
+                                try:
+                                    cur_dt = pd.to_datetime(str(row[4]), dayfirst=True, errors="coerce").date()
+                                except Exception:
+                                    cur_dt = date.today()
+                                nv_data = st.date_input("Data", value=cur_dt)
+                            with colu3:
+                                try:
+                                    (hh,mm) = str(row[5]).split(":")[:2]
+                                    cur_tm = time(int(hh), int(mm))
+                                except Exception:
+                                    cur_tm = time(8,0)
+                                nv_hora = st.time_input("Hora", value=cur_tm)
+                                nv_obs = st.text_area("Observações", value=str(row[9] or ""))
+                            st.markdown("#### 📎 Anexos")
+                            colaf1, colaf2 = st.columns(2)
+                            with colaf1:
+                                up_laudo_novo = st.file_uploader("Substituir Laudo (PDF)", type=["pdf"], key=f"up_laudo_edit_{aid}")
+                            with colaf2:
+                                up_aval_novo = st.file_uploader("Substituir Avaliação (PDF)", type=["pdf"], key=f"up_aval_edit_{aid}")
+                            colbtn1, colbtn2, colbtn3 = st.columns([1.2,1,1])
+                            with colbtn1:
+                                s = st.form_submit_button("💾 Salvar alterações", type="primary")
+                            with colbtn2:
+                                cancel = st.form_submit_button("Cancelar")
+                            with colbtn3:
+                                exp_csv = st.form_submit_button("⬇️ Exportar CSV")
+                            colbtn4, = st.columns(1)
+                            with colbtn4:
+                                exp_html = st.form_submit_button("🖨️ Exportar HTML (PDF via impressão)")
+                            if s:
+                                try:
+                                    updates = {
+                                        "empresa": nv_empresa,
+                                        "nome": nv_nome,
+                                        "modalidade": nv_modal,
+                                        "data": nv_data.strftime(DATE_FORMAT) if nv_data else None,
+                                        "hora": nv_hora.strftime(TIME_FORMAT) if nv_hora else None,
+                                        "status": nv_status,
+                                        "observacoes": nv_obs,
+                                    }
+                                    db.atualizar_campos_atendimento(aid, updates)
+                                    if up_laudo_novo is not None:
+                                        new_marker = save_uploaded_pdf(up_laudo_novo)
+                                        db.set_anexo(aid, "laudo_pdf", new_marker or None)
+                                        try:
+                                            if isinstance(laudo_ref, str) and laudo_ref.startswith("db:"):
+                                                old_id = int(laudo_ref.split(":",1)[1])
+                                                db.excluir_arquivo(old_id)
+                                        except Exception:
+                                            pass
+                                    if up_aval_novo is not None:
+                                        new_marker2 = save_uploaded_pdf(up_aval_novo)
+                                        db.set_anexo(aid, "avaliacao_pdf", new_marker2 or None)
+                                        try:
+                                            if isinstance(aval_ref, str) and aval_ref.startswith("db:"):
+                                                old_id2 = int(aval_ref.split(":",1)[1])
+                                                db.excluir_arquivo(old_id2)
+                                        except Exception:
+                                            pass
+                                    st.success("Alterações salvas")
+                                    st.session_state[f"edit_open_{aid}"] = False
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao salvar: {e}")
+                            elif cancel:
+                                st.session_state[f"edit_open_{aid}"] = False
+                                st.rerun()
+                            elif exp_csv:
+                                try:
+                                    row_df = pd.DataFrame([{
+                                        "ID": row[0],
+                                        "Empresa": row[1],
+                                        "Nome": row[2],
+                                        "Modalidade": row[3],
+                                        "Data": row[4],
+                                        "Hora": row[5],
+                                        "Laudo PDF": row[6],
+                                        "Avaliação PDF": row[7],
+                                        "Status": row[8],
+                                        "Observações": row[9],
+                                    }])
+                                    csv_bytes = row_df.to_csv(index=False).encode("utf-8-sig")
+                                    st.download_button("Baixar CSV do Atendimento", data=csv_bytes, file_name=f"atendimento_{aid}.csv", mime="text/csv", key=f"dl_csv_{aid}")
+                                except Exception as e:
+                                    st.error(f"Erro ao exportar CSV: {e}")
+                            elif exp_html:
+                                try:
+                                    html = _build_html_attendance_summary(row)
+                                    st.download_button("Baixar HTML do Atendimento", data=html.encode("utf-8"), file_name=f"atendimento_{aid}.html", mime="text/html", key=f"dl_html_{aid}")
+                                except Exception as e:
+                                    st.error(f"Erro ao exportar HTML: {e}")
+
+        st.caption(f"Mostrando registros {start+1}–{end} de {total_rows} (página {page}/{total_pages})")
+
+def _preview_pdf_from_ref(ref: str, title: str = "PDF"):
+        try:
+                content: bytes = b""
+                filename = "arquivo.pdf"
+                if isinstance(ref, str) and ref.startswith("db:"):
+                        fid = int(str(ref).split(":", 1)[1])
+                        reg = db.obter_arquivo_por_id(fid)
+                        if not reg:
+                                st.warning("Arquivo não encontrado")
+                                return
+                        content = reg.get("content") or b""
+                        filename = reg.get("filename") or filename
+                else:
+                        if os.path.exists(str(ref)):
+                                filename = os.path.basename(str(ref))
+                                with open(ref, "rb") as f:
+                                        content = f.read()
+                if not content:
+                        st.info("Sem conteúdo para visualizar.")
+                        return
+                b64 = base64.b64encode(content).decode("ascii")
+                html = f"""
+<div style='border:1px solid #e1e1e1;border-radius:8px;padding:6px;background:#fff;'>
+    <div style='font-weight:600;margin-bottom:6px;'>{title} — {filename}</div>
+    <iframe src='data:application/pdf;base64,{b64}' width='100%' height='600px' style='border:none;'></iframe>
+</div>
+"""
+                components.html(html, height=640)
+        except Exception as e:
+                st.error(f"Falha ao visualizar: {e}")
+
+def _build_html_attendance_summary(row_tuple):
+        aid, empresa, nome, modalidade, data_s, hora_s, laudo_ref, aval_ref, status, observacoes = row_tuple
+        def _label_for(ref):
+                if not ref:
+                        return "—"
+                if isinstance(ref, str) and ref.startswith("db:"):
+                        try:
+                                fid = int(ref.split(":",1)[1])
+                                reg = db.obter_arquivo_por_id(fid)
+                                if reg:
+                                        return f"(BD) {reg.get('filename','arquivo.pdf')}"
+                        except Exception:
+                                pass
+                        return "(BD) arquivo.pdf"
+                return os.path.basename(str(ref)) if os.path.exists(str(ref)) else str(ref)
+        html = f"""
+<!doctype html>
+<html lang='pt-br'>
+<head>
+    <meta charset='utf-8'/>
+    <title>Atendimento #{aid}</title>
+    <style>
+        body {{ font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 16px; }}
+        h1 {{ margin-bottom: 6px; }}
+        .card {{ border:1px solid #e1e1e1; border-radius:8px; padding:12px; margin: 10px 0; }}
+        .row {{ display:flex; gap:16px; flex-wrap: wrap; }}
+        .item {{ flex:1 1 260px; }}
+        .muted {{ color:#666; }}
+    </style>
+    </head>
+<body>
+    <h1>Atendimento #{aid}</h1>
+    <div class='muted'>Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
+    <div class='card'>
+        <div class='row'>
+            <div class='item'><strong>Empresa:</strong> {empresa}</div>
+            <div class='item'><strong>Nome:</strong> {nome}</div>
+            <div class='item'><strong>Modalidade:</strong> {modalidade}</div>
+        </div>
+        <div class='row'>
+            <div class='item'><strong>Data:</strong> {data_s}</div>
+            <div class='item'><strong>Hora:</strong> {hora_s}</div>
+            <div class='item'><strong>Status:</strong> {status}</div>
+        </div>
+        <div class='row'>
+            <div class='item'><strong>Laudo:</strong> {_label_for(laudo_ref)}</div>
+            <div class='item'><strong>Avaliação:</strong> {_label_for(aval_ref)}</div>
+        </div>
+        <div class='row'>
+            <div class='item' style='flex:1 1 100%'><strong>Observações:</strong><br/>{observacoes or ''}</div>
+        </div>
+    </div>
+    <p class='muted'>Dica: Abra este arquivo no navegador e use Imprimir → Salvar como PDF.</p>
+</body>
+</html>
+"""
+        return html
 
 class SettingsPage:
     @staticmethod
     def render() -> None:
         render_page_header("⚙️ Configurações", "Administração do Sistema")
 
-        # For├ºar paleta visual apenas para a p├ígina de configura├º├Áes
-        # Injetar uma classe no <body> para escopo confi├ível dos estilos (override do estilo global)
+        # Forçar paleta visual apenas para a página de configurações
+        # Injetar uma classe no <body> para escopo confiável dos estilos (override do estilo global)
         try:
             components.html(
                 """<script>try{document.body.classList.add('page-settings');}catch(e){};</script>""",
@@ -519,13 +782,13 @@ class SettingsPage:
 }
 .page-settings .stButton>button:hover { opacity: 0.95 !important; transform: translateY(-1px) !important; background: linear-gradient(90deg, rgba(77,167,120,0.14) 0%, rgba(58,158,95,0.14) 100%) !important; }
 .page-settings .stJson, .page-settings pre {
-    background: #f6fbf7 !important; /* tom suave compat├¡vel */
+    background: #f6fbf7 !important; /* tom suave compatível */
     border-radius: 8px !important;
     color: #4DA768 !important;
 }
 .page-settings .stSuccess, .page-settings .stSuccess>div { background: rgba(77,167,120,0.08) !important; color: #4DA768 !important; }
 .page-settings .stError, .page-settings .stError>div { background: rgba(223,50,80,0.06) !important; }
-/* Garantir que os cards tamb├®m usem hover verde dentro da p├ígina de configura├º├Áes */
+/* Garantir que os cards também usem hover verde dentro da página de configurações */
 .page-settings .stMetric:hover {
     box-shadow: 0 4px 18px rgba(44,62,80,0.13) !important;
     background: linear-gradient(135deg, rgba(77,167,120,0.12) 0%, rgba(255,255,255,0.0) 100%) !important;
@@ -550,7 +813,7 @@ class SettingsPage:
 
         display_cards(cards)
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
             if st.button("🧹 Limpar Cache"):
@@ -575,6 +838,37 @@ class SettingsPage:
         with col4:
             if st.button("📊 Estatísticas"):
                 st.json(stats)
+
+        with col5:
+            if st.button("🔎 Diagnóstico"):
+                try:
+                    st.subheader("Config snapshot (vars detectadas)")
+                    st.json(db.debug_config_snapshot())
+                except Exception as e:
+                    st.warning(f"Falha ao coletar snapshot: {e}")
+                try:
+                    st.subheader("Diagnóstico do banco")
+                    st.json(db.get_db_diagnostics())
+                except Exception as e:
+                    st.warning(f"Falha ao consultar diagnóstico: {e}")
+
+        with col6:
+            if st.button("⚡ Criar índices"):
+                try:
+                    db.ensure_indexes()
+                    st.success("Índices criados/verificados!")
+                except Exception as e:
+                    st.error(f"Falha ao criar índices: {e}")
+
+        st.markdown("### 🧾 Auditoria (últimos 100)")
+        try:
+            aud = db.listar_auditoria(100)
+            if aud:
+                st.dataframe(pd.DataFrame(aud), use_container_width=True, height=300)
+            else:
+                st.info("Sem registros de auditoria ainda.")
+        except Exception as e:
+            st.warning(f"Falha ao listar auditoria: {e}")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -732,12 +1026,12 @@ class AuthPage:
                 style = document.createElement('style');
                 style.id = 'auth-card-placeholder-style';
                 style.innerHTML = '.auth-card input::placeholder, .auth-card textarea::placeholder{ color: rgba(0,0,0,0.45) !important; }';
-                // Evitar append se j├í estiver presente por outro processo concorrente
+                // Evitar append se já estiver presente por outro processo concorrente
                 if(!document.head.contains(style)){
                     document.head.appendChild(style);
                 }
             } else {
-                // Se existir mas n├úo estiver no head, tentar anexar com seguran├ºa
+                // Se existir mas não estiver no head, tentar anexar com segurança
                 if(!document.head.contains(style)){
                     try{
                         document.head.appendChild(style);
@@ -750,7 +1044,7 @@ class AuthPage:
             const wrap = document.querySelector('.auth-card');
             if(wrap){
                 applyAuthStyles(wrap);
-                // Aplicado com sucesso ÔÇö desconectar observer para evitar m├║ltiplas altera├º├Áes
+                // Aplicado com sucesso – desconectar observer para evitar múltiplas alterações
                 try{ observer.disconnect(); }catch(e){}
                 try{ if(typeof intervalId !== 'undefined') clearInterval(intervalId); }catch(e){}
             }
@@ -770,7 +1064,7 @@ class AuthPage:
             if(w){
                 applyAuthStyles(w);
                 try{ clearInterval(intervalId); }catch(e){}
-                // adicionar listener para Enter -> clicar no bot├úo Login (ignora textarea)
+                // adicionar listener para Enter -> clicar no botão Login (ignora textarea)
                 try{
                     w.addEventListener('keydown', function(ev){
                         if(ev.key === 'Enter' && ev.target && ev.target.tagName !== 'TEXTAREA'){
@@ -813,14 +1107,14 @@ class ClinicalManagementApp:
             st.markdown("*Gestão Clínica*")
             conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
             st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
-            # Logout r├ípido
+            # Logout rápido
             if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
                 st.write(f"Usuário: {st.session_state.get('user_name', '')}")
                 if st.button('🚪 Logout'):
                     security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
                     st.session_state['user_authenticated'] = False
                     st.session_state['user_name'] = ''
-                    # Reiniciar a interface; experimental_rerun pode n├úo existir em algumas vers├Áes do Streamlit
+                    # Reiniciar a interface; experimental_rerun pode não existir em algumas versões do Streamlit
                     try:
                         rerun = getattr(st, 'experimental_rerun', None)
                         if callable(rerun):
@@ -839,7 +1133,7 @@ class ClinicalManagementApp:
                 "📤 Upload": "upload",
                 "⚙️ Configurações": "settings"
             }
-            # Fornecer key ├║nica para evitar StreamlitDuplicateElementId em casos de re-render
+            # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
             selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
             page_key = pages[selected_page]
         if page_key == "dashboard":
@@ -876,13 +1170,12 @@ class ClinicalManagementApp:
             st.markdown("---")
         conn_ok = verificar_conexao()
         if not conn_ok:
-            with st.expander("Ajuda rápida: ativar PostgreSQL", expanded=False):
+            with st.expander("Ajuda rápida: conexão com PostgreSQL", expanded=False):
                 st.markdown(
-                    "- Abra o menu Iniciar e digite: services.msc\n"
-                    "- Procure o serviço: postgresql-x64-18\n"
-                    "- Clique com o botão direito e escolha: Iniciar\n"
-                    "- Caso não exista o banco, no pgAdmin crie: gestao_clinica\n"
-                    "- Usuário: admin | Senha: admin123"
+                    "- Em produção (Streamlit Cloud): use um host público (Neon/Render/RDS) e defina Secrets: `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica`\n"
+                    "- Em desenvolvimento local (Windows): abra services.msc e inicie o serviço `postgresql-x64-18`\n"
+                    "- Se o banco não existir, crie `gestao_clinica` no pgAdmin/psql\n"
+                    "- Verifique usuário/senha e privilégios (pode usar um usuário app de menor privilégio)"
                 )
 
 if __name__ == "__main__":

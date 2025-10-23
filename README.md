@@ -42,6 +42,7 @@ Observação: existe compatibilidade para caminhos em disco legados, mas o padr�
 2. No Streamlit Cloud, crie um novo app apontando para `gestao_clinica/app.py`.
 3. Em Settings → Secrets, defina as variáveis (um por linha):
    - `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica`
+     - Alternativas aceitas: `db_url`, `postgres_url`, `postgresql_url`, ou chaves separadas `db_host`, `db_port`, `db_name`, `db_user`, `db_password`.
    - `APP_ADMIN_USER=seu_usuario`
    - `APP_ADMIN_PASS=sua_senha_forte`
 4. Opcional: ajuste o tamanho máximo de upload pelo `config.toml` se necessário (o padrão aqui é 50MB).

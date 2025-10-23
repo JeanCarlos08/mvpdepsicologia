@@ -242,6 +242,17 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 		criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 	);
 	""",
+	"""
+	CREATE TABLE IF NOT EXISTS auditoria (
+		id SERIAL PRIMARY KEY,
+		acao VARCHAR(100) NOT NULL,
+		entidade VARCHAR(100) NOT NULL,
+		entidade_id INTEGER,
+		detalhes TEXT,
+		usuario VARCHAR(120),
+		criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	);
+	""",
 )
 
 
@@ -250,6 +261,24 @@ def ensure_schema() -> None:
 		cur = _get_cursor(conn)
 		for statement in SCHEMA_STATEMENTS_POSTGRES:
 			cur.execute(statement)
+
+
+def ensure_indexes() -> None:
+	"""Cria índices úteis (idempotentes) para acelerar filtros e buscas."""
+	stmts = (
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_empresa ON atendimentos(empresa)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_nome ON atendimentos(nome)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_data ON atendimentos(data)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_status ON atendimentos(status)",
+	)
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		for s in stmts:
+			try:
+				cur.execute(s)
+			except Exception:
+				# Não bloquear o app por falhas em algum índice antigo/legacy
+				pass
 
 
 def create_tables_if_needed() -> None:  # compatibilidade legado
@@ -288,7 +317,12 @@ def inserir_atendimento(
 		cur = _get_cursor(conn)
 		cur.execute(query, params)
 		result = cur.fetchone()
-		return int(result["id"]) if result else 0
+		new_id = int(result["id"]) if result else 0
+		try:
+			registrar_auditoria("CREATE", "atendimentos", new_id, f"Atendimento criado: {nome} - {empresa}")
+		except Exception:
+			pass
+		return new_id
 
 
 def listar_atendimentos() -> List[Tuple]:
@@ -311,7 +345,87 @@ def excluir_atendimento(atendimento_id: int) -> bool:
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		cur.execute(query, params)
-		return cur.rowcount > 0
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("DELETE", "atendimentos", atendimento_id, "Atendimento excluído")
+			except Exception:
+				pass
+		return ok
+
+
+def _allowed_update_fields() -> List[str]:
+	return [
+		"empresa",
+		"nome",
+		"modalidade",
+		"data",
+		"hora",
+		"status",
+		"observacoes",
+		"laudo_pdf",
+		"avaliacao_pdf",
+	]
+
+
+def atualizar_campos_atendimento(atendimento_id: int, updates: Dict[str, Any]) -> bool:
+	"""Atualiza campos permitidos do atendimento. Ignora chaves inválidas e None."""
+	if not updates:
+		return False
+	set_parts = []
+	params: List[Any] = []
+	allowed = set(_allowed_update_fields())
+	for key, val in updates.items():
+		if key in allowed and val is not None:
+			set_parts.append(f"{key} = %s")
+			params.append(val)
+	if not set_parts:
+		return False
+	params.append(atendimento_id)
+	query = f"UPDATE atendimentos SET {', '.join(set_parts)} WHERE id = %s"
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute(query, tuple(params))
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("UPDATE", "atendimentos", atendimento_id, f"Atualização de campos: {', '.join([k for k,v in updates.items() if k in allowed and v is not None])}")
+			except Exception:
+				pass
+		return ok
+
+
+def atualizar_status(atendimento_id: int, status: str) -> bool:
+	status = (status or "").strip()
+	if not status:
+		return False
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute("UPDATE atendimentos SET status = %s WHERE id = %s", (status, atendimento_id))
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("STATUS", "atendimentos", atendimento_id, f"Status -> {status}")
+			except Exception:
+				pass
+		return ok
+
+
+def set_anexo(atendimento_id: int, campo: str, marcador: Optional[str]) -> bool:
+	"""Define laudo_pdf ou avaliacao_pdf para um marcador (ex.: db:123) ou NULL."""
+	campo = (campo or "").strip().lower()
+	if campo not in ("laudo_pdf", "avaliacao_pdf"):
+		raise ValueError("Campo inválido: use 'laudo_pdf' ou 'avaliacao_pdf'")
+	with _connection_scope() as conn:
+		cur = _get_cursor(conn)
+		cur.execute(f"UPDATE atendimentos SET {campo} = %s WHERE id = %s", (marcador, atendimento_id))
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("ATTACH", "atendimentos", atendimento_id, f"{campo} -> {marcador}")
+			except Exception:
+				pass
+		return ok
 
 
 def get_db_diagnostics() -> Dict[str, str]:
@@ -379,7 +493,13 @@ def excluir_arquivo(file_id: int) -> bool:
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		cur.execute("DELETE FROM arquivos WHERE id = %s", (file_id,))
-		return cur.rowcount > 0
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("DELETE", "arquivos", file_id, "Arquivo excluído")
+			except Exception:
+				pass
+		return ok
 
 
 def desassociar_arquivo_de_atendimentos(file_id: int) -> int:
@@ -402,4 +522,33 @@ def limpar_anexo_atendimento(atendimento_id: int, campo: str) -> bool:
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		cur.execute(f"UPDATE atendimentos SET {campo} = NULL WHERE id = %s", (atendimento_id,))
-		return cur.rowcount > 0
+		ok = cur.rowcount > 0
+		if ok:
+			try:
+				registrar_auditoria("DETACH", "atendimentos", atendimento_id, f"{campo} -> NULL")
+			except Exception:
+				pass
+		return ok
+
+
+def registrar_auditoria(acao: str, entidade: str, entidade_id: Optional[int], detalhes: Optional[str], usuario: Optional[str] = None) -> None:
+	"""Registra evento na tabela auditoria (tolerante a falhas)."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute(
+				"INSERT INTO auditoria (acao, entidade, entidade_id, detalhes, usuario) VALUES (%s, %s, %s, %s, %s)",
+				(acao, entidade, entidade_id, detalhes, usuario),
+			)
+	except Exception:
+		pass
+
+
+def listar_auditoria(limit: int = 100) -> List[Dict[str, Any]]:
+	"""Lista últimas entradas de auditoria."""
+	limit = max(1, min(int(limit or 100), 1000))
+	with _connection_scope(commit=False) as conn:
+		cur = _get_cursor(conn)
+		cur.execute("SELECT id, acao, entidade, entidade_id, detalhes, usuario, criado_em FROM auditoria ORDER BY id DESC LIMIT %s", (limit,))
+		rows = cur.fetchall()
+		return [dict(r) for r in rows]
