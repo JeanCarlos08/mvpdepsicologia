@@ -39,13 +39,15 @@ Observação: existe compatibilidade para caminhos em disco legados, mas o padr�
 
 ## Deploy no Streamlit Cloud
 1. Suba este repositório para o GitHub (branch main).
-2. No Streamlit Cloud, crie um novo app apontando para `gestao_clinica/app.py`.
+2. No Streamlit Cloud, crie um novo app apontando para o arquivo principal:
+   - Se o repositório tem esta pasta como raiz (caso mais comum): use `app.py`.
+   - Se você subiu este diretório dentro de uma subpasta do repo: use `gestao_clinica/app.py`.
 3. Em Settings → Secrets, defina as variáveis (um por linha):
    - `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica`
      - Alternativas aceitas: `db_url`, `postgres_url`, `postgresql_url`, ou chaves separadas `db_host`, `db_port`, `db_name`, `db_user`, `db_password`.
    - `APP_ADMIN_USER=seu_usuario`
    - `APP_ADMIN_PASS=sua_senha_forte`
-4. Opcional: ajuste o tamanho máximo de upload pelo `config.toml` se necessário (o padrão aqui é 50MB).
+4. Opcional: ajuste o tamanho máximo de upload pelo `config.toml` se necessário (o padrão aqui é 50MB). Evite fixar `port`/`address` no Cloud — já removemos essas chaves do `config.toml` para compatibilidade.
 
 Importante: nunca coloque senhas no repositório. Use Secrets no Streamlit Cloud ou `.env` local (não versionado). O arquivo `.env.example` mostra o formato esperado.
 
