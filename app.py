@@ -1098,6 +1098,13 @@ class ClinicalManagementApp:
             db_ok = False
         if not db_ok:
             st.warning("Banco de dados indisponível no momento. Você ainda pode fazer login e acessar Configurações; demais páginas exigem conexão.")
+        # Autenticação opcional: por padrão, NÃO exige login. Para exigir, defina APP_REQUIRE_AUTH=true nos Secrets.
+        require_auth = os.getenv('APP_REQUIRE_AUTH', 'false').strip().lower() in ('1','true','yes')
+        if not require_auth:
+            # Considera usuário autenticado automaticamente
+            if 'user_authenticated' not in st.session_state or not st.session_state['user_authenticated']:
+                st.session_state['user_authenticated'] = True
+                st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
         apply_custom_css()
         apply_plotly_theme()
         with st.sidebar:
@@ -1135,28 +1142,27 @@ class ClinicalManagementApp:
             selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
             page_key = pages[selected_page]
         if page_key == "dashboard":
-            # Proteção: redireciona para AuthPage se não autenticado
-            if not st.session_state.get('user_authenticated', False):
+            if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
                 DashboardPage.render()
         elif page_key == "appointments":
-            if not st.session_state.get('user_authenticated', False):
+            if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
                 AppointmentsPage.render({})
         elif page_key == "reports":
-            if not st.session_state.get('user_authenticated', False):
+            if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
                 ReportsPage.render()
         elif page_key == "upload":
-            if not st.session_state.get('user_authenticated', False):
+            if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
                 UploadPage.render()
         elif page_key == "settings":
-            if not st.session_state.get('user_authenticated', False):
+            if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
                 SettingsPage.render()
