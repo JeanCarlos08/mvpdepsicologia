@@ -975,34 +975,32 @@ class AuthPage:
             submitted = st.form_submit_button('Entrar', type='primary')
 
             if submitted:
-                admin_user = os.getenv('APP_ADMIN_USER', '').strip()
-                admin_pass = os.getenv('APP_ADMIN_PASS', '').strip()
-                if admin_user and admin_pass:
-                    if user == admin_user and pwd == admin_pass:
-                        st.session_state['user_authenticated'] = True
-                        st.session_state['user_name'] = user
-                        security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
-                        st.success('Login bem-sucedido — você será redirecionado.')
-                        # Reload imediato para refletir estado
+                # Fallback seguro: se os Secrets não estiverem configurados, usar admin/admin123
+                admin_user = os.getenv('APP_ADMIN_USER', 'admin').strip()
+                admin_pass = os.getenv('APP_ADMIN_PASS', 'admin123').strip()
+                if user == admin_user and pwd == admin_pass:
+                    st.session_state['user_authenticated'] = True
+                    st.session_state['user_name'] = user
+                    security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
+                    st.success('Login bem-sucedido — você será redirecionado.')
+                    # Reload imediato para refletir estado
+                    try:
+                        components.html('<script>window.location.reload();</script>', height=0)
+                    except Exception:
                         try:
-                            components.html('<script>window.location.reload();</script>', height=0)
+                            rerun = getattr(st, 'experimental_rerun', None)
+                            if callable(rerun):
+                                rerun()
+                            else:
+                                raise AttributeError('experimental_rerun ausente')
                         except Exception:
                             try:
-                                rerun = getattr(st, 'experimental_rerun', None)
-                                if callable(rerun):
-                                    rerun()
-                                else:
-                                    raise AttributeError('experimental_rerun ausente')
+                                st.stop()
                             except Exception:
-                                try:
-                                    st.stop()
-                                except Exception:
-                                    pass
-                    else:
-                        st.error('Credenciais inválidas')
-                        security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
+                                pass
                 else:
-                    st.warning('Credenciais de administrador não configuradas — sistema em modo aberto.')
+                    st.error('Credenciais inválidas')
+                    security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
         st.markdown("</div>", unsafe_allow_html=True)
         # Injetar JS via components para garantir estilo nos inputs do auth-card
         js = r"""
