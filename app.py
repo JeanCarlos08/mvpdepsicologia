@@ -1098,8 +1098,8 @@ class ClinicalManagementApp:
             db_ok = False
         if not db_ok:
             st.warning("Banco de dados indisponível no momento. Você ainda pode fazer login e acessar Configurações; demais páginas exigem conexão.")
-        # Autenticação opcional: por padrão, NÃO exige login. Para exigir, defina APP_REQUIRE_AUTH=true nos Secrets.
-        require_auth = os.getenv('APP_REQUIRE_AUTH', 'false').strip().lower() in ('1','true','yes')
+    # Autenticação: por padrão, EXIGE login. Para liberar sem login, defina APP_REQUIRE_AUTH=false nos Secrets.
+    require_auth = os.getenv('APP_REQUIRE_AUTH', 'true').strip().lower() in ('1','true','yes')
         if not require_auth:
             # Considera usuário autenticado automaticamente
             if 'user_authenticated' not in st.session_state or not st.session_state['user_authenticated']:
