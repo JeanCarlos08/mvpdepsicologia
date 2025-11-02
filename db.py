@@ -122,7 +122,11 @@ def _build_config_from_mapping(source: Optional[Mapping[str, Any]]) -> Optional[
 			return _parse_database_url(normalized[url_key])
 
 	if all(key in normalized for key in _REQUIRED_KEYS):
-		return {key: str(normalized[key]) for key in _REQUIRED_KEYS}
+		cfg = {key: str(normalized[key]) for key in _REQUIRED_KEYS}
+		# suporte opcional a SSL
+		if "db_sslmode" in normalized and normalized["db_sslmode"].strip():
+			cfg["db_sslmode"] = normalized["db_sslmode"].strip()
+		return cfg
 
 	return None
 
@@ -139,14 +143,23 @@ def _parse_database_url(url: str) -> Dict[str, str]:
 	path = parsed.path.lstrip("/")
 	if not path:
 		raise RuntimeError("DATABASE_URL inválida: nome do banco ausente.")
-
-	return {
+	# parse de query params (ex.: sslmode=require)
+	db_cfg: Dict[str, str] = {
 		"db_host": host,
 		"db_port": str(parsed.port or 5432),
 		"db_name": path,
 		"db_user": unquote(parsed.username or ""),
 		"db_password": unquote(parsed.password or ""),
 	}
+	try:
+		from urllib.parse import parse_qs
+		q = parse_qs(parsed.query or "")
+		sslmode_vals = q.get("sslmode")
+		if sslmode_vals and sslmode_vals[0].strip():
+			db_cfg["db_sslmode"] = sslmode_vals[0].strip()
+	except Exception:
+		pass
+	return db_cfg
 
 
 def get_connection():
@@ -157,7 +170,7 @@ def get_connection():
 		)
 	cfg = _load_db_config()
 	try:
-		conn = psycopg2.connect(
+		conn_kwargs: Dict[str, Any] = dict(
 			host=cfg["db_host"],
 			port=cfg["db_port"],
 			dbname=cfg["db_name"],
@@ -165,6 +178,11 @@ def get_connection():
 			password=cfg["db_password"],
 			cursor_factory=psycopg2.extras.RealDictCursor,
 		)
+		# aplicar sslmode se fornecido (Cloud geralmente exige 'require')
+		sslmode = cfg.get("db_sslmode") if isinstance(cfg, dict) else None
+		if sslmode:
+			conn_kwargs["sslmode"] = sslmode
+		conn = psycopg2.connect(**conn_kwargs)
 	except UnicodeDecodeError:
 		# Mensagens do servidor com acentuação em algumas instalações podem
 		# disparar erro ao decodificar; normalize para uma mensagem segura.
