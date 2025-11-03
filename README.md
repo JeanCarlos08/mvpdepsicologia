@@ -81,7 +81,7 @@ Se a conexão estiver correta, a página “🔎 Diagnóstico” mostrará “Co
 
 ## Troubleshooting rápido
 - “Falha ao conectar ao PostgreSQL”: verifique host/porta/DB, usuário/senha e `sslmode` exigido pelo provedor.
-- “Conectado mas sem tabelas”: abra o app; o esquema é criado automaticamente na inicialização.
+- “Conectado, mas sem tabelas”: abra o app; o esquema é criado automaticamente na inicialização.
 - PDFs não abrem: confirme que o campo guarda `db:<id>` e que a tabela `arquivos` contém conteúdo para o `id` informado.
 - No Cloud, “localhost” não funciona — use o host público do seu serviço de banco.
 
