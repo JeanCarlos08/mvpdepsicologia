@@ -1,56 +1,80 @@
 # JULIANA - Gestão Clínica (MVP)
 
-Aplicação Streamlit para gestão clínica com autenticação simples e PostgreSQL.
+Aplicação Streamlit para gestão clínica com PostgreSQL, autenticação simples e diagnósticos embutidos.
 
 ## Requisitos
-- Python 3.12
-- PostgreSQL 18 (serviço: `postgresql-x64-18`)
+- Python 3.11 (ver `runtime.txt`)
+- PostgreSQL disponível (local ou serviço gerenciado)
 
-## Configuração
-1. Crie o virtualenv e instale dependências:
-   - pip install -r requirements.txt
-2. Configure o `.env` (já incluso):
-   - APP_ADMIN_USER=admin
-   - APP_ADMIN_PASS=admin123
-   - DATABASE_URL=postgresql://admin:admin123@127.0.0.1:5432/gestao_clinica
-3. Banco de dados:
-   - O app exige PostgreSQL ativo e credenciais válidas.
-   - Crie o banco previamente no pgAdmin/psql: `CREATE DATABASE gestao_clinica;`
+## Visão rápida (Try it)
+1) Crie e ative um ambiente virtual, depois instale as dependências:
 
-## Como iniciar
-- Duplo clique em `INICIAR_SISTEMA.bat`
-- Ou: `python -m streamlit run app.py`
+```powershell
+python -m venv .venv
+./.venv/Scripts/Activate
+pip install -r requirements.txt
+```
 
-## Login
-- Usuário: admin
-- Senha: admin123
+2) Configure a conexão ao Postgres (escolha 1 opção):
+- Opção A (temporário na sessão):
 
-## Estrutura
-- app.py → App Streamlit (clássico)
-- db.py → Acesso ao banco (PostgreSQL)
-- uploads/ → Compatibilidade para PDFs antigos (novo padrão usa Postgres)
+```powershell
+$env:DATABASE_URL = "postgresql://USUARIO:SENHA@HOST:5432/NOME_DO_BANCO?sslmode=require"
+```
 
-## Anexos (PDFs) no Banco de Dados
-- PDFs são armazenados no PostgreSQL (tabela `arquivos`).
-- Ao enviar um PDF (em Atendimentos ou na página Upload), o arquivo é salvo como `BYTEA` e o sistema registra um marcador `db:<id>`.
-- Downloads são feitos diretamente do banco, inclusive na lista de atendimentos.
+- Opção B (recomendado): crie o arquivo `.streamlit/secrets.toml` com seu conteúdo real (veja `/.streamlit/secrets.example.toml`).
 
-Observação: existe compatibilidade para caminhos em disco legados, mas o padrão e recomendado é sempre o banco.
+3) Rode o app:
+
+```powershell
+python -m streamlit run app.py
+```
+
+Se a conexão estiver correta, a página “🔎 Diagnóstico” mostrará “Conectado” e você poderá “⚡ Criar índices”.
+
+## Configuração (detalhes)
+- O app lê `DATABASE_URL` (ex.: `postgresql://user:pass@host:5432/db?sslmode=require`) OU as chaves separadas em Secrets: `db_host`, `db_port`, `db_name`, `db_user`, `db_password` e, se necessário, `db_sslmode` (ex.: `require`).
+- Para provedores Cloud (Neon, Render, Supabase, ElephantSQL, etc.), use `sslmode=require` na URL.
+- Nunca versione segredos. Use:
+  - Local: `.streamlit/secrets.toml` (IGNORADO pelo Git)
+  - Cloud: Settings → Secrets do Streamlit Cloud
 
 ## Deploy no Streamlit Cloud
-1. Suba este repositório para o GitHub (branch main).
-2. No Streamlit Cloud, crie um novo app apontando para o arquivo principal:
-   - Se o repositório tem esta pasta como raiz (caso mais comum): use `app.py`.
-   - Se você subiu este diretório dentro de uma subpasta do repo: use `gestao_clinica/app.py`.
-3. Em Settings → Secrets, defina as variáveis (um por linha):
-   - `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica`
-     - Alternativas aceitas: `db_url`, `postgres_url`, `postgresql_url`, ou chaves separadas `db_host`, `db_port`, `db_name`, `db_user`, `db_password`.
-   - `APP_ADMIN_USER=seu_usuario`
-   - `APP_ADMIN_PASS=sua_senha_forte`
-4. Opcional: ajuste o tamanho máximo de upload pelo `config.toml` se necessário (o padrão aqui é 50MB). Evite fixar `port`/`address` no Cloud — já removemos essas chaves do `config.toml` para compatibilidade.
+1) Aponte para o repo (branch `main`).
+2) Main file path: `app.py` (ou `gestao_clinica/app.py` se estiver em subpasta).
+3) Em Settings → Secrets, adicione (exemplos):
+   - `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica?sslmode=require`
+   - Alternativa com campos separados: `db_host`, `db_port`, `db_name`, `db_user`, `db_password`, `db_sslmode=require`
+4) Sem fixar porta/endereço no `config.toml` (já configurado). Upload máx.: 50MB.
 
-Importante: nunca coloque senhas no repositório. Use Secrets no Streamlit Cloud ou `.env` local (não versionado). O arquivo `.env.example` mostra o formato esperado.
+## PDFs no Banco (BYTEA)
+- Anexos são gravados na tabela `arquivos` como `BYTEA`, e referenciados como `db:<id>`.
+- Registros antigos que usam caminho no disco seguem compatíveis, mas o padrão recomendado é o banco.
 
-## Notas
-- O app exige PostgreSQL configurado e ativo.
-- Encoding ajustado para Windows/UTF-8.
+## Segurança e autenticação
+- O app exige login por padrão. Use Secrets para definir credenciais.
+- Fallback (apenas se não houver credenciais nos Secrets): `admin` / `admin123`.
+- Ajustes adicionais via variáveis de ambiente/Secrets (ex.: obrigatoriedade de autenticação) são suportados no código.
+
+## Diagnóstico e manutenção
+- Página “⚙️ Configurações → 🔎 Diagnóstico”: testa conexão e mostra status.
+- Ação “⚡ Criar índices”: cria índices idempotentes úteis para buscas/filtros.
+
+## Estrutura principal
+- `app.py` — UI em Streamlit
+- `db.py` — Conexão e CRUD no PostgreSQL (com suporte a `sslmode`)
+- `.streamlit/config.toml` — Configuração do Streamlit (headless, CORS/XSRF off, uploads)
+- `.streamlit/secrets.example.toml` — Modelo de Secrets (não contém credenciais reais)
+- `requirements.txt` — Dependências
+- `runtime.txt` — Versão do Python para deploy
+- `tools/check_pg.py` — Verifica conexão local ao Postgres (opcional)
+- `tools/create_db.py` — Cria DB local se necessário (opcional)
+
+## Troubleshooting rápido
+- “Falha ao conectar ao PostgreSQL”: verifique host/porta/DB, usuário/senha e `sslmode` exigido pelo provedor.
+- “Conectado mas sem tabelas”: abra o app; o esquema é criado automaticamente na inicialização.
+- PDFs não abrem: confirme que o campo guarda `db:<id>` e que a tabela `arquivos` contém conteúdo para o `id` informado.
+- No Cloud, “localhost” não funciona — use o host público do seu serviço de banco.
+
+---
+Este repositório ignora secrets, logs, uploads e artefatos de build por padrão (veja `.gitignore`).
