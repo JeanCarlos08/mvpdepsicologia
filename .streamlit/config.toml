@@ -1,18 +1,14 @@
 [server]
+# Executa em modo headless e evita restrições CORS/XSRF para Cloud
 headless = true
 enableCORS = false
 enableXsrfProtection = false
-maxUploadSize = 50
+
+# Reload automático local (não afeta Cloud)
 runOnSave = true
+
+# Tamanho máximo de upload (MB)
+maxUploadSize = 50
 
 [browser]
 gatherUsageStats = false
-
-[global]
-developmentMode = false
-
-[theme]
-primaryColor = "#4DA768"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
