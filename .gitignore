@@ -50,3 +50,37 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Segredos e variáveis locais
+.env
+*.env
+
+# Artefatos locais
+__pycache__/
+*.pyc
+.venv/
+logs/
+uploads/
+*.log
+
+# IDE/SO
+.vscode/
+.DS_Store
+
+# Produção (Streamlit Cloud) — escolha UMA opção
+
+# Opção 1: URL única (recomendado)
+DATABASE_URL = "postgresql://USUARIO:SENHA@HOST_PUBLICO:5432/NOME_DO_BANCO?sslmode=require"
+
+# Opção 2: Campos separados
+db_host = "HOST_PUBLICO"
+db_port = 5432
+db_name = "NOME_DO_BANCO"
+db_user = "USUARIO"
+db_password = "SENHA"
+db_sslmode = "require"
+
+# Auth (ajuste no Cloud)
+APP_ADMIN_USER = "admin"
+APP_ADMIN_PASS = "admin123"
+APP_REQUIRE_AUTH = "true"
