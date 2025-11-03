@@ -177,7 +177,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
         .stCaption, .stCaption span, .stCaption * {
             color: #ffffff !important;
         }
-        span.db-badge, span.db-badge.sqlite, .db-badge, .db-badge.sqlite {
+        span.db-badge, .db-badge {
             color: #ffffff !important;
         }
         /* Estilizar campos de formulário / área de autenticação para a paleta profissional */
