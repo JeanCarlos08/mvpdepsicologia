@@ -1,5 +1,7 @@
 # JULIANA - Gestão Clínica (MVP)
 
+[![Deploy to Streamlit](https://img.shields.io/badge/Deploy%20to-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://share.streamlit.io/deploy?repository=JeanCarlos08/mvpdepsicologia&branch=main&mainFilePath=app.py)
+
 Aplicação Streamlit para gestão clínica com PostgreSQL, autenticação simples e diagnósticos embutidos.
 
 ## Requisitos
@@ -46,6 +48,13 @@ Se a conexão estiver correta, a página “🔎 Diagnóstico” mostrará “Co
    - `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica?sslmode=require`
    - Alternativa com campos separados: `db_host`, `db_port`, `db_name`, `db_user`, `db_password`, `db_sslmode=require`
 4) Sem fixar porta/endereço no `config.toml` (já configurado). Upload máx.: 50MB.
+
+### Checklist pós-deploy
+- [ ] Definir Secrets no Cloud (use `DATABASE_URL` com `sslmode=require` ou chaves separadas com `db_sslmode=require`).
+- [ ] Abrir “⚙️ Configurações → 🔎 Diagnóstico” no app e confirmar “Conectado”.
+- [ ] Clicar em “⚡ Criar índices” para acelerar filtros e buscas.
+- [ ] Testar login (credenciais definidas nos Secrets) e garantir `APP_REQUIRE_AUTH=true` se quiser exigir autenticação.
+- [ ] Testar upload/download/preview de PDF em Atendimentos e no módulo de Upload.
 
 ## PDFs no Banco (BYTEA)
 - Anexos são gravados na tabela `arquivos` como `BYTEA`, e referenciados como `db:<id>`.
