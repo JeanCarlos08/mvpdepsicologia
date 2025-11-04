@@ -87,3 +87,19 @@ Se a conexão estiver correta, a página “🔎 Diagnóstico” mostrará “Co
 
 ---
 Este repositório ignora secrets, logs, uploads e artefatos de build por padrão (veja `.gitignore`).
+
+# Gestão Clínica — Postgres
+
+- Banco: PostgreSQL (apenas)
+- Cloud: use DATABASE_URL com sslmode=require
+
+## Rodar local
+1) Crie .streamlit/secrets.toml:
+   DATABASE_URL = "postgresql://postgres:SENHA@localhost:5432/SEU_BANCO"
+2) streamlit run app.py
+3) Em Configurações → Diagnóstico, verifique “Conectado”.
+
+## Deploy (Streamlit Cloud)
+- Settings → Secrets:
+  DATABASE_URL = "postgresql://USUARIO:SENHA@HOST_PUBLICO:5432/NOME_DO_BANCO?sslmode=require"
+- Rerun/Deploy e verifique em Diagnóstico.

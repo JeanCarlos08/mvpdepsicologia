@@ -1,86 +1,37 @@
 ﻿# Python
 __pycache__/
 *.py[cod]
+*.pyc
 *.class
-*.so
 .Python
+
+# Ambientes virtuais
 env/
 venv/
 .venv/
 ENV/
+
+# Build/Distribuição
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Ambiente
-.env
-
-# Logs
-logs/
-*.log
-
-# Uploads
-uploads/
-
-# Ferramentas locais (não essenciais para Cloud)
-tools/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Streamlit
-.streamlit/secrets.toml
-
-# Segredos e variáveis locais
-.env
-*.env
-
-# Artefatos locais
-__pycache__/
-*.pyc
-.venv/
-logs/
-uploads/
-*.log
+wheels/
 
 # IDE/SO
 .vscode/
+.idea/
 .DS_Store
+Thumbs.db
+*.log
 
-# Produção (Streamlit Cloud) — escolha UMA opção
+# Artefatos do app
+logs/
+uploads/
 
-# Opção 1: URL única (recomendado)
-DATABASE_URL = "postgresql://USUARIO:SENHA@HOST_PUBLICO:5432/NOME_DO_BANCO?sslmode=require"
-
-# Opção 2: Campos separados
-db_host = "HOST_PUBLICO"
-db_port = 5432
-db_name = "NOME_DO_BANCO"
-db_user = "USUARIO"
-db_password = "SENHA"
-db_sslmode = "require"
-
-# Auth (ajuste no Cloud)
-APP_ADMIN_USER = "admin"
-APP_ADMIN_PASS = "admin123"
-APP_REQUIRE_AUTH = "true"
+# Segredos
+.streamlit/secrets.toml
+.env
+*.env
