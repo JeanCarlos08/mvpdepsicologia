@@ -982,22 +982,7 @@ class AuthPage:
                     st.session_state['user_authenticated'] = True
                     st.session_state['user_name'] = user
                     security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
-                    st.success('Login bem-sucedido — você será redirecionado.')
-                    # Reload imediato para refletir estado
-                    try:
-                        components.html('<script>window.location.reload();</script>', height=0)
-                    except Exception:
-                        try:
-                            rerun = getattr(st, 'experimental_rerun', None)
-                            if callable(rerun):
-                                rerun()
-                            else:
-                                raise AttributeError('experimental_rerun ausente')
-                        except Exception:
-                            try:
-                                st.stop()
-                            except Exception:
-                                pass
+                    st.rerun()
                 else:
                     st.error('Credenciais inválidas')
                     security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
