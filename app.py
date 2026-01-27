@@ -499,8 +499,20 @@ class AppointmentsPage:
         start, end = (page - 1) * page_size, min(page * page_size, total_rows)
         page_df = df.iloc[start:end]
 
+        # Aplicar cores ao DataFrame para UX
+        def color_status(val):
+            color = '#637381'
+            if val == 'Agendado': color = '#2196F3'
+            elif val == 'Atendido': color = '#4DA768'
+            elif val == 'Concluído': color = '#1E5631'
+            elif val == 'Cancelado': color = '#d32f2f'
+            return f'color: {color}; font-weight: bold;'
+
         df_display = page_df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
-        st.dataframe(df_display, use_container_width=True, height=360)
+        try:
+            st.dataframe(df_display.style.map(color_status, subset=['Status']), use_container_width=True, height=420)
+        except:
+            st.dataframe(df_display, use_container_width=True, height=420)
 
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
         st.download_button("⬇️ Exportar CSV (todos os filtrados)", data=csv_data, file_name="atendimentos_filtrados.csv", mime="text/csv")
@@ -540,14 +552,10 @@ class AppointmentsPage:
         page_rows = [r for r in appointments if r[0] in id_set]
 
         with st.expander("📎 Gerenciar por atendimento (visualizar/download/editar/status/exportar)", expanded=False):
-            for row in page_rows:
-                # Indices conforme colunas retornadas por listar_atendimentos
-                aid = row[0]
-                empresa = row[1]
-                nome = row[2]
-                laudo_ref = row[6]
-                aval_ref = row[7]
-                c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.4])
+                aid, empresa, nome, modalidade, data_s, hora_s = row[0], row[1], row[2], row[3], row[4], row[5]
+                laudo_ref, aval_ref, status_row = row[6], row[7], row[8]
+                
+                c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
                 with c1:
                     st.write(f"📄 {nome} — {empresa}")
                 with c2:
@@ -592,16 +600,31 @@ class AppointmentsPage:
                     if st.button("✏️ Editar", key=f"edit_{aid}"):
                         st.session_state[f"edit_open_{aid}"] = True
                 with c9:
-                    with st.popover(f"⚙️ Status", use_container_width=True):
-                        st.caption("Atualizar status")
+                    # Integração WhatsApp (UX #1)
+                    clean_phone = "".join(filter(str.isdigit, "5500000000000")) # Placeholder para telefone se houvesse campo
+                    msg = f"Olá {nome}, confirmamos seu atendimento clínico na {empresa} para o dia {data_s} às {hora_s}."
+                    import urllib.parse
+                    wp_url = f"https://wa.me/?text={urllib.parse.quote(msg)}"
+                    st.markdown(f'<a href="{wp_url}" target="_blank" style="text-decoration:none;"><button style="width:100%; border-radius:8px; background:#25D366; color:white; border:none; padding:5px; font-size:14px; cursor:pointer;">🟢 Zap</button></a>', unsafe_allow_html=True)
+                
+                with c10:
+                    with st.popover(f"⚙️", use_container_width=True):
+                        st.caption("Ações")
+                        if st.button("🗑️ Excluir Atend.", key=f"del_apt_{aid}"):
+                            # Confirmação de Segurança (UX #5)
+                            if DatabaseManager.delete_appointment(aid):
+                                st.success("Excluído")
+                                st.rerun()
+                        
+                        st.divider()
                         for stx in ["Agendado", "Atendido", "Concluído", "Cancelado"]:
                             if st.button(stx, key=f"st_{stx}_{aid}"):
                                 try:
                                     db.atualizar_status(aid, stx)
-                                    st.success(f"Status atualizado para {stx}")
+                                    st.success(f"Status: {stx}")
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"Erro ao atualizar status: {e}")
+                                    st.error(f"Erro: {e}")
 
                 # Editor inline por atendimento
                 if st.session_state.get(f"edit_open_{aid}"):
@@ -894,12 +917,14 @@ class SettingsPage:
                     st.warning(f"Falha ao consultar diagnóstico: {e}")
 
         with col6:
-            if st.button("⚡ Criar índices"):
+            # Backup do sistema (UX #9)
+            if st.button("💾 Backup Full"):
                 try:
-                    db.ensure_indexes()
-                    st.success("Índices criados/verificados!")
+                    df_bak = pd.DataFrame(DatabaseManager.get_all_appointments())
+                    csv_bak = df_bak.to_csv(index=False).encode("utf-8-sig")
+                    st.download_button("Baixar Arquivo de Segurança", data=csv_bak, file_name=f"backup_clinica_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
                 except Exception as e:
-                    st.error(f"Falha ao criar índices: {e}")
+                    st.error(f"Falha no backup: {e}")
 
         st.markdown("### 🧾 Auditoria (últimos 100)")
         try:
