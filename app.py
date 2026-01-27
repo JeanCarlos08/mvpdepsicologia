@@ -362,9 +362,10 @@ class DashboardPage:
         if stats.get("modalidades"):
             vals = list(stats["modalidades"].values())
             labels = list(stats["modalidades"].keys())
-            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade")
-            fig.update_traces(textposition="inside", textinfo="percent+label")
-            fig.update_layout(legend_title_text="Modalidade", height=420)
+            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade", 
+                         color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
+            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='#FFFFFF', width=2)))
+            fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
             st.plotly_chart(fig, use_container_width=True)
 
 class AppointmentsPage:
@@ -941,8 +942,10 @@ class ReportsPage:
         display_cards(cards)
         if not df.empty:
             modal_counts = df["Modalidade"].value_counts()
-            fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade")
-            fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400)
+            fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade",
+                         color_discrete_sequence=['#1E5631'])
+            fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400, font=dict(color="white"),
+                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
         st.markdown("### ⬇️ Exportar Relatório")
         if formato == "CSV":
