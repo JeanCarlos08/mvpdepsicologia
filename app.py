@@ -140,109 +140,161 @@ def display_cards(cards):
             )
 
 def render_page_header(title, subtitle, inverse=False):
-    st.markdown(f"<h2 style='color: #fff; font-weight: 700;'>{title}</h2>", unsafe_allow_html=True)
-    st.caption(f"<span style='color: #fff; font-size: 1.1em;'>{subtitle}</span>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='margin-bottom: 0px;'>{title}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: #637381; font-size: 1.1rem; margin-bottom: 25px;'>{subtitle}</p>", unsafe_allow_html=True)
 
 def apply_custom_css(dark_mode=False, advanced=False):
     st.markdown(
         '''<style>
-    body, .main, .block-container {background-color: #73C883 !important;}
-    .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content {background: #4da768 !important; color: #fff !important;}
-        .stSidebar .stButton > button, .stSidebar input, .stSidebar select {background: #fff !important; color: #4da768 !important; border-radius: 6px !important;}
-        .css-1d391kg, .css-1v0mbdj, .stSidebar, .sidebar-content, .stRadio label, .stRadio div, .stRadio span {color: #fff !important;}
-        .stDataFrame, .stTable, .stMarkdown table {background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(44,62,80,0.10); border: 1px solid #e1e8ed; margin-bottom: 18px; font-size: 15px;}
-        .stMarkdown table th, .stMarkdown table td {padding: 8px 14px; border-bottom: 1px solid #e1e8ed;}
-        .stMarkdown table th {background: #eafaf1; color: #2c3e50; font-weight: 700;}
-        .stMarkdown table tr:hover td {background: #f7f9fa;}
-        .stMarkdown table tr.important td {background: #ffeaa7 !important; color: #636e72 !important; font-weight: 600;}
-        h1, h2, h3, h4 {color: #2c3e50; font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; font-weight: 700;}
-        h3, .subtitle-highlight {color: #2c3e50 !important; background: linear-gradient(90deg, #eafaf1 0%, #73C883 100%); padding: 6px 18px; border-radius: 8px; font-size: 1.35em; font-weight: 700; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(44,62,80,0.07); display: inline-block;}
-        .stButton > button {background: linear-gradient(90deg, #4DA768 0%, #2ecc71 100%); color: white; border-radius: 6px; border: none; font-weight: 600; padding: 8px 20px; box-shadow: 0 2px 8px rgba(60,170,95,0.08); transition: background 0.2s;}
-        .stButton > button:hover {background: linear-gradient(90deg, #2ecc71 0%, #4DA768 100%);}
-        /* Card dashboard degradê azul mais suave */
-        .stMetric {
-            background: linear-gradient(135deg, rgba(77,167,120,0.12) 0%, rgba(77,167,248,0.08) 60%, rgba(255,255,255,0.0) 100%);
-            border-radius: 12px;
-            padding: 14px 18px;
-            box-shadow: 0 2px 12px rgba(44,62,80,0.07);
-            margin-bottom: 10px;
-            border: 1.5px solid #222;
-            transition: box-shadow 0.2s;
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        /* Reset e Tipografia Central */
+        html, body, [data-testid="stAppViewContainer"] {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #f0f7f2 0%, #e1f0e5 100%) !important;
         }
-        /* Forçar todas as cores de texto dentro do card para branco (label, value, delta) */
-        .stMetric, .stMetric * {
+
+        /* Container Principal */
+        .main .block-container {
+            padding-top: 2rem;
+            max-width: 1200px;
+        }
+
+        /* Sidebar Profissional */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #4da768 0%, #3a8e56 100%) !important;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05);
+        }
+        [data-testid="stSidebar"] * {
             color: #ffffff !important;
         }
-        /* Garantir que a caption do dashboard / badge do DB também fiquem em branco */
-        .stCaption, .stCaption span, .stCaption * {
-            color: #ffffff !important;
+        /* Estilo para Radio Buttons na Sidebar */
+        div[data-testid="stSidebarNav"] li {
+            border-radius: 8px;
+            margin: 4px 0;
         }
-        span.db-badge, .db-badge {
-            color: #ffffff !important;
+        .stRadio > label {
+            font-weight: 600 !important;
+            margin-bottom: 10px !important;
         }
-        /* Estilizar campos de formulário / área de autenticação para a paleta profissional */
-        .stForm, .stForm .stTextInput, .stForm .stTextArea, .stForm .stSelectbox, .stForm .stDateInput, .stForm .stTimeInput {
-            background: linear-gradient(180deg, rgba(0,191,255,0.04), rgba(77,167,248,0.02));
-            border-radius: 10px;
-            padding: 10px;
-            border: 1px solid rgba(255,255,255,0.06);
+
+        /* Headers Modernos */
+        h1, h2, h3 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700 !important;
+            color: #2c3e50 !important;
+            letter-spacing: -0.5px;
         }
-        .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div, .stDateInput>div>div>input, .stTimeInput>div>div>input {
-            background: rgba(255,255,255,0.04) !important;
-            color: #000000 !important; /* Texto digitado: preto */
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            border-radius: 6px !important;
-            padding: 8px !important;
+
+        /* Cards de Métricas (Dashboard) */
+        [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(77, 167, 104, 0.1);
+            border-radius: 16px !important;
+            padding: 20px !important;
+            box-shadow: 0 8px 24px rgba(44, 62, 80, 0.04) !important;
+            transition: all 0.3s ease;
         }
-        /* Para o formulário de autenticação, força texto preto e fundo claro para facilitar digitação
-           Seletores específicos para a estrutura interna gerada pelo Streamlit */
-        .auth-card input, .auth-card textarea,
-        .auth-card .stTextInput>div>div>input, .auth-card .stTextArea>div>div>textarea,
-        .auth-card .stTextInput>div>div>input[type="password"] {
-            color: #000000 !important;
-            background: #ffffff !important;
-            border: 1px solid rgba(0,0,0,0.08) !important;
-            caret-color: #000000 !important;
+        [data-testid="stMetric"]:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(77, 167, 104, 0.12) !important;
+            border: 1px solid rgba(77, 167, 104, 0.3);
         }
-    .auth-card .stTextInput>div>div>input::placeholder, .auth-card .stTextArea>div>div>textarea::placeholder { color: #888888 !important; }
-        /* Reforço adicional para navegadores que usam -webkit-text-fill-color e seletores distintos */
-        .auth-card :where(input, textarea) {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important; /* Safari/Chrome */
-            background: #ffffff !important;
-            caret-color: #000000 !important;
+        [data-testid="stMetricLabel"] {
+            color: #637381 !important;
+            font-size: 0.9rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .auth-card input::placeholder, .auth-card textarea::placeholder { color: rgba(0,0,0,0.45) !important; }
-        /* Labels e textos informativos dentro do card devem ser brancos para contraste com o tema */
-        .auth-card .stTextInput>div>label, .auth-card .stForm label, .auth-card .stMarkdown, .auth-card div[data-testid='stCaption'] {
-            color: #ffffff !important;
-        }
-        .stTextInput>div>label, .stForm label, .stCaption, .stMarkdown h2, .stMarkdown h3 {
-            color: #ffffff !important;
-        }
-        /* Forçar título dos cards para preto quando necessário */
-        .card-title { color: #000000 !important; }
-        .stTextInput>div>div>input::placeholder, .stTextArea>div>div>textarea::placeholder {
-            color: #888888 !important; /* Placeholder: cinza */
-        }
-        /* Botão de login/ações com variação da paleta */
-        .stButton > button {
-            background: linear-gradient(90deg, #2196F3 0%, #00BFFF 100%); /* azul profissional */
-            color: #ffffff !important;
-            border-radius: 8px !important;
-            padding: 8px 18px !important;
+        [data-testid="stMetricValue"] {
+            color: #1a1a1a !important;
+            font-size: 1.8rem !important;
             font-weight: 700 !important;
         }
-        .stButton > button:hover { opacity: 0.95; transform: translateY(-1px); }
-        /* Small privacy/login area highlight removed (use AuthPage render instead) */
-        /* seletores mais específicos caso alguma versão do streamlit use nomes diferentes */
-        .stMetric .stMetricValue, .stMetric .stMetricDelta, .stMetric .stMetricLabel {
-            color: #ffffff !important;
+
+        /* Tabelas e DataFrames */
+        .stDataFrame, [data-testid="stTable"] {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
-        .stMetric:hover {
-            box-shadow: 0 4px 18px rgba(44,62,80,0.13);
-            background: linear-gradient(135deg, rgba(77,167,248,0.16) 0%, rgba(255,255,255,0.0) 100%);
+
+        /* Formulários e Inputs */
+        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input {
+            border-radius: 10px !important;
+            border: 1px solid #e0e6ed !important;
+            padding: 10px 14px !important;
+            background: #ffffff !important;
+            color: #2c3e50 !important;
+            transition: all 0.2s;
         }
+        .stTextInput input:focus {
+            border-color: #4da768 !important;
+            box-shadow: 0 0 0 2px rgba(77,167,104,0.1) !important;
+        }
+
+        /* Botões Estilo Premium */
+        .stButton > button {
+            width: 100%;
+            border-radius: 10px !important;
+            background: linear-gradient(90deg, #4DA768 0%, #3a8e56 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 10px 24px !important;
+            border: none !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 12px rgba(77,167,104,0.2) !important;
+        }
+        .stButton > button:hover {
+            background: linear-gradient(90deg, #3a8e56 0%, #4DA768 100%) !important;
+            box-shadow: 0 6px 16px rgba(77,167,104,0.3) !important;
+            transform: translateY(-1px);
+        }
+
+        /* Expander Estilizado */
+        .stExpander {
+            border: none !important;
+            background: white !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+            margin-bottom: 1rem !important;
+        }
+
+        /* Estilo Específico para o Card de Autenticação */
+        .auth-card {
+            background: white !important;
+            padding: 2.5rem !important;
+            border-radius: 20px !important;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+            border: 1px solid #f0f0f0 !important;
+            max-width: 450px;
+            margin: 2rem auto !important;
+        }
+        .auth-card label {
+            color: #2c3e50 !important;
+            font-weight: 600 !important;
+        }
+
+        /* Badge de Database */
+        .db-badge {
+            background: rgba(77, 167, 104, 0.1);
+            color: #4da768 !important;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        /* Ajuste de scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4da768; }
+
         </style>''', unsafe_allow_html=True)
 
 def apply_plotly_theme(dark_mode=False):
@@ -291,7 +343,7 @@ class DashboardPage:
     def render() -> None:
         render_page_header("🩺 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.caption(f"<span style='color: #fff; font-size: 1.1em;'>🗄️ Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'} <span class='db-badge postgres'>Postgres</span></span>", unsafe_allow_html=True)
+        st.markdown(f"<div><span class='db-badge'>🗄️ Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'}</span> <span class='db-badge'>Postgres</span></div><br>", unsafe_allow_html=True)
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
