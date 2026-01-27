@@ -364,7 +364,7 @@ class DashboardPage:
             labels = list(stats["modalidades"].keys())
             fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade", 
                          color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
-            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='#FFFFFF', width=2)))
+            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
             fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
             st.plotly_chart(fig, use_container_width=True)
 
@@ -944,6 +944,7 @@ class ReportsPage:
             modal_counts = df["Modalidade"].value_counts()
             fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade",
                          color_discrete_sequence=['#1E5631'])
+            fig.update_traces(marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=1)))
             fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400, font=dict(color="white"),
                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
