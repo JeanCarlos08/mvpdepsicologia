@@ -343,8 +343,8 @@ class AppointmentsPage:
             with colf3:
                 status_sel = st.selectbox("Status", ["(Todos)", "Agendado", "Atendido", "Concluído", "Cancelado"], key="flt_status")
             with colf4:
-                d1 = st.date_input("Data inicial", value=None, key="flt_dini")
-                d2 = st.date_input("Data final", value=None, key="flt_dfim")
+                d1 = st.date_input("Data inicial", value=None, key="flt_dini", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
+                d2 = st.date_input("Data final", value=None, key="flt_dfim", min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
 
             filters["q"] = q
             filters["modalidade_filter"] = None if mod_sel == "(Todas)" else mod_sel
@@ -358,7 +358,7 @@ class AppointmentsPage:
                     empresa = st.text_input("🏢 Empresa/Organização")
                     # Modalidades padronizadas (ignoramos outras entradas do DB)
                     modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento])
-                    data_sel = st.date_input("📅 Data", min_value=date.today())
+                    data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
                 with col2:
                     nome = st.text_input("👤 Nome do Paciente")
                     hora_sel = st.time_input("⏰ Horário")
@@ -577,7 +577,7 @@ class AppointmentsPage:
                                     cur_dt = pd.to_datetime(str(row[4]), dayfirst=True, errors="coerce").date()
                                 except Exception:
                                     cur_dt = date.today()
-                                nv_data = st.date_input("Data", value=cur_dt)
+                                nv_data = st.date_input("Data", value=cur_dt, min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
                             with colu3:
                                 try:
                                     (hh,mm) = str(row[5]).split(":")[:2]

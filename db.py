@@ -348,7 +348,7 @@ def listar_atendimentos() -> List[Tuple]:
 	query = """
 	SELECT id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes
 	FROM atendimentos
-	ORDER BY data DESC, hora DESC
+	ORDER BY TO_DATE(data, 'DD/MM/YYYY') DESC, hora DESC
 	"""
 	with _connection_scope(commit=False) as conn:
 		cur = _get_cursor(conn)
@@ -570,3 +570,9 @@ def listar_auditoria(limit: int = 100) -> List[Dict[str, Any]]:
 		cur.execute("SELECT id, acao, entidade, entidade_id, detalhes, usuario, criado_em FROM auditoria ORDER BY id DESC LIMIT %s", (limit,))
 		rows = cur.fetchall()
 		return [dict(r) for r in rows]
+
+
+
+APP_ADMIN_USER = "admin"
+APP_ADMIN_PASS = "admin123"
+APP_REQUIRE_AUTH = "true"
