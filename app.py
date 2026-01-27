@@ -140,18 +140,21 @@ def display_cards(cards):
             )
 
 def render_page_header(title, subtitle, inverse=False):
-    st.markdown(f"<h1 style='margin-bottom: 0px;'>{title}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: #637381; font-size: 1.1rem; margin-bottom: 25px;'>{subtitle}</p>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='color: #ffffff; margin-bottom: 0px;'>{title}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: rgba(255,255,255,0.9); font-size: 1.1rem; margin-bottom: 25px;'>{subtitle}</p>", unsafe_allow_html=True)
 
 def apply_custom_css(dark_mode=False, advanced=False):
     st.markdown(
         '''<style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
         
-        /* Reset e Tipografia Central */
-        html, body, [data-testid="stAppViewContainer"] {
+        /* Reset e Cores Originais */
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             font-family: 'Outfit', sans-serif;
-            background: linear-gradient(135deg, #f0f7f2 0%, #e1f0e5 100%) !important;
+            background-color: #73C883 !important;
+        }
+        [data-testid="stMainViewContainer"] {
+            background-color: #73C883 !important;
         }
 
         /* Container Principal */
@@ -160,84 +163,67 @@ def apply_custom_css(dark_mode=False, advanced=False):
             max-width: 1200px;
         }
 
-        /* Sidebar Profissional */
+        /* Sidebar Original */
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #4da768 0%, #3a8e56 100%) !important;
+            background-color: #4da768 !important;
             box-shadow: 4px 0 15px rgba(0,0,0,0.05);
         }
         [data-testid="stSidebar"] * {
             color: #ffffff !important;
         }
-        /* Estilo para Radio Buttons na Sidebar */
-        div[data-testid="stSidebarNav"] li {
-            border-radius: 8px;
-            margin: 4px 0;
-        }
-        .stRadio > label {
-            font-weight: 600 !important;
-            margin-bottom: 10px !important;
-        }
-
-        /* Headers Modernos */
+        
+        /* Headers em Branco */
         h1, h2, h3 {
             font-family: 'Outfit', sans-serif;
             font-weight: 700 !important;
-            color: #2c3e50 !important;
+            color: #ffffff !important;
             letter-spacing: -0.5px;
         }
 
-        /* Cards de Métricas (Dashboard) */
+        /* Cards de Métricas (Mantendo Estilo Profissional com Nuance) */
         [data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.9) !important;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(77, 167, 104, 0.1);
+            background: rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px !important;
             padding: 20px !important;
-            box-shadow: 0 8px 24px rgba(44, 62, 80, 0.04) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05) !important;
             transition: all 0.3s ease;
         }
         [data-testid="stMetric"]:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(77, 167, 104, 0.12) !important;
-            border: 1px solid rgba(77, 167, 104, 0.3);
+            background: rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+        }
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
+            color: #ffffff !important;
         }
         [data-testid="stMetricLabel"] {
-            color: #637381 !important;
-            font-size: 0.9rem !important;
             font-weight: 600 !important;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        [data-testid="stMetricValue"] {
-            color: #1a1a1a !important;
-            font-size: 1.8rem !important;
-            font-weight: 700 !important;
+            letter-spacing: 0.8px;
+            opacity: 0.9;
         }
 
-        /* Tabelas e DataFrames */
+        /* Tabelas e DataFrames (Fundo Branco para Legibilidade) */
         .stDataFrame, [data-testid="stTable"] {
             background: white;
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
 
         /* Formulários e Inputs */
         .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input {
             border-radius: 10px !important;
-            border: 1px solid #e0e6ed !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
             padding: 10px 14px !important;
-            background: #ffffff !important;
-            color: #2c3e50 !important;
-            transition: all 0.2s;
-        }
-        .stTextInput input:focus {
-            border-color: #4da768 !important;
-            box-shadow: 0 0 0 2px rgba(77,167,104,0.1) !important;
+            background: rgba(255,255,255,0.9) !important;
+            color: #1a1a1a !important;
         }
 
-        /* Botões Estilo Premium */
+        /* Botões Original + Estilo */
         .stButton > button {
             width: 100%;
             border-radius: 10px !important;
@@ -245,55 +231,57 @@ def apply_custom_css(dark_mode=False, advanced=False):
             color: white !important;
             font-weight: 600 !important;
             padding: 10px 24px !important;
-            border: none !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 4px 12px rgba(77,167,104,0.2) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
         }
         .stButton > button:hover {
-            background: linear-gradient(90deg, #3a8e56 0%, #4DA768 100%) !important;
-            box-shadow: 0 6px 16px rgba(77,167,104,0.3) !important;
-            transform: translateY(-1px);
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
         }
 
         /* Expander Estilizado */
         .stExpander {
             border: none !important;
-            background: white !important;
+            background: rgba(255,255,255,0.1) !important;
             border-radius: 12px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+            backdrop-filter: blur(5px);
             margin-bottom: 1rem !important;
         }
+        .stExpander * { color: white !important; }
 
-        /* Estilo Específico para o Card de Autenticação */
+        /* Auth Card */
         .auth-card {
-            background: white !important;
+            background: rgba(255,255,255,0.15) !important;
+            backdrop-filter: blur(15px);
             padding: 2.5rem !important;
             border-radius: 20px !important;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
-            border: 1px solid #f0f0f0 !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
             max-width: 450px;
             margin: 2rem auto !important;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.1) !important;
         }
-        .auth-card label {
-            color: #2c3e50 !important;
+        .auth-card label, .auth-card p {
+            color: #ffffff !important;
             font-weight: 600 !important;
         }
 
         /* Badge de Database */
         .db-badge {
-            background: rgba(77, 167, 104, 0.1);
-            color: #4da768 !important;
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff !important;
             padding: 4px 12px;
             border-radius: 50px;
             font-size: 0.85rem;
             font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.1);
         }
         
-        /* Ajuste de scrollbar */
+        /* Scrollbars */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #4da768; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ffffff; }
 
         </style>''', unsafe_allow_html=True)
 
