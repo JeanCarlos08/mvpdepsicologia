@@ -552,6 +552,7 @@ class AppointmentsPage:
         page_rows = [r for r in appointments if r[0] in id_set]
 
         with st.expander("📎 Gerenciar por atendimento (visualizar/download/editar/status/exportar)", expanded=False):
+            for row in page_rows:
                 aid, empresa, nome, modalidade, data_s, hora_s = row[0], row[1], row[2], row[3], row[4], row[5]
                 laudo_ref, aval_ref, status_row = row[6], row[7], row[8]
                 
