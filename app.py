@@ -9,6 +9,7 @@ import plotly.io as pio
 import os
 import streamlit.components.v1 as components
 import base64
+from fpdf import FPDF
 # Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
 # ...restante do arquivo permanece inalterado...
 
@@ -315,6 +316,61 @@ def save_uploaded_pdf(uploaded_file):
 def verificar_conexao():
     return db.verificar_conexao()
 
+def generate_pdf_report(df):
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('Arial', 'B', 16)
+            self.cell(0, 10, 'Relatório de Atendimentos', 0, 1, 'C')
+            self.ln(5)
+            self.set_font('Arial', 'I', 10)
+            self.cell(0, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
+            self.ln(5)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('Arial', 'I', 8)
+            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+
+    pdf = PDF('L', 'mm', 'A4')
+    pdf.add_page()
+    pdf.set_font("Arial", size=10)
+
+    # Columns to export
+    cols = ["Empresa", "Nome", "Modalidade", "Data", "Hora", "Status"]
+    
+    # Column widths (approximate for A4 Landscape ~275mm usable width)
+    # Total width with these: 65+65+45+30+25+40 = 270
+    widths = [65, 65, 45, 30, 25, 40] 
+
+    # Header
+    pdf.set_font("Arial", 'B', 10)
+    for i, col in enumerate(cols):
+        pdf.cell(widths[i], 10, col, 1, 0, 'C')
+    pdf.ln()
+
+    # Rows
+    pdf.set_font("Arial", size=10)
+    
+    def safe_cell(text):
+        try:
+            return str(text).encode('latin-1', 'replace').decode('latin-1')
+        except:
+            return str(text)
+
+    for index, row in df.iterrows():
+        try:
+            pdf.cell(widths[0], 10, safe_cell(str(row['Empresa'])[:35]), 1)
+            pdf.cell(widths[1], 10, safe_cell(str(row['Nome'])[:35]), 1)
+            pdf.cell(widths[2], 10, safe_cell(str(row['Modalidade'])[:25]), 1)
+            pdf.cell(widths[3], 10, safe_cell(str(row['Data'])), 1, 0, 'C')
+            pdf.cell(widths[4], 10, safe_cell(str(row['Hora'])), 1, 0, 'C')
+            pdf.cell(widths[5], 10, safe_cell(str(row['Status'])), 1, 0, 'C')
+            pdf.ln()
+        except Exception:
+            pass
+
+    return pdf.output(dest='S').encode('latin-1')
+
 class AtendimentoData:
     def __init__(self, empresa, nome, modalidade, data, hora, laudo_pdf="", avaliacao_pdf="", observacoes=""):
         self.empresa = empresa
@@ -515,7 +571,16 @@ class AppointmentsPage:
             st.dataframe(df_display, use_container_width=True, height=420)
 
         csv_data = df.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("⬇️ Exportar CSV (todos os filtrados)", data=csv_data, file_name="atendimentos_filtrados.csv", mime="text/csv")
+        
+        c_dl1, c_dl2 = st.columns([1, 1])
+        with c_dl1:
+            st.download_button("⬇️ Exportar CSV", data=csv_data, file_name="atendimentos_filtrados.csv", mime="text/csv")
+        with c_dl2:
+            try:
+                pdf_bytes = generate_pdf_report(df)
+                st.download_button("⬇️ Exportar PDF", data=pdf_bytes, file_name="atendimentos_filtrados.pdf", mime="application/pdf")
+            except Exception as e:
+                st.error(f"Erro ao gerar PDF: {e}")
 
         # Downloads de anexos diretamente na lista
         def _download_button_from_ref(ref: str, label: str, key: str):
@@ -657,15 +722,18 @@ class AppointmentsPage:
                                 up_laudo_novo = st.file_uploader("Substituir Laudo (PDF)", type=["pdf"], key=f"up_laudo_edit_{aid}")
                             with colaf2:
                                 up_aval_novo = st.file_uploader("Substituir Avaliação (PDF)", type=["pdf"], key=f"up_aval_edit_{aid}")
-                            colbtn1, colbtn2, colbtn3 = st.columns([1.2,1,1])
+                            colbtn1, colbtn2, colbtn3, colbtn4 = st.columns([1.2,1,1,1])
                             with colbtn1:
                                 s = st.form_submit_button("💾 Salvar alterações", type="primary")
                             with colbtn2:
                                 cancel = st.form_submit_button("Cancelar")
                             with colbtn3:
                                 exp_csv = st.form_submit_button("⬇️ Exportar CSV")
-                            colbtn4, = st.columns(1)
                             with colbtn4:
+                                exp_pdf = st.form_submit_button("⬇️ Exportar PDF")
+                            
+                            colbtn5, = st.columns(1)
+                            with colbtn5:
                                 exp_html = st.form_submit_button("🖨️ Exportar HTML (PDF via impressão)")
                             if s:
                                 try:
@@ -723,6 +791,24 @@ class AppointmentsPage:
                                     st.download_button("Baixar CSV do Atendimento", data=csv_bytes, file_name=f"atendimento_{aid}.csv", mime="text/csv", key=f"dl_csv_{aid}")
                                 except Exception as e:
                                     st.error(f"Erro ao exportar CSV: {e}")
+                            elif exp_pdf:
+                                try:
+                                    row_df = pd.DataFrame([{
+                                        "ID": row[0],
+                                        "Empresa": row[1],
+                                        "Nome": row[2],
+                                        "Modalidade": row[3],
+                                        "Data": row[4],
+                                        "Hora": row[5],
+                                        "Laudo PDF": row[6],
+                                        "Avaliação PDF": row[7],
+                                        "Status": row[8],
+                                        "Observações": row[9],
+                                    }])
+                                    pdf_bytes = generate_pdf_report(row_df)
+                                    st.download_button("Baixar PDF do Atendimento", data=pdf_bytes, file_name=f"atendimento_{aid}.pdf", mime="application/pdf", key=f"dl_pdf_{aid}")
+                                except Exception as e:
+                                    st.error(f"Erro ao exportar PDF: {e}")
                             elif exp_html:
                                 try:
                                     html = _build_html_attendance_summary(row)
