@@ -338,9 +338,9 @@ def generate_pdf_report(df):
     # Columns to export
     cols = ["Empresa", "Nome", "Modalidade", "Data", "Hora", "Status"]
     
-    # Column widths (approximate for A4 Landscape ~275mm usable width)
-    # Total width with these: 65+65+45+30+25+40 = 270
-    widths = [65, 65, 45, 30, 25, 40] 
+    # Column widths adjusted for A4 Landscape (~277mm usable width)
+    # Total width: 70 + 70 + 45 + 25+ 22 + 40 = 272
+    widths = [70, 70, 45, 25, 22, 40] 
 
     # Header
     pdf.set_font("Arial", 'B', 10)
@@ -359,8 +359,9 @@ def generate_pdf_report(df):
 
     for index, row in df.iterrows():
         try:
-            pdf.cell(widths[0], 10, safe_cell(str(row['Empresa'])[:35]), 1)
-            pdf.cell(widths[1], 10, safe_cell(str(row['Nome'])[:35]), 1)
+            # Safely truncate to prevent overlap (approx 38 chars for 70mm Arial 10)
+            pdf.cell(widths[0], 10, safe_cell(str(row['Empresa'])[:38]), 1)
+            pdf.cell(widths[1], 10, safe_cell(str(row['Nome'])[:38]), 1)
             pdf.cell(widths[2], 10, safe_cell(str(row['Modalidade'])[:25]), 1)
             pdf.cell(widths[3], 10, safe_cell(str(row['Data'])), 1, 0, 'C')
             pdf.cell(widths[4], 10, safe_cell(str(row['Hora'])), 1, 0, 'C')
