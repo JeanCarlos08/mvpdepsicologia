@@ -359,43 +359,14 @@ def generate_pdf_report(df):
 
     for index, row in df.iterrows():
         try:
-            # Data for the row
-            data = [
-                safe_cell_text(row['Empresa']),
-                safe_cell_text(row['Nome']),
-                safe_cell_text(row['Modalidade']),
-                safe_cell_text(row['Data']),
-                safe_cell_text(row['Hora']),
-                safe_cell_text(row['Status'])
-            ]
-            
-            # Start position
-            x_start = pdf.get_x()
-            y_start = pdf.get_y()
-            
-            # Calculate row height (we use a fixed height per line, e.g., 6mm)
-            # and check how many lines each cell will take
-            max_y = y_start
-            
-            # Draw each cell
-            current_x = x_start
-            for i, text in enumerate(data):
-                pdf.set_xy(current_x, y_start)
-                # multi_cell allows wrapping. 
-                # We use a height that fits the font (e.g. 5 or 6 for font size 10)
-                pdf.multi_cell(widths[i], 8, text, border=1, align='L' if i < 3 else 'C')
-                
-                # Check if this cell pushed Y further down
-                if pdf.get_y() > max_y:
-                    max_y = pdf.get_y()
-                current_x += widths[i]
-            
-            # Reset Y to the max height reached in this row to start the next row correctly
-            pdf.set_xy(x_start, max_y)
-            
-            # Small check for page break (A4 landscape height is ~210mm)
-            if pdf.get_y() > 180:
-                pdf.add_page()
+            # Reverting to fixed width cells with truncation to avoid excessive line breaks
+            pdf.cell(widths[0], 10, safe_cell_text(str(row['Empresa'])[:38]), 1)
+            pdf.cell(widths[1], 10, safe_cell_text(str(row['Nome'])[:38]), 1)
+            pdf.cell(widths[2], 10, safe_cell_text(str(row['Modalidade'])[:25]), 1)
+            pdf.cell(widths[3], 10, safe_cell_text(str(row['Data'])), 1, 0, 'C')
+            pdf.cell(widths[4], 10, safe_cell_text(str(row['Hora'])), 1, 0, 'C')
+            pdf.cell(widths[5], 10, safe_cell_text(str(row['Status'])), 1, 0, 'C')
+            pdf.ln()
                 
         except Exception:
             pass
