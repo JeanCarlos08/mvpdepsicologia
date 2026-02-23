@@ -348,8 +348,8 @@ def generate_pdf_report(df):
         pdf.cell(widths[i], 10, col, 1, 0, 'C')
     pdf.ln()
 
-    # Rows
-    pdf.set_font("Arial", size=10)
+    # Rows — font size 8 for data to ensure text fits inside fixed-width columns
+    pdf.set_font("Arial", size=8)
     
     def safe_cell_text(text):
         try:
@@ -359,13 +359,20 @@ def generate_pdf_report(df):
 
     for index, row in df.iterrows():
         try:
-            # Reverting to fixed width cells with truncation to avoid excessive line breaks
-            pdf.cell(widths[0], 10, safe_cell_text(str(row['Empresa'])[:38]), 1)
-            pdf.cell(widths[1], 10, safe_cell_text(str(row['Nome'])[:38]), 1)
-            pdf.cell(widths[2], 10, safe_cell_text(str(row['Modalidade'])[:25]), 1)
-            pdf.cell(widths[3], 10, safe_cell_text(str(row['Data'])), 1, 0, 'C')
-            pdf.cell(widths[4], 10, safe_cell_text(str(row['Hora'])), 1, 0, 'C')
-            pdf.cell(widths[5], 10, safe_cell_text(str(row['Status'])), 1, 0, 'C')
+            # Fixed width cells with safe truncation (28 chars max for 70mm at 8pt)
+            empresa_txt = safe_cell_text(str(row['Empresa']).strip()[:28])
+            nome_txt = safe_cell_text(str(row['Nome']).strip()[:28])
+            modal_txt = safe_cell_text(str(row['Modalidade']).strip()[:20])
+            data_txt = safe_cell_text(str(row['Data']).strip())
+            hora_txt = safe_cell_text(str(row['Hora']).strip())
+            status_txt = safe_cell_text(str(row['Status']).strip())
+
+            pdf.cell(widths[0], 8, empresa_txt, 1, 0, 'L')
+            pdf.cell(widths[1], 8, nome_txt, 1, 0, 'L')
+            pdf.cell(widths[2], 8, modal_txt, 1, 0, 'L')
+            pdf.cell(widths[3], 8, data_txt, 1, 0, 'C')
+            pdf.cell(widths[4], 8, hora_txt, 1, 0, 'C')
+            pdf.cell(widths[5], 8, status_txt, 1, 0, 'C')
             pdf.ln()
                 
         except Exception:
@@ -572,7 +579,7 @@ class AppointmentsPage:
         except:
             st.dataframe(df_display, use_container_width=True, height=420)
 
-        csv_data = df.to_csv(index=False).encode("utf-8-sig")
+        csv_data = df.to_csv(index=False, sep=';').encode("utf-8-sig")
         
         c_dl1, c_dl2 = st.columns([1, 1])
         with c_dl1:
@@ -789,7 +796,7 @@ class AppointmentsPage:
                                         "Status": row[8],
                                         "Observações": row[9],
                                     }])
-                                    csv_bytes = row_df.to_csv(index=False).encode("utf-8-sig")
+                                    csv_bytes = row_df.to_csv(index=False, sep=';').encode("utf-8-sig")
                                     st.download_button("Baixar CSV do Atendimento", data=csv_bytes, file_name=f"atendimento_{aid}.csv", mime="text/csv", key=f"dl_csv_{aid}")
                                 except Exception as e:
                                     st.error(f"Erro ao exportar CSV: {e}")
