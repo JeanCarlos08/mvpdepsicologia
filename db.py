@@ -192,8 +192,9 @@ def get_connection():
 			"Falha ao conectar ao PostgreSQL: verifique usuário/senha e existência do banco (mensagem do servidor tinha acentuação)."
 		)
 	except Exception as e:
-		# Reempacotar com mensagem clara, sem forçar decodificação adicional
-		raise RuntimeError(f"Falha ao conectar ao PostgreSQL: {e}")
+		# Segurança Sênior: Logar internamente e manter erro genérico para o usuário
+		print(f"DEBUG_INTERNAL_DB_ERROR: {e}")
+		raise RuntimeError("Falha ao conectar ao banco de dados. Verifique as credenciais.")
 	try:
 		# garantir client_encoding consistente
 		conn.set_client_encoding('UTF8')
