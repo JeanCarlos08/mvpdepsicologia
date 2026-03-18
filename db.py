@@ -351,7 +351,8 @@ def inserir_atendimento(
 		result = cur.fetchone()
 		new_id = int(result["id"]) if result else 0
 		try:
-			registrar_auditoria("CREATE", "atendimentos", new_id, f"Atendimento criado: {nome} - {empresa}")
+			# LGPD: Registrar apenas ID, não dados sensíveis como {nome} ou {empresa}
+			registrar_auditoria("CREATE", "atendimentos", new_id, f"Novo registro criado (ID {new_id})")
 		except Exception:
 			pass
 		return new_id
@@ -437,7 +438,8 @@ def atualizar_status(atendimento_id: int, status: str) -> bool:
 		ok = cur.rowcount > 0
 		if ok:
 			try:
-				registrar_auditoria("STATUS", "atendimentos", atendimento_id, f"Status -> {status}")
+				# LGPD: Apenas status, sem PII
+				registrar_auditoria("STATUS", "atendimentos", atendimento_id, f"Status alterado para: {status}")
 			except Exception:
 				pass
 		return ok
