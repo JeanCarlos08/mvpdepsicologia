@@ -60,6 +60,12 @@ class Security:
             return False, f"Arquivo muito grande. Máximo: {max_size_mb}MB"
         return True, "OK"
     @staticmethod
+    def is_valid_pdf(file_bytes):
+        """Verifica se o conteúdo do arquivo começa com o cabeçalho PDF (Magic Bytes)."""
+        if not file_bytes or len(file_bytes) < 4:
+            return False
+        return file_bytes[:4] == b'%PDF'
+    @staticmethod
     def log_access(action, details):
         try:
             log_dir = BASE_DIR / "logs"
