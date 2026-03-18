@@ -6,9 +6,6 @@ from enum import Enum
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
-import os
-import streamlit.components.v1 as components
-import base64
 from fpdf import FPDF
 # Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
 # ...restante do arquivo permanece inalterado...
