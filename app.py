@@ -1013,16 +1013,27 @@ class SettingsPage:
                     st.warning(f"Falha ao consultar diagnóstico: {e}")
 
         with col6:
-            # Backup do sistema (UX #9)
-            if st.button("💾 Backup Full"):
+            # Backup do sistema Avançado (JSON)
+            if st.button("💾 Gerar Backup", help="Gera um backup completo do banco em formato JSON"):
                 try:
-                    df_bak = pd.DataFrame(DatabaseManager.get_all_appointments())
-                    csv_bak = df_bak.to_csv(index=False).encode("utf-8-sig")
-                    st.download_button("Baixar Arquivo de Segurança", data=csv_bak, file_name=f"backup_clinica_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+                    backup_bytes = db.exportar_dados_seguranca()
+                    st.session_state["last_backup_time"] = datetime.now()
+                    st.download_button(
+                        label="📥 Baixar Backup", 
+                        data=backup_bytes, 
+                        file_name=f"backup_clinica_full_{datetime.now().strftime('%Y%m%d_%H%M')}.json", 
+                        mime="application/json",
+                        key="btn_dl_backup"
+                    )
+                    st.success("Backup gerado com sucesso!")
                 except Exception as e:
                     st.error(f"Falha no backup: {e}")
 
-        st.markdown("### 🧾 Auditoria (últimos 100)")
+        # Seção de Status de Backup (UX #10)
+        if "last_backup_time" in st.session_state:
+            st.caption(f"Último backup gerado nesta sessão: {st.session_state['last_backup_time'].strftime('%H:%M:%S')}")
+
+        st.markdown("### 📋 Auditoria Avançada (últimos 100)")
         try:
             aud = db.listar_auditoria(100)
             if aud:

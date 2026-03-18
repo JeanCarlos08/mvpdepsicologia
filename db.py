@@ -1,3 +1,5 @@
+import json
+import io
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -563,6 +565,10 @@ def limpar_anexo_atendimento(atendimento_id: int, campo: str) -> bool:
 def registrar_auditoria(acao: str, entidade: str, entidade_id: Optional[int], detalhes: Optional[str], usuario: Optional[str] = None) -> None:
 	"""Registra evento na tabela auditoria (tolerante a falhas)."""
 	try:
+		# Se o usuário não for passado, tenta pegar do session_state do Streamlit
+		if not usuario and st and hasattr(st, "session_state"):
+			usuario = st.session_state.get("user_name", "system")
+			
 		with _connection_scope() as conn:
 			cur = _get_cursor(conn)
 			cur.execute(
@@ -571,6 +577,30 @@ def registrar_auditoria(acao: str, entidade: str, entidade_id: Optional[int], de
 			)
 	except Exception:
 		pass
+
+
+def exportar_dados_seguranca() -> bytes:
+	"""Gera um backup completo do banco em formato JSON (mais robusto para restauração)."""
+	backup_data = {
+		"timestamp": str(Path(__file__).stat().st_mtime), # Simplificado
+		"tables": {}
+	}
+	
+	tabels_to_backup = ["atendimentos", "notas", "arquivos", "auditoria"]
+	
+	with _connection_scope(commit=False) as conn:
+		cur = _get_cursor(conn)
+		for table in tabels_to_backup:
+			try:
+				cur.execute(f"SELECT * FROM {table}")
+				rows = cur.fetchall()
+				# Converter rows (RealDictRow) para lista de dicts puros
+				backup_data["tables"][table] = [dict(r) for r in rows]
+			except Exception:
+				backup_data["tables"][table] = []
+				
+	# Retorna os bytes do JSON (pode ser zipado depois se crescer muito)
+	return json.dumps(backup_data, indent=2, default=str).encode("utf-8")
 
 
 def listar_auditoria(limit: int = 100) -> List[Dict[str, Any]]:
