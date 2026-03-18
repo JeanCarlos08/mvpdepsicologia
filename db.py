@@ -235,8 +235,8 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 		empresa VARCHAR(255) NOT NULL,
 		nome VARCHAR(255) NOT NULL,
 		modalidade VARCHAR(100) NOT NULL,
-		data VARCHAR(50) NOT NULL,
-		hora VARCHAR(20) NOT NULL,
+		data DATE NOT NULL,
+		hora TIME NOT NULL,
 		laudo_pdf VARCHAR(255),
 		avaliacao_pdf VARCHAR(255),
 		status VARCHAR(50) DEFAULT 'Agendado',
@@ -338,8 +338,8 @@ def inserir_atendimento(
 		str(empresa).strip()[:255], 
 		str(nome).strip()[:255], 
 		str(modalidade).strip()[:100], 
-		str(data).strip()[:50], 
-		str(hora).strip()[:20], 
+		data,  # Passar objeto date
+		hora,  # Passar objeto time
 		laudo_pdf, 
 		avaliacao_pdf, 
 		str(observacoes or "").strip(), 
@@ -363,7 +363,7 @@ def listar_atendimentos() -> List[Tuple]:
 	query = """
 	SELECT id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes
 	FROM atendimentos
-	ORDER BY TO_DATE(data, 'DD/MM/YYYY') DESC, hora DESC
+	ORDER BY data DESC, hora DESC
 	"""
 	with _connection_scope(commit=False) as conn:
 		cur = _get_cursor(conn)
