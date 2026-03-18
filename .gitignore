@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.pyc
@@ -30,44 +30,11 @@ Thumbs.db
 # Artefatos do app
 logs/
 uploads/
-
-# Segredos
-.streamlit/secrets.toml
-.env
-*.env
-
-.streamlit/secrets.toml
-
-.env
-
-*.env
-
-logs/
-
-uploads/
-
-__pycache__/
-
-*.pyc
-
-.venv/
-
 tools/
 
-.streamlit/secrets.toml
-
+# Segredos (NUNCA SUBIR AO GITHUB)
 .env
-
 *.env
-
-logs/
-
-uploads/
-
-__pycache__/
-
-*.pyc
-
-.venv/
-
-tools/
+.secrets
+.streamlit/secrets.toml
+secrets.toml
