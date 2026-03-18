@@ -66,6 +66,16 @@ class Security:
             return False
         return file_bytes[:4] == b'%PDF'
     @staticmethod
+    def log_error(action, error):
+        """Log técnico detalhado apenas para o servidor."""
+        try:
+            log_dir = BASE_DIR / "logs"
+            log_dir.mkdir(exist_ok=True)
+            with open(log_dir / "error.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().isoformat()} - {action}: {str(error)}\n")
+        except Exception:
+            pass
+    @staticmethod
     def log_access(action, details):
         try:
             log_dir = BASE_DIR / "logs"
@@ -85,7 +95,8 @@ class DatabaseManager:
             db.create_tables_if_needed()
             return True
         except Exception as e:
-            st.error(f"Erro ao inicializar banco (DB): {e}")
+            Security.log_error("DB_INIT", e)
+            st.error("Erro interno ao inicializar o sistema. Verifique os logs.")
             return False
 
     @staticmethod
@@ -93,7 +104,8 @@ class DatabaseManager:
         try:
             return db.listar_atendimentos()
         except Exception as e:
-            st.error(f"Erro ao buscar atendimentos: {e}")
+            Security.log_error("DB_LIST", e)
+            st.error("Erro interno ao carregar dados.")
             return []
 
     @staticmethod
@@ -111,7 +123,8 @@ class DatabaseManager:
             )
             return True
         except Exception as e:
-            st.error(f"Erro ao adicionar atendimento: {e}")
+            Security.log_error("DB_ADD", e)
+            st.error("Erro ao salvar o atendimento. Verifique os dados e tente novamente.")
             return False
 
     @staticmethod
@@ -119,7 +132,8 @@ class DatabaseManager:
         try:
             return db.excluir_atendimento(appointment_id)
         except Exception as e:
-            st.error(f"Erro ao excluir atendimento: {e}")
+            Security.log_error("DB_DELETE", e)
+            st.error("Não foi possível excluir o registro.")
             return False
 
     @staticmethod
@@ -305,7 +319,7 @@ def save_uploaded_pdf(uploaded_file):
         file_bytes = uploaded_file.getvalue()
         # Validação Sênior: Verifica se o arquivo é REALMENTE um PDF pelo conteúdo
         if not Security.is_valid_pdf(file_bytes):
-            st.error(f"O arquivo '{uploaded_file.name}' não é um PDF válido (Assinatura PDF ausente).")
+            st.error(f"O arquivo '{uploaded_file.name}' não é um PDF válido.")
             return None
             
         safe_name = security.generate_safe_filename(uploaded_file.name)
@@ -320,7 +334,8 @@ def save_uploaded_pdf(uploaded_file):
             f.write(file_bytes)
         return str(file_path)
     except Exception as e:
-        st.error(f"Erro ao salvar PDF: {e}")
+        Security.log_error("PDF_SAVE", e)
+        st.error("Erro interno ao salvar o arquivo.")
         return ""
 
 def verificar_conexao():
@@ -423,7 +438,8 @@ class DashboardPage:
                     avaliacoes_enviadas += 1
             total_empresas = len(empresas_unicas)
         except Exception as e:
-            st.error(f"Erro ao carregar estatísticas: {e}")
+            Security.log_error("DASHBOARD_STATS", e)
+            st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         cards = [
             {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": PRIMARY_ACCENT},
@@ -599,7 +615,8 @@ class AppointmentsPage:
                 pdf_bytes = generate_pdf_report(df)
                 st.download_button("⬇️ Exportar PDF", data=pdf_bytes, file_name="atendimentos_filtrados.pdf", mime="application/pdf")
             except Exception as e:
-                st.error(f"Erro ao gerar PDF: {e}")
+                Security.log_error("PDF_LIST_EXPORT", e)
+                st.error("Erro interno ao gerar o relatório PDF.")
 
         # Downloads de anexos diretamente na lista
         def _download_button_from_ref(ref: str, label: str, key: str):
@@ -1015,12 +1032,14 @@ class SettingsPage:
                     st.subheader("Config snapshot (vars detectadas)")
                     st.json(db.debug_config_snapshot())
                 except Exception as e:
-                    st.warning(f"Falha ao coletar snapshot: {e}")
+                    Security.log_error("DEBUG_SNAPSHOT", e)
+                    st.warning("Falha ao coletar dados de diagnóstico.")
                 try:
                     st.subheader("Diagnóstico do banco")
                     st.json(db.get_db_diagnostics())
                 except Exception as e:
-                    st.warning(f"Falha ao consultar diagnóstico: {e}")
+                    Security.log_error("DB_DIAG", e)
+                    st.warning("Falha ao consultar diagnóstico do banco.")
 
         with col6:
             # Backup do sistema Avançado (JSON)
@@ -1037,7 +1056,8 @@ class SettingsPage:
                     )
                     st.success("Backup gerado com sucesso!")
                 except Exception as e:
-                    st.error(f"Falha no backup: {e}")
+                    Security.log_error("BACKUP_GEN", e)
+                    st.error("Erro interno ao gerar backup.")
 
         # Seção de Status de Backup (UX #10)
         if "last_backup_time" in st.session_state:
@@ -1051,7 +1071,8 @@ class SettingsPage:
             else:
                 st.info("Sem registros de auditoria ainda.")
         except Exception as e:
-            st.warning(f"Falha ao listar auditoria: {e}")
+            Security.log_error("AUDIT_LIST", e)
+            st.warning("Não foi possível carregar os logs de auditoria.")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
