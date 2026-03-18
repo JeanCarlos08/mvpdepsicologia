@@ -1171,6 +1171,20 @@ class AuthPage:
             st.session_state['user_authenticated'] = False
         if 'user_name' not in st.session_state:
             st.session_state['user_name'] = ''
+        if 'login_attempts' not in st.session_state:
+            st.session_state['login_attempts'] = 0
+        if 'lockout_time' not in st.session_state:
+            st.session_state['lockout_time'] = None
+
+        # Verificar se está em lockout
+        if st.session_state['lockout_time']:
+            time_diff = (datetime.now() - st.session_state['lockout_time']).total_seconds()
+            if time_diff < 30:
+                st.error(f"Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
+                return
+            else:
+                st.session_state['lockout_time'] = None
+                st.session_state['login_attempts'] = 0
 
         st.markdown("<div class='auth-card' style='padding:10px;border-radius:8px;'>", unsafe_allow_html=True)
         with st.form('auth_form'):
@@ -1189,10 +1203,17 @@ class AuthPage:
                 elif user == admin_user and pwd == admin_pass:
                     st.session_state['user_authenticated'] = True
                     st.session_state['user_name'] = user
+                    st.session_state['login_attempts'] = 0
+                    st.session_state['lockout_time'] = None
                     security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
                     st.rerun()
                 else:
-                    st.error('Credenciais inválidas')
+                    st.session_state['login_attempts'] += 1
+                    if st.session_state['login_attempts'] >= 5:
+                        st.session_state['lockout_time'] = datetime.now()
+                        st.error("Muitas tentativas falhas. Bloqueio temporário ativado.")
+                    else:
+                        st.error('Credenciais inválidas')
                     security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
         st.markdown("</div>", unsafe_allow_html=True)
         # Injetar JS via components para garantir estilo nos inputs do auth-card
