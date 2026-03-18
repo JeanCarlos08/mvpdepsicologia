@@ -461,12 +461,12 @@ class AppointmentsPage:
             with st.form("appointment_form_new", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    empresa = st.text_input("🏢 Empresa/Organização")
+                    empresa = st.text_input("🏢 Empresa/Organização", max_chars=100).strip()
                     # Modalidades padronizadas (ignoramos outras entradas do DB)
                     modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento])
                     data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
                 with col2:
-                    nome = st.text_input("👤 Nome do Paciente")
+                    nome = st.text_input("👤 Nome do Paciente", max_chars=100).strip()
                     hora_sel = st.time_input("⏰ Horário")
                 st.markdown("#### 📎 Anexos (opcional)")
                 c1a, c2a = st.columns(2)
@@ -707,11 +707,11 @@ class AppointmentsPage:
                         with st.form(f"form_edit_{aid}"):
                             colu1, colu2, colu3 = st.columns(3)
                             with colu1:
-                                nv_empresa = st.text_input("Empresa", value=str(empresa))
+                                nv_empresa = st.text_input("Empresa", value=str(empresa), max_chars=100).strip()
                                 nv_modal = st.selectbox("Modalidade", [m.value for m in ModalidadeAtendimento], index= [m.value for m in ModalidadeAtendimento].index(str(row[3])) if row[3] in [m.value for m in ModalidadeAtendimento] else 0)
                                 nv_status = st.selectbox("Status", ["Agendado","Atendido","Concluído","Cancelado"], index=["Agendado","Atendido","Concluído","Cancelado"].index(str(row[8])) if row[8] in ["Agendado","Atendido","Concluído","Cancelado"] else 0)
                             with colu2:
-                                nv_nome = st.text_input("Nome", value=str(nome))
+                                nv_nome = st.text_input("Nome", value=str(nome), max_chars=100).strip()
                                 try:
                                     cur_dt = pd.to_datetime(str(row[4]), dayfirst=True, errors="coerce").date()
                                 except Exception:
@@ -724,7 +724,7 @@ class AppointmentsPage:
                                 except Exception:
                                     cur_tm = time(8,0)
                                 nv_hora = st.time_input("Hora", value=cur_tm)
-                                nv_obs = st.text_area("Observações", value=str(row[9] or ""))
+                                nv_obs = st.text_area("Observações", value=str(row[9] or ""), max_chars=1000).strip()
                             st.markdown("#### 📎 Anexos")
                             colaf1, colaf2 = st.columns(2)
                             with colaf1:

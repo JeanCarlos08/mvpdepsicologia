@@ -330,7 +330,18 @@ def inserir_atendimento(
 	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 'Agendado'))
 	RETURNING id
 	"""
-	params = (empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, observacoes, status)
+	# Sanitização Sênior: strip() e limites de tamanho no DB para segurança extra
+	params = (
+		str(empresa).strip()[:255], 
+		str(nome).strip()[:255], 
+		str(modalidade).strip()[:100], 
+		str(data).strip()[:50], 
+		str(hora).strip()[:20], 
+		laudo_pdf, 
+		avaliacao_pdf, 
+		str(observacoes or "").strip(), 
+		str(status or "").strip()[:50]
+	)
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		cur.execute(query, params)
