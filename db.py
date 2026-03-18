@@ -486,7 +486,14 @@ def debug_config_snapshot() -> Dict[str, str]:
 
 # ---------- Arquivos (BYTEA) ----------
 def salvar_arquivo(filename: str, content: bytes, content_type: Optional[str] = None) -> int:
-	"""Salva um arquivo (PDF) no banco e retorna o id gerado."""
+	"""Salva um arquivo (PDF) no banco e retorna o id gerado.
+	Limita o tamanho no backend para 50MB para proteção de memória do banco.
+	"""
+	# Limite de segurança: 50MB (50 * 1024 * 1024)
+	MAX_SIZE_BYTES = 52428800 
+	if len(content) > MAX_SIZE_BYTES:
+		raise ValueError(f"Arquivo '{filename}' excede o limite de segurança de 50MB.")
+
 	query = """
 	INSERT INTO arquivos (filename, content, content_type, size)
 	VALUES (%s, %s, %s, %s)
