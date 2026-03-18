@@ -1,4 +1,4 @@
-﻿import os
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -573,6 +573,8 @@ def listar_auditoria(limit: int = 100) -> List[Dict[str, Any]]:
 
 
 
-APP_ADMIN_USER = "admin"
-APP_ADMIN_PASS = "admin123"
-APP_REQUIRE_AUTH = "true"
+# As credenciais admin devem ser configuradas via variáveis de ambiente (.env) ou Secrets do Streamlit Cloud.
+# Não armazene senhas diretamente no código fonte.
+APP_ADMIN_USER = os.getenv("APP_ADMIN_USER")
+APP_ADMIN_PASS = os.getenv("APP_ADMIN_PASS")
+APP_REQUIRE_AUTH = os.getenv("APP_REQUIRE_AUTH", "true").lower() == "true"

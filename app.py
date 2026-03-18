@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 import db
 import pathlib
 from datetime import datetime, date, time
@@ -1140,10 +1140,14 @@ class AuthPage:
             submitted = st.form_submit_button('Entrar', type='primary')
 
             if submitted:
-                # Fallback seguro: se os Secrets não estiverem configurados, usar admin/admin123
-                admin_user = os.getenv('APP_ADMIN_USER', 'admin').strip()
-                admin_pass = os.getenv('APP_ADMIN_PASS', 'admin123').strip()
-                if user == admin_user and pwd == admin_pass:
+                # Carregar do módulo db (que já lê de .env / secrets)
+                admin_user = (db.APP_ADMIN_USER or "").strip()
+                admin_pass = (db.APP_ADMIN_PASS or "").strip()
+                
+                if not admin_user or not admin_pass:
+                    st.error("Erro de Segurança: Credenciais de administração não configuradas no servidor.")
+                    security.log_access('AUTH_CRITICAL', 'Tentativa de login sem credenciais configuradas no .env/Secrets')
+                elif user == admin_user and pwd == admin_pass:
                     st.session_state['user_authenticated'] = True
                     st.session_state['user_name'] = user
                     security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
@@ -1249,7 +1253,7 @@ class ClinicalManagementApp:
         if not db_ok:
             st.warning("Banco de dados indisponível no momento. Você ainda pode fazer login e acessar Configurações; demais páginas exigem conexão.")
         # Autenticação: por padrão, EXIGE login. Para liberar sem login, defina APP_REQUIRE_AUTH=false nos Secrets.
-        require_auth = os.getenv('APP_REQUIRE_AUTH', 'true').strip().lower() in ('1','true','yes')
+        require_auth = db.APP_REQUIRE_AUTH
         if not require_auth:
             # Considera usuário autenticado automaticamente
             if 'user_authenticated' not in st.session_state or not st.session_state['user_authenticated']:
