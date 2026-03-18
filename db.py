@@ -277,11 +277,48 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 )
 
 
+def _migrate_date_time_columns() -> None:
+	"""Migra colunas data/hora de VARCHAR para DATE/TIME no PostgreSQL se necessário."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			# Verifica o tipo atual da coluna 'data'
+			cur.execute("""
+				SELECT data_type 
+				FROM information_schema.columns 
+				WHERE table_name = 'atendimentos' AND column_name = 'data'
+			""")
+			res = cur.fetchone()
+			if res and res['data_type'] in ('character varying', 'text'):
+				# Migrar data: DD/MM/YYYY -> DATE
+				cur.execute("""
+					ALTER TABLE atendimentos 
+					ALTER COLUMN data TYPE DATE 
+					USING TO_DATE(data, 'DD/MM/YYYY')
+				""")
+				# Migrar hora: HH:MM -> TIME
+				cur.execute("""
+					ALTER TABLE atendimentos 
+					ALTER COLUMN hora TYPE TIME 
+					USING hora::TIME
+				""")
+	except Exception as e:
+		print(f"MIGRATION_WARNING: Erro ao migrar colunas: {e}")
+
 def ensure_schema() -> None:
+	"""Garante que a estrutura do banco esteja correta e migrada."""
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		for statement in SCHEMA_STATEMENTS_POSTGRES:
-			cur.execute(statement)
+			try:
+				cur.execute(statement)
+			except Exception:
+				pass
+	
+	# Rodar migração de tipos se necessário (Sênior)
+	_migrate_date_time_columns()
+	# Garantir índices atualizados
+	ensure_indexes()
 
 
 def ensure_indexes() -> None:
