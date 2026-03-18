@@ -297,14 +297,18 @@ def apply_plotly_theme(dark_mode=False):
 
 def save_uploaded_pdf(uploaded_file):
     """Salva PDF no banco (BYTEA) e retorna um marcador 'db:<id>'.
-
-    Compatibilidade: registros antigos que apontam para caminho no disco continuam funcionando.
+    Valida se o conteúdo é realmente um PDF antes de salvar.
     """
     if uploaded_file is None:
         return ""
     try:
-        safe_name = security.generate_safe_filename(uploaded_file.name)
         file_bytes = uploaded_file.getvalue()
+        # Validação Sênior: Verifica se o arquivo é REALMENTE um PDF pelo conteúdo
+        if not Security.is_valid_pdf(file_bytes):
+            st.error(f"O arquivo '{uploaded_file.name}' não é um PDF válido (Assinatura PDF ausente).")
+            return None
+            
+        safe_name = security.generate_safe_filename(uploaded_file.name)
         file_id = db.salvar_arquivo(safe_name, file_bytes, content_type="application/pdf")
         if file_id:
             return f"db:{file_id}"
