@@ -1236,6 +1236,92 @@ class AuthPage:
             # fallback silencioso se components não puder executar
             pass
 
+class EventsPage:
+    @staticmethod
+    def render() -> None:
+        """Renderiza a página de cadastro de eventos."""
+        # 1. Damos um título para a página
+        st.title("Cadastrar Novo Evento")
+        
+        # 2. Criamos o "contêiner" do formulário
+        # 'with' significa que tudo "dentro" dele faz parte do formulário
+        with st.form(key="meu_formulario"):
+            
+            # 3. AQUI DENTRO vão todos os nossos campos
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                titulo_evento = st.text_input("📌 Título do Evento", placeholder="Ex: Workshop de Psicologia")
+                tipo_evento = st.selectbox("🎯 Tipo de Evento", ["Palestra", "Workshop", "Seminário", "Conferência", "Treinamento", "Outro"])
+                data_evento = st.date_input("📅 Data do Evento", min_value=date.today())
+            
+            with col2:
+                local_evento = st.text_input("📍 Local", placeholder="Ex: Auditório Principal")
+                horario_evento = st.time_input("⏰ Horário de Início")
+                duracao = st.number_input("⏱️ Duração (horas)", min_value=0.5, max_value=24.0, value=2.0, step=0.5)
+            
+            descricao_evento = st.text_area("📝 Descrição", placeholder="Descreva os detalhes do evento...")
+            responsavel = st.text_input("👤 Responsável", placeholder="Nome do organizador/responsável")
+            
+            # Campos opcionais
+            st.markdown("#### 📎 Informações Adicionais (opcional)")
+            col3, col4 = st.columns(2)
+            with col3:
+                capacidade = st.number_input("👥 Capacidade Máxima", min_value=0, value=0, step=1)
+                publico_alvo = st.text_input("🎓 Público-alvo", placeholder="Ex: Profissionais de Psicologia")
+            with col4:
+                custo = st.number_input("💰 Custo (R$)", min_value=0.0, value=0.0, step=10.0)
+                inscricoes_abertas = st.checkbox("✅ Inscrições abertas", value=True)
+            
+            observacoes = st.text_area("🗒️ Observações", placeholder="Informações adicionais...")
+            
+            # 4. No final, precisamos de um botão
+            botao_enviar = st.form_submit_button("Cadastrar Evento")
+            
+            if botao_enviar:
+                # Validação básica
+                if not titulo_evento or not local_evento or not responsavel:
+                    st.error("❌ Por favor, preencha os campos obrigatórios: Título, Local e Responsável.")
+                else:
+                    # Criar um dicionário com os dados do evento
+                    evento_data = {
+                        "titulo": security.sanitize_input(titulo_evento),
+                        "tipo": tipo_evento,
+                        "data": data_evento.strftime(DATE_FORMAT),
+                        "horario": horario_evento.strftime(TIME_FORMAT),
+                        "duracao": duracao,
+                        "local": security.sanitize_input(local_evento),
+                        "descricao": security.sanitize_input(descricao_evento),
+                        "responsavel": security.sanitize_input(responsavel),
+                        "capacidade": capacidade,
+                        "publico_alvo": security.sanitize_input(publico_alvo),
+                        "custo": custo,
+                        "inscricoes_abertas": inscricoes_abertas,
+                        "observacoes": security.sanitize_input(observacoes)
+                    }
+                    
+                    # Salvar no banco de dados (usando a tabela atendimentos como base)
+                    # Formatamos como um atendimento especial do tipo "Evento"
+                    try:
+                        evento_atendimento = AtendimentoData(
+                            empresa=evento_data["local"],
+                            nome=evento_data["titulo"],
+                            modalidade=evento_data["tipo"],
+                            data=evento_data["data"],
+                            hora=evento_data["horario"],
+                            observacoes=f"EVENTO | Responsável: {evento_data['responsavel']} | Duração: {evento_data['duracao']}h | Capacidade: {evento_data['capacidade']} | Custo: R${evento_data['custo']:.2f} | Público: {evento_data['publico_alvo']} | Descrição: {evento_data['descricao']} | Obs: {evento_data['observacoes']}"
+                        )
+                        
+                        if DatabaseManager.add_appointment(evento_atendimento):
+                            security.log_access("ADD_EVENT", f"{titulo_evento} - {local_evento} - {responsavel}")
+                            st.success(f"✅ Evento '{titulo_evento}' cadastrado com sucesso!")
+                            st.balloons()
+                            st.info("💡 O evento foi registrado e pode ser visualizado na página de Atendimentos.")
+                        else:
+                            st.error("❌ Erro ao cadastrar evento. Tente novamente.")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao processar o cadastro: {e}")
+
 class ClinicalManagementApp:
     def __init__(self):
         pass
@@ -1284,6 +1370,7 @@ class ClinicalManagementApp:
             pages = {
                 "🏠 Dashboard": "dashboard",
                 "📅 Atendimentos": "appointments",
+                "🎯 Eventos": "events",
                 "📊 Relatórios": "reports",
                 "📤 Upload": "upload",
                 "⚙️ Configurações": "settings"
@@ -1301,6 +1388,11 @@ class ClinicalManagementApp:
                 AuthPage.render()
             else:
                 AppointmentsPage.render({})
+        elif page_key == "events":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                EventsPage.render()
         elif page_key == "reports":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
