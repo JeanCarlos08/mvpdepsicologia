@@ -1187,7 +1187,7 @@ class AuthPage:
                     box-shadow: 0 0 20px rgba(255,255,255,0.4);
                     overflow: hidden;
                 ">
-                    <img src="https://images.pexels.com/photos/281279/pexels-photo-281279.jpeg" 
+                    <img src="https://images.pexels.com/photos/1460833/pexels-photo-1460833.jpeg" 
                          style="width: 100%; height: 100%; object-fit: cover;">
                 </div>
             </div>
