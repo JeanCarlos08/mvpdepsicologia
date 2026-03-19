@@ -1211,23 +1211,24 @@ class AuthPage:
         # Início do Container Centralizado
         st.markdown("<div class='auth-card'>", unsafe_allow_html=True)
         
-        # Arte de Psicologia (Ícone/Ilustração com Alta Visibilidade)
+        # Arte de Psicologia (Imagem Pessoas Pexels)
         st.markdown(
             """
             <div style="display: flex; justify-content: center; margin-bottom: 25px;">
                 <div style="
-                    width: 140px; 
-                    height: 140px; 
-                    background: rgba(255,255,255,0.9); 
+                    width: 150px; 
+                    height: 150px; 
+                    background: #ffffff; 
                     border-radius: 50%; 
                     display: flex; 
                     align-items: center; 
                     justify-content: center; 
                     border: 4px solid #73C883;
-                    box-shadow: 0 0 20px rgba(255,255,255,0.6);
+                    box-shadow: 0 0 20px rgba(255,255,255,0.4);
+                    overflow: hidden;
                 ">
-                    <span style="font-size: 70px;">🧠</span>
-                    <span style="font-size: 30px; margin-left: -20px; margin-top: 30px;">🌿</span>
+                    <img src="https://images.pexels.com/photos/281279/pexels-photo-281279.jpeg" 
+                         style="width: 100%; height: 100%; object-fit: cover;">
                 </div>
             </div>
             """, 
