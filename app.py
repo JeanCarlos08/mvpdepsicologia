@@ -268,20 +268,44 @@ def apply_custom_css(dark_mode=False, advanced=False):
         }
         .stExpander * { color: white !important; }
 
-        /* Auth Card */
+        /* Auth Card - Premium Glassmorphism */
         .auth-card {
-            background: rgba(255,255,255,0.15) !important;
-            backdrop-filter: blur(15px);
-            padding: 2.5rem !important;
-            border-radius: 20px !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-            max-width: 450px;
-            margin: 2rem auto !important;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.1) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            padding: 3rem !important;
+            border-radius: 28px !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            max-width: 480px;
+            margin: 4rem auto !important;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15) !important;
+            text-align: center;
         }
-        .auth-card label, .auth-card p {
+        .auth-card h2 {
+            margin-bottom: 0.5rem !important;
+            font-size: 1.8rem !important;
             color: #ffffff !important;
-            font-weight: 600 !important;
+        }
+        .auth-card p {
+            color: rgba(255, 255, 255, 0.8) !important;
+            margin-bottom: 2rem !important;
+            font-size: 0.95rem;
+        }
+        .auth-card label {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            display: block;
+            text-align: left;
+            margin-bottom: 8px !important;
+        }
+        /* Ajuste nos inputs dentro do card para contraste */
+        .auth-card input {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            font-size: 1rem !important;
         }
 
         /* Badge de Database */
@@ -1160,13 +1184,8 @@ class UploadPage:
 class AuthPage:
     @staticmethod
     def render():
-        """Renderiza a página de autenticação — não força bloqueio, apenas oferece formulário."""
-        render_page_header("🔒 Autenticação", "Área de login (opcional)")
-        st.markdown(
-            "<div style='color: #ffffff;'>Use as variáveis de ambiente <code>APP_ADMIN_USER</code> e <code>APP_ADMIN_PASS</code> para configurar credenciais.</div>",
-            unsafe_allow_html=True,
-        )
-        # Formulário que grava autenticação em session_state
+        """Renderiza a página de autenticação — Estilo Premium Glassmorphic."""
+        # Inicializar estados se necessário
         if 'user_authenticated' not in st.session_state:
             st.session_state['user_authenticated'] = False
         if 'user_name' not in st.session_state:
@@ -1180,13 +1199,19 @@ class AuthPage:
         if st.session_state['lockout_time']:
             time_diff = (datetime.now() - st.session_state['lockout_time']).total_seconds()
             if time_diff < 30:
-                st.error(f"Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.error(f"🚨 Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
                 return
             else:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        st.markdown("<div class='auth-card' style='padding:10px;border-radius:8px;'>", unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True) # Espaçamento superior
+        
+        # Início do Container Centralizado
+        st.markdown("<div class='auth-card'>", unsafe_allow_html=True)
+        st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
+        st.markdown("<p>Portal Administrativo Juliana Gestão Clínica</p>", unsafe_allow_html=True)
         with st.form('auth_form'):
             user = st.text_input('Usuário')
             pwd = st.text_input('Senha', type='password')
