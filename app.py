@@ -1210,6 +1210,19 @@ class AuthPage:
         
         # Início do Container Centralizado
         st.markdown("<div class='auth-card'>", unsafe_allow_html=True)
+        
+        # Arte de Psicologia (Ícone/Ilustração)
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <div style="width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.3);">
+                    <span style="font-size: 50px;">🌿</span>
+                </div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+
         st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
         st.markdown("<p>Portal Administrativo Juliana Gestão Clínica</p>", unsafe_allow_html=True)
         with st.form('auth_form'):
