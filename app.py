@@ -1378,40 +1378,43 @@ class ClinicalManagementApp:
                 st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
         apply_custom_css()
         apply_plotly_theme()
-        with st.sidebar:
-            st.markdown("## 🩺 JULIANA")
-            st.markdown("*Gestão Clínica*")
-            conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
-            st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
-            # Logout rápido
-            if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
-                st.write(f"Usuário: {st.session_state.get('user_name', '')}")
-                if st.button('🚪 Logout'):
-                    security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
-                    st.session_state['user_authenticated'] = False
-                    st.session_state['user_name'] = ''
-                    # Reiniciar a interface; experimental_rerun pode não existir em algumas versões do Streamlit
-                    try:
-                        rerun = getattr(st, 'experimental_rerun', None)
-                        if callable(rerun):
-                            rerun()
-                        else:
-                            raise AttributeError('experimental_rerun ausente')
-                    except Exception:
+        if st.session_state.get('user_authenticated', False):
+            with st.sidebar:
+                st.markdown("## 🩺 JULIANA")
+                st.markdown("*Gestão Clínica*")
+                conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
+                st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
+                # Logout rápido
+                if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
+                    st.write(f"Usuário: {st.session_state.get('user_name', '')}")
+                    if st.button('🚪 Logout'):
+                        security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
+                        st.session_state['user_authenticated'] = False
+                        st.session_state['user_name'] = ''
+                        # Reiniciar a interface; experimental_rerun pode não existir em algumas versões do Streamlit
                         try:
-                            st.stop()
+                            rerun = getattr(st, 'experimental_rerun', None)
+                            if callable(rerun):
+                                rerun()
+                            else:
+                                raise AttributeError('experimental_rerun ausente')
                         except Exception:
-                            pass
-            pages = {
-                "🏠 Dashboard": "dashboard",
-                "📅 Atendimentos": "appointments",
-                "📊 Relatórios": "reports",
-                "📤 Upload": "upload",
-                "⚙️ Configurações": "settings"
-            }
-            # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
-            selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
-            page_key = pages[selected_page]
+                            try:
+                                st.stop()
+                            except Exception:
+                                pass
+                pages = {
+                    "🏠 Dashboard": "dashboard",
+                    "📅 Atendimentos": "appointments",
+                    "📊 Relatórios": "reports",
+                    "📤 Upload": "upload",
+                    "⚙️ Configurações": "settings"
+                }
+                # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
+                selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
+                page_key = pages[selected_page]
+        else:
+            page_key = "dashboard" # Fallback para AuthPage.render() disparar no bloco abaixo
         if page_key == "dashboard":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
