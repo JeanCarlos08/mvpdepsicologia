@@ -298,14 +298,20 @@ def apply_custom_css(dark_mode=False, advanced=False):
             text-align: left;
             margin-bottom: 8px !important;
         }
-        /* Ajuste nos inputs dentro do card para contraste */
+        /* Ajuste nos inputs dentro do card para contraste e Neon */
         .auth-card input {
             background: #ffffff !important;
             color: #000000 !important;
-            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border: 2px solid #39FF14 !important;
             border-radius: 12px !important;
             padding: 12px !important;
             font-size: 1rem !important;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.3) !important;
+            transition: all 0.3s ease;
+        }
+        .auth-card input:focus {
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.6) !important;
+            border-color: #39FF14 !important;
         }
 
         /* Badge de Database */
@@ -1280,7 +1286,8 @@ class AuthPage:
                     i.style.setProperty('background', '#ffffff', 'important');
                     i.style.setProperty('caret-color', '#000000', 'important');
                     i.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
-                    i.style.setProperty('border', '1px solid rgba(0,0,0,0.08)', 'important');
+                    i.style.setProperty('border', '2px solid #39FF14', 'important');
+                    i.style.setProperty('box-shadow', '0 0 10px rgba(57, 255, 20, 0.3)', 'important');
                 }catch(e){}
             });
             let style = document.getElementById('auth-card-placeholder-style');
