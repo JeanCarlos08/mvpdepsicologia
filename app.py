@@ -1432,10 +1432,11 @@ class ClinicalManagementApp:
                 SettingsPage.render()
 
         # Rodapé com dicas rápidas sobre DB
-        try:
-            st.divider()
-        except Exception:
-            st.markdown("---")
+        if st.session_state.get('user_authenticated', False):
+            try:
+                st.divider()
+            except Exception:
+                st.markdown("---")
         conn_ok = verificar_conexao()
         if not conn_ok and st.session_state.get('user_authenticated', False):
             with st.expander("Ajuda rápida: conexão com PostgreSQL", expanded=False):
