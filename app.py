@@ -1360,7 +1360,7 @@ class ClinicalManagementApp:
             db_ok = DatabaseManager.initialize_database()
         except Exception:
             db_ok = False
-        if not db_ok:
+        if not db_ok and st.session_state.get('user_authenticated', False):
             st.warning("Banco de dados indisponível no momento. Você ainda pode fazer login e acessar Configurações; demais páginas exigem conexão.")
         # Autenticação: por padrão, EXIGE login. Para liberar sem login, defina APP_REQUIRE_AUTH=false nos Secrets.
         require_auth = db.APP_REQUIRE_AUTH
@@ -1437,7 +1437,7 @@ class ClinicalManagementApp:
         except Exception:
             st.markdown("---")
         conn_ok = verificar_conexao()
-        if not conn_ok:
+        if not conn_ok and st.session_state.get('user_authenticated', False):
             with st.expander("Ajuda rápida: conexão com PostgreSQL", expanded=False):
                 st.markdown(
                     "- Em produção (Streamlit Cloud): use um host público (Neon/Render/RDS) e defina Secrets: `DATABASE_URL=postgresql://usuario:senha@host:5432/gestao_clinica`\n"
