@@ -268,52 +268,6 @@ def apply_custom_css(dark_mode=False, advanced=False):
         }
         .stExpander * { color: white !important; }
 
-        /* Auth Card - Premium Glassmorphism */
-        .auth-card {
-            background: rgba(255, 255, 255, 0.1) !important;
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
-            padding: 3rem !important;
-            border-radius: 28px !important;
-            border: 1px solid rgba(255, 255, 255, 0.25) !important;
-            max-width: 480px;
-            margin: 4rem auto !important;
-            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15) !important;
-            text-align: center;
-        }
-        .auth-card h2 {
-            margin-bottom: 0.5rem !important;
-            font-size: 1.8rem !important;
-            color: #ffffff !important;
-        }
-        .auth-card p {
-            color: rgba(255, 255, 255, 0.8) !important;
-            margin-bottom: 2rem !important;
-            font-size: 0.95rem;
-        }
-        .auth-card label {
-            color: #ffffff !important;
-            font-weight: 500 !important;
-            display: block;
-            text-align: left;
-            margin-bottom: 8px !important;
-        }
-        /* Ajuste nos inputs dentro do card para contraste e Neon Intenso */
-        .auth-card input {
-            background: #ffffff !important;
-            color: #000000 !important;
-            border: 3px solid #39FF14 !important;
-            border-radius: 12px !important;
-            padding: 12px !important;
-            font-size: 1rem !important;
-            box-shadow: 0 0 10px #39FF14, 0 0 20px rgba(57, 255, 20, 0.2) !important;
-            transition: all 0.3s ease;
-        }
-        .auth-card input:focus {
-            box-shadow: 0 0 20px #39FF14, 0 0 30px rgba(57, 255, 20, 0.4) !important;
-            border-color: #39FF14 !important;
-        }
-
         /* Badge de Database */
         .db-badge {
             background: rgba(255, 255, 255, 0.2);
