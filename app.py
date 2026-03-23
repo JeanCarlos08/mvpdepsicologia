@@ -534,7 +534,17 @@ class AppointmentsPage:
                         )
                         if DatabaseManager.add_appointment(novo_atendimento):
                             security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
+                            # Módulo B: Notificação WhatsApp (Simulação/Placeholder)
+                            try:
+                                # Aqui entraria o disparo via Webhook da Evolution API ou similar
+                                # st.info(f"📲 Notificação enviada para o paciente {nome}")
+                                pass
+                            except Exception: pass
+                            
                             st.success("✅ Atendimento cadastrado!")
+                            # Limpar notas IA após sucesso
+                            if 'temp_ai_obs' in st.session_state:
+                                del st.session_state['temp_ai_obs']
                             st.rerun()
                         else:
                             st.error("Erro ao cadastrar atendimento.")
@@ -1394,6 +1404,19 @@ class ClinicalManagementApp:
                 # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
                 selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
                 page_key = pages[selected_page]
+
+                st.divider()
+                st.markdown("### 💬 IA Juliana")
+                user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input")
+                if user_msg:
+                    with st.spinner("IA processando..."):
+                        from ai_manager import AIManager
+                        # Pegar resumo dos atendimentos para contexto (limitado para evitar estouro de tokens)
+                        appts = DatabaseManager.get_all_appointments()[:100]
+                        import json
+                        context = json.dumps(appts, default=str)
+                        answer = AIManager.chat_with_data(user_msg, context)
+                        st.info(answer)
         else:
             page_key = "dashboard" # Fallback para AuthPage.render() disparar no bloco abaixo
         if page_key == "dashboard":
