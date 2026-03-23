@@ -536,34 +536,44 @@ class AppointmentsPage:
                     if not empresa or not nome:
                         st.error("Preencha os campos obrigatórios (Empresa e Nome).")
                     else:
-                        laudo_path = save_uploaded_pdf(up_laudo)
-                        avaliacao_path = save_uploaded_pdf(up_avaliacao)
-                        novo_atendimento = AtendimentoData(
-                            empresa=security.sanitize_input(empresa),
-                            nome=security.sanitize_input(nome),
-                            modalidade=modalidade,
-                            data=data_sel, # Passar objeto date diretamente
-                            hora=hora_sel, # Passar objeto time diretamente
-                            laudo_pdf=laudo_path,
-                            avaliacao_pdf=avaliacao_path,
-                            observacoes=security.sanitize_input(observacoes)
-                        )
-                        if DatabaseManager.add_appointment(novo_atendimento):
-                            security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
-                            # Módulo B: Notificação WhatsApp (Simulação/Placeholder)
-                            try:
-                                # Aqui entraria o disparo via Webhook da Evolution API ou similar
-                                # st.info(f"📲 Notificação enviada para o paciente {nome}")
-                                pass
-                            except Exception: pass
-                            
-                            st.success("✅ Atendimento cadastrado!")
-                            # Limpar notas IA após sucesso
-                            if 'temp_ai_obs' in st.session_state:
-                                del st.session_state['temp_ai_obs']
-                            st.rerun()
-                        else:
-                            st.error("Erro ao cadastrar atendimento.")
+                        from ai_manager import AIManager
+                        
+                        is_valid = True
+                        if up_laudo:
+                            valid_laudo, msg_laudo = AIManager.validate_clinical_pdf(up_laudo.getvalue())
+                            if not valid_laudo:
+                                st.error(f"❌ Documento bloqueado (Laudo): {msg_laudo}")
+                                is_valid = False
+                                
+                        if up_avaliacao:
+                            valid_aval, msg_aval = AIManager.validate_clinical_pdf(up_avaliacao.getvalue())
+                            if not valid_aval:
+                                st.error(f"❌ Documento bloqueado (Avaliação): {msg_aval}")
+                                is_valid = False
+                                
+                        if is_valid:
+                            laudo_path = save_uploaded_pdf(up_laudo)
+                            avaliacao_path = save_uploaded_pdf(up_avaliacao)
+                            novo_atendimento = AtendimentoData(
+                                empresa=security.sanitize_input(empresa),
+                                nome=security.sanitize_input(nome),
+                                modalidade=modalidade,
+                                data=data_sel, # Passar objeto date diretamente
+                                hora=hora_sel, # Passar objeto time diretamente
+                                laudo_pdf=laudo_path,
+                                avaliacao_pdf=avaliacao_path,
+                                observacoes=security.sanitize_input(observacoes)
+                            )
+                            if DatabaseManager.add_appointment(novo_atendimento):
+                                security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
+                                
+                                st.success("✅ Atendimento cadastrado!")
+                                # Limpar notas IA após sucesso
+                                if 'temp_ai_obs' in st.session_state:
+                                    del st.session_state['temp_ai_obs']
+                                st.rerun()
+                            else:
+                                st.error("Erro ao cadastrar atendimento.")
         AppointmentsPage._render_table(filters)
 
     @staticmethod
@@ -1184,12 +1194,19 @@ class UploadPage:
             size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
             st.info(f"Arquivo: {uploaded_file.name} — {size_mb:.2f} MB")
             if st.button("Salvar Arquivo", type="primary"):
-                saved_path = save_uploaded_pdf(uploaded_file)
-                if saved_path:
-                    if saved_path.startswith("db:"):
-                        st.success("Arquivo salvo no banco de dados.")
-                    else:
-                        st.success(f"Arquivo salvo em: {saved_path}")
+                with st.spinner("Validação IA: Verificando tipo de documento..."):
+                    from ai_manager import AIManager
+                    is_valid, msg = AIManager.validate_clinical_pdf(uploaded_file.getvalue())
+                
+                if not is_valid:
+                    st.error(f"❌ Upload bloqueado: {msg}")
+                else:
+                    saved_path = save_uploaded_pdf(uploaded_file)
+                    if saved_path:
+                        if saved_path.startswith("db:"):
+                            st.success("Arquivo salvo no banco de dados.")
+                        else:
+                            st.success(f"Arquivo salvo em: {saved_path}")
         st.markdown("### 📁 Arquivos Salvos")
         # Listar do banco
         try:

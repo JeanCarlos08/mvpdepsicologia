@@ -147,6 +147,32 @@ class AIManager:
             return "Não foi possível gerar os insights agora."
 
     @classmethod
+    def validate_clinical_pdf(cls, file_content: bytes) -> tuple[bool, str]:
+        """Verifica rapidamente se um PDF anexado parece ser um documento clínico válido para evitar lixo no BD."""
+        if not cls._initialize():
+            return True, "" # Se a IA estiver off, ignorar o bloqueio para não travar o usuário
+            
+        try:
+            prompt = """
+            Você é um classificador de segurança de dados.
+            Analise a primeira página deste PDF e responda APENAS com "VALIDO" ou "INVALIDO".
+            
+            Regra: Deve ser considerado VALIDO apenas se parecer com um documento médico, psicológico, laudo, atestado, receita, ficha de RH, anamnese ou formulário clínico.
+            Se parecer uma conta de luz, recibo de supermercado, foto engraçada ou documento de carro, responda INVALIDO.
+            """
+            response = cls._model.generate_content([
+                prompt,
+                {'mime_type': 'application/pdf', 'data': file_content[:500000]}  # mandar no max 500kb pra ser muito rápido
+            ])
+            
+            res = response.text.strip().upper() if response else ""
+            if "INVALIDO" in res:
+                return False, "A IA detectou que este arquivo não parece ser um documento clínico válido."
+            return True, ""
+        except Exception:
+            return True, "" # Em caso de falha da IA (ex: timeout), sempre permitir o salvamento por segurança
+
+    @classmethod
     def chat_with_data(cls, query: str, context_df_json: str) -> str:
         """Chat inteligente que analisa o contexto dos dados atuais do usuário."""
         if not cls._initialize():
