@@ -33,12 +33,12 @@ class AIManager:
             
         genai.configure(api_key=api_key)
         
-        # Lista de modelos por ordem de preferência (do mais estável/recente para fallbacks)
+        # Lista de modelos disponíveis para esta API Key (versões 2.0 e 2.5)
         candidates = [
-            'gemini-1.5-flash-latest', 
-            'gemini-1.5-flash', 
-            'gemini-1.5-pro-latest',
-            'gemini-2.0-flash-exp'
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-flash-latest',
+            'gemini-2.5-pro'
         ]
         
         last_error = None
