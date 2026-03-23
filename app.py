@@ -670,6 +670,31 @@ class AppointmentsPage:
         id_set = set(page_df["ID"].tolist())
         page_rows = [r for r in appointments if r[0] in id_set]
 
+        st.markdown("---")
+        with st.expander("🪄 Gerador de Parecer Clínico Automático (IA)", expanded=False):
+            st.markdown("A IA transforma suas breves anotações da tabela em um Parecer Técnico formal, pronto para impressão.")
+            if not page_df.empty:
+                # Baseado na página atual para não sobrecarregar
+                opcoes = page_df.apply(lambda r: f"ID {r['ID']} | {r['Nome']} | {r['Modalidade']}", axis=1).tolist()
+                sel_appt = st.selectbox("Selecione o Atendimento (Página Atual):", opcoes)
+                
+                if st.button("🪄 Gerar Rascunho Formal", type="primary", key="ai_draft_btn"):
+                    sel_id = int(sel_appt.split("|")[0].replace("ID", "").strip())
+                    row_data = page_df[page_df["ID"] == sel_id].iloc[0]
+                    nome_pac, emp_pac, mod_pac, obs_pac = str(row_data["Nome"]), str(row_data["Empresa"]), str(row_data["Modalidade"]), str(row_data["Observações"])
+                    
+                    if not obs_pac or obs_pac.strip().lower() in ["", "nan", "none"]:
+                        st.warning("Eita! Este atendimento não possui 'Observações' salvas. A IA precisa de algumas notas para expandi-las em um laudo.")
+                    else:
+                        with st.spinner("IA redigindo parecer formal..."):
+                            from ai_manager import AIManager
+                            draft = AIManager.generate_clinical_draft(nome_pac, emp_pac, mod_pac, obs_pac)
+                            st.success("Parecer gerado com sucesso!")
+                            st.text_area("Rascunho Final (Copie para o Word)", value=draft, height=400, key=f"draft_{sel_id}")
+            else:
+                st.info("Nenhum atendimento na tabela.")
+
+
         with st.expander("📎 Gerenciar por atendimento (visualizar/download/editar/status/exportar)", expanded=False):
             for row in page_rows:
                 aid, empresa, nome, modalidade, data_s, hora_s = row[0], row[1], row[2], row[3], row[4], row[5]

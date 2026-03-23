@@ -94,6 +94,38 @@ class AIManager:
             return f"Falha na análise da IA: {str(e)}"
 
     @classmethod
+    def generate_clinical_draft(cls, nome: str, empresa: str, modalidade: str, observacoes: str) -> str:
+        """Gera um rascunho de parecer clínico formal baseado nos dados do atendimento."""
+        if not cls._initialize():
+            return "Erro: IA não disponível."
+        
+        try:
+            prompt = f"""
+            Você é um assistente de psicólogos e médicos do trabalho.
+            Transforme as breves notas abaixo em um parecer clínico profissional e formal, com vocabulário técnico, pronto para ser assinado.
+            
+            **Dados do Paciente:**
+            - Nome: {nome}
+            - Empresa: {empresa}
+            - Avaliação: {modalidade}
+            
+            **Anotações da Profissional (Rascunho):**
+            "{observacoes}"
+            
+            **Regras:**
+            - Comece com um cabeçalho formal ("PARECER TÉCNICO / CLÍNICO").
+            - Desenvolva as anotações em parágrafos coesos e bem estruturados.
+            - Termine com um espaço para "Data" e "Assinatura do Profissional".
+            - Retorne o texto em Português do Brasil, formatado em Markdown limpo.
+            """
+            response = cls._model.generate_content(prompt)
+            return response.text if response else "Falha ao gerar o parecer."
+        except Exception as e:
+            from app import Security
+            Security.log_error("AI_DRAFT_GEN", e)
+            return f"Erro na IA: {str(e)}"
+
+    @classmethod
     def chat_with_data(cls, query: str, context_df_json: str) -> str:
         """Chat inteligente que analisa o contexto dos dados atuais do usuário."""
         if not cls._initialize():
