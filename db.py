@@ -274,6 +274,15 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 		criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 	);
 	""",
+	"""
+	CREATE INDEX IF NOT EXISTS idx_atendimentos_data_hora ON atendimentos (data DESC, hora DESC);
+	""",
+	"""
+	CREATE INDEX IF NOT EXISTS idx_atendimentos_empresa ON atendimentos (empresa);
+	""",
+	"""
+	CREATE INDEX IF NOT EXISTS idx_atendimentos_nome ON atendimentos (nome);
+	""",
 )
 
 

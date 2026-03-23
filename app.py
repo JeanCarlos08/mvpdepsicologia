@@ -97,6 +97,7 @@ class DatabaseManager:
             return False
 
     @staticmethod
+    @st.cache_data(show_spinner="Carregando atendimentos...", ttl=600)
     def get_all_appointments():
         try:
             return db.listar_atendimentos()
@@ -108,7 +109,7 @@ class DatabaseManager:
     @staticmethod
     def add_appointment(appointment_data):
         try:
-            db.inserir_atendimento(
+            res = db.inserir_atendimento(
                 appointment_data.empresa,
                 appointment_data.nome,
                 appointment_data.modalidade,
@@ -118,7 +119,9 @@ class DatabaseManager:
                 appointment_data.avaliacao_pdf,
                 getattr(appointment_data, 'observacoes', '')
             )
-            return True
+            if res:
+                st.cache_data.clear() # Limpa cache para refletir novo registro
+            return res
         except Exception as e:
             Security.log_error("DB_ADD", e)
             st.error("Erro ao salvar o atendimento. Verifique os dados e tente novamente.")
@@ -127,13 +130,17 @@ class DatabaseManager:
     @staticmethod
     def delete_appointment(appointment_id):
         try:
-            return db.excluir_atendimento(appointment_id)
+            res = db.excluir_atendimento(appointment_id)
+            if res:
+                st.cache_data.clear() # Limpa cache após exclusão
+            return res
         except Exception as e:
             Security.log_error("DB_DELETE", e)
             st.error("Não foi possível excluir o registro.")
             return False
 
     @staticmethod
+    @st.cache_data(show_spinner=False, ttl=300)
     def get_statistics():
         try:
             rows = db.listar_atendimentos()
