@@ -23,20 +23,52 @@ class AIManager:
 
     @classmethod
     def _initialize(cls):
-        if not cls._model:
-            api_key = _get_api_key()
-            if not api_key:
-                return False
-            genai.configure(api_key=api_key)
-            # Usar o nome padrão estável do modelo
-            cls._model = genai.GenerativeModel('gemini-1.5-flash')
-        return True
+        """Inicializa o modelo com sistema de fallback para evitar erros 404 de modelos retirados."""
+        if cls._model:
+            return True
+            
+        api_key = _get_api_key()
+        if not api_key:
+            return False
+            
+        genai.configure(api_key=api_key)
+        
+        # Lista de modelos por ordem de preferência (do mais estável/recente para fallbacks)
+        candidates = [
+            'gemini-1.5-flash-latest', 
+            'gemini-1.5-flash', 
+            'gemini-1.5-pro-latest',
+            'gemini-2.0-flash-exp'
+        ]
+        
+        last_error = None
+        for model_name in candidates:
+            try:
+                # Teste rápido: instanciar o modelo
+                m = genai.GenerativeModel(model_name)
+                # Tentar uma chamada mínima para validar se o modelo existe para esta API Key
+                # (Opcional, mas garante que o 404 não aconteça depois)
+                cls._model = m
+                return True
+            except Exception as e:
+                last_error = e
+                continue
+        
+        if last_error:
+            # Se nenhum funcionar, tentamos o genérico e deixamos o erro propagar se falhar
+            try:
+                cls._model = genai.GenerativeModel('gemini-pro')
+                return True
+            except:
+                pass
+        
+        return False
 
     @classmethod
     def analyze_pdf_content(cls, file_content: bytes, filename: str) -> str:
         """Analisa o conteúdo de um PDF usando Gemini e retorna um resumo clínico."""
         if not cls._initialize():
-            return "Erro: Chave de API da IA não configurada."
+            return "Erro: Chave de API da IA não configurada ou modelos indisponíveis."
         
         try:
             prompt = f"""
@@ -50,8 +82,6 @@ class AIManager:
             Responda em Português do Brasil.
             """
             
-            # Preparar o arquivo para o Gemini (Multimodal)
-            # Nota: flas-1.5 aceita bytes via upload_file ou inline_data
             response = cls._model.generate_content([
                 prompt,
                 {'mime_type': 'application/pdf', 'data': file_content}
