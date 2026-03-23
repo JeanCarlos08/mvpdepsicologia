@@ -436,6 +436,22 @@ class DashboardPage:
             {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": PRIMARY_ACCENT},
         ]
         display_cards(cards)
+        
+        if total_appointments > 0:
+            st.markdown("---")
+            st.markdown("### 🧠 Dicas da IA Juliana")
+            with st.spinner("Gerando insights de negócio..."):
+                import json
+                stats_resumo = {
+                    "total_atendimentos": total_appointments,
+                    "total_empresas": total_empresas,
+                    "laudos_gerados": laudos_enviados,
+                    "modalidades": stats.get("modalidades", {})
+                }
+                from ai_manager import AIManager
+                dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
+                st.info(dicas)
+
         if not total_appointments:
             st.info("Sem dados ainda. Cadastre alguns atendimentos para visualizar o painel.")
         if stats.get("modalidades"):

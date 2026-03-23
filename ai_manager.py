@@ -126,6 +126,27 @@ class AIManager:
             return f"Erro na IA: {str(e)}"
 
     @classmethod
+    def generate_dashboard_insights(cls, stats_json: str) -> str:
+        """Gera dicas de negócio e insights preditivos baseados nas estatísticas do painel."""
+        if not cls._initialize():
+            return "Dica: Cadastre a chave de IA para receber insights de negócio automáticos."
+        
+        try:
+            prompt = f"""
+            Você é uma consultora de clínica médica especializada em análise de dados operacionais rápidos.
+            Baseado neste JSON contendo estatísticas gerais consolidadas: {stats_json}
+            
+            Retorne DUAS dicas muito curtas e diretas (em bullet points com emojis) que ajudem a gestão.
+            Exemplo: Notar se alguma modalidade está alta e sugerir uma ação, ou parabenizar se os números estiverem crescendo.
+            Se os dados estiverem zerados ou com erro, diga: "Cadastre mais atendimentos para que eu possa gerar análises precisas!".
+            A resposta deve ser informal e encorajadora.
+            """
+            response = cls._model.generate_content(prompt)
+            return response.text if response else "Cadastre mais atendimentos para obter insights."
+        except Exception as e:
+            return "Não foi possível gerar os insights agora."
+
+    @classmethod
     def chat_with_data(cls, query: str, context_df_json: str) -> str:
         """Chat inteligente que analisa o contexto dos dados atuais do usuário."""
         if not cls._initialize():
