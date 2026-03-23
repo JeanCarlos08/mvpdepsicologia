@@ -489,13 +489,33 @@ class AppointmentsPage:
                     if up_laudo:
                         size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
                         st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
+                        if st.button("🪄 Analisar Laudo com IA", key="ai_btn_laudo"):
+                            with st.spinner("IA analisando laudo..."):
+                                from ai_manager import AIManager
+                                ai_res = AIManager.analyze_pdf_content(up_laudo.getvalue(), up_laudo.name)
+                                st.session_state['temp_ai_obs'] = ai_res
                 with c2a:
                     up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
                     if up_avaliacao:
                         size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
                         st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
-                observacoes = st.text_area("🗒️ Observações", placeholder="Observações adicionais...")
-                submitted = st.form_submit_button("💾 Salvar", type="primary")
+                        if st.button("🪄 Analisar Avaliação com IA", key="ai_btn_aval"):
+                            with st.spinner("IA analisando avaliação..."):
+                                from ai_manager import AIManager
+                                ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
+                                st.session_state['temp_ai_obs'] = ai_res
+                
+                initial_obs = st.session_state.get('temp_ai_obs', '')
+                observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...")
+                
+                c_act1, c_act2 = st.columns([1, 1])
+                with c_act1:
+                    submitted = st.form_submit_button("💾 Salvar", type="primary")
+                with c_act2:
+                    if st.form_submit_button("🧹 Limpar Notas IA"):
+                        st.session_state['temp_ai_obs'] = ''
+                        st.rerun()
+
                 if submitted:
                     if not empresa or not nome:
                         st.error("Preencha os campos obrigatórios (Empresa e Nome).")
