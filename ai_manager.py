@@ -28,6 +28,7 @@ class AIManager:
             if not api_key:
                 return False
             genai.configure(api_key=api_key)
+            # Usar o nome padrão estável do modelo
             cls._model = genai.GenerativeModel('gemini-1.5-flash')
         return True
 
