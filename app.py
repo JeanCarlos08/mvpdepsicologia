@@ -499,8 +499,8 @@ class AppointmentsPage:
                             empresa=security.sanitize_input(empresa),
                             nome=security.sanitize_input(nome),
                             modalidade=modalidade,
-                            data=data_sel.strftime(DATE_FORMAT),
-                            hora=hora_sel.strftime(TIME_FORMAT),
+                            data=data_sel, # Passar objeto date diretamente
+                            hora=hora_sel, # Passar objeto time diretamente
                             laudo_pdf=laudo_path,
                             avaliacao_pdf=avaliacao_path,
                             observacoes=security.sanitize_input(observacoes)

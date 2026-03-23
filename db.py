@@ -375,8 +375,8 @@ def inserir_atendimento(
 		str(empresa).strip()[:255], 
 		str(nome).strip()[:255], 
 		str(modalidade).strip()[:100], 
-		data,  # Passar objeto date
-		hora,  # Passar objeto time
+		data,  # Objeto date (PSQL DATE)
+		hora,  # Objeto time (PSQL TIME)
 		laudo_pdf, 
 		avaliacao_pdf, 
 		str(observacoes or "").strip(), 
