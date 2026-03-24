@@ -352,6 +352,40 @@ def apply_custom_css(dark_mode=False, advanced=False):
         ::-webkit-scrollbar-thumb {{ background: rgba(255,255,255,0.3); border-radius: 10px; }}
         ::-webkit-scrollbar-thumb:hover {{ background: #ffffff; }}
 
+        /* ── LOGIN PAGE ── */
+        [data-testid="stForm"] {{
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.18) !important;
+            border-radius: 20px !important;
+            padding: 2rem !important;
+            backdrop-filter: blur(20px) !important;
+        }}
+        [data-testid="stTextInput"] input {{
+            background: rgba(255,255,255,0.12) !important;
+            color: white !important;
+            border: 1px solid rgba(255,255,255,0.25) !important;
+            border-radius: 10px !important;
+            font-size: 1rem !important;
+        }}
+        [data-testid="stTextInput"] label {{
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500 !important;
+        }}
+        [data-testid="stFormSubmitButton"] button {{
+            background: linear-gradient(135deg, #4DA768 0%, #1E5631 100%) !important;
+            color: white !important;
+            border-radius: 12px !important;
+            font-size: 1.05rem !important;
+            font-weight: 700 !important;
+            padding: 0.65rem 2rem !important;
+            border: none !important;
+            box-shadow: 0 4px 20px rgba(77,167,104,0.4) !important;
+            transition: all 0.3s ease !important;
+        }}
+        [data-testid="stFormSubmitButton"] button:hover {{
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 30px rgba(77,167,104,0.6) !important;
+        }}
         </style>''', unsafe_allow_html=True)
 
 def apply_plotly_theme(dark_mode=False):
@@ -1304,8 +1338,7 @@ class UploadPage:
 class AuthPage:
     @staticmethod
     def render():
-        """Renderiza a página de autenticação — Estilo Premium Glassmorphic."""
-        # Inicializar estados se necessário
+        """Página de autenticação Premium."""
         if 'user_authenticated' not in st.session_state:
             st.session_state['user_authenticated'] = False
         if 'user_name' not in st.session_state:
@@ -1315,41 +1348,64 @@ class AuthPage:
         if 'lockout_time' not in st.session_state:
             st.session_state['lockout_time'] = None
 
-        # Verificar se está em lockout
         if st.session_state['lockout_time']:
             time_diff = (datetime.now() - st.session_state['lockout_time']).total_seconds()
-            if time_diff < 30: # Lockout de 30 segundos
+            if time_diff < 30:
                 st.error(f"🚨 Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
                 return
             else:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        col_la1, col_la2, col_la3 = st.columns([1, 2, 1])
-        with col_la2:
-            st.markdown("# 🔒")
-            st.subheader("Acesso Restrito")
-            st.caption("Portal Administrativo - Gestão Clínica")
-            
-            with st.container(border=True):
-                with st.form('auth_form', clear_on_submit=False):
-                    user = st.text_input('Usuário')
-                    pwd = st.text_input('Senha', type='password')
-                    submitted = st.form_submit_button('Entrar', type='primary', use_container_width=True)
+        # Layout de duas colunas: Brand | Formulário
+        space_l, col_brand, col_form, space_r = st.columns([0.5, 1.1, 1.1, 0.5])
 
-                    if submitted:
-                        admin_user = (db.APP_ADMIN_USER or "").strip()
-                        admin_pass = (db.APP_ADMIN_PASS or "").strip()
-                        
-                        if not admin_user or not admin_pass:
-                            st.error("Erro de Segurança: Credenciais não configuradas.")
-                        elif user == admin_user and pwd == admin_pass:
-                            st.session_state['user_authenticated'] = True
-                            st.session_state['user_name'] = user
-                            st.rerun()
-                        else:
-                            st.session_state['login_attempts'] += 1
-                            st.error('Credenciais inválidas')
+        with col_brand:
+            st.markdown("")
+            st.markdown("")
+            st.markdown("# 🩺 Gestão Clínica")
+            st.markdown("### Sistema de Controle e Inteligência Clínica")
+            st.caption("Portal Administrativo Profissional")
+            st.divider()
+            st.markdown("**O que você encontra aqui:**")
+            st.markdown("✅ Agendamento e controle de atendimentos")
+            st.markdown("✅ Laudos e avaliações PDF integrados")
+            st.markdown("✅ Relatórios e exportações dinâmicas")
+            st.markdown("✅ IA Assistente para insights e pareceres")
+            st.markdown("✅ Backup e auditoria completos")
+            st.divider()
+            st.caption("🔒 Acesso protegido • Dados criptografados • 100% seguro")
+
+        with col_form:
+            st.markdown("")
+            st.markdown("")
+            st.markdown("## 🔐 Acesso Restrito")
+            st.caption("Entre com suas credenciais para continuar")
+            st.markdown("")
+
+            with st.form('auth_form', clear_on_submit=False):
+                user = st.text_input('👤 Usuário', placeholder='Digite seu usuário...')
+                pwd = st.text_input('🔑 Senha', type='password', placeholder='Digite sua senha...')
+                st.markdown("")
+                submitted = st.form_submit_button('▶️  Entrar no Sistema', type='primary', use_container_width=True)
+
+                if submitted:
+                    admin_user = (db.APP_ADMIN_USER or "").strip()
+                    admin_pass = (db.APP_ADMIN_PASS or "").strip()
+
+                    if not admin_user or not admin_pass:
+                        st.error("Erro de Segurança: Credenciais não configuradas.")
+                    elif user == admin_user and pwd == admin_pass:
+                        st.session_state['user_authenticated'] = True
+                        st.session_state['user_name'] = user
+                        st.rerun()
+                    else:
+                        st.session_state['login_attempts'] += 1
+                        if st.session_state['login_attempts'] >= 5:
+                            st.session_state['lockout_time'] = datetime.now()
+                        st.error('❌ Credenciais inválidas. Verifique e tente novamente.')
+
+            st.caption(f"Tentativas: {st.session_state['login_attempts']} / 5")
 
 class ClinicalManagementApp:
     def __init__(self):
