@@ -834,34 +834,34 @@ class AppointmentsPage:
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Erro ao excluir avaliação: {e}")
-                with c8:
-                    if st.button("✏️ Editar", key=f"edit_{aid}"):
-                        st.session_state[f"edit_open_{aid}"] = True
-                with c9:
-                    # Integração WhatsApp (UX #1)
-                    msg = f"Olá {nome}, confirmamos seu atendimento clínico na {empresa} para o dia {data_s} às {hora_s}."
-                    import urllib.parse
-                    wp_url = f"https://wa.me/?text={urllib.parse.quote(msg)}"
-                    st.link_button("🟢 WhatsApp", wp_url, use_container_width=True)
-                
-                with c10:
-                    with st.popover(f"⚙️", use_container_width=True):
-                        st.caption("Ações")
-                        if st.button("🗑️ Excluir Atend.", key=f"del_apt_{aid}"):
-                            # Confirmação de Segurança (UX #5)
-                            if DatabaseManager.delete_appointment(aid):
-                                st.toast("Atendimento excluído!", icon="🗑️")
-                                st.rerun()
-                        
-                        st.divider()
-                        for stx in ["Agendado", "Atendido", "Concluído", "Cancelado"]:
-                            if st.button(stx, key=f"st_{stx}_{aid}"):
-                                try:
-                                    db.atualizar_status(aid, stx)
-                                    st.toast(f"Status atualizado: {stx}", icon="🔄")
+                    with c8:
+                        if st.button("✏️ Editar", key=f"edit_{aid}"):
+                            st.session_state[f"edit_open_{aid}"] = True
+                    with c9:
+                        # Integração WhatsApp (UX #1)
+                        msg = f"Olá {nome}, confirmamos seu atendimento clínico na {empresa} para o dia {data_s} às {hora_s}."
+                        import urllib.parse
+                        wp_url = f"https://wa.me/?text={urllib.parse.quote(msg)}"
+                        st.link_button("🟢 WhatsApp", wp_url, use_container_width=True)
+                    
+                    with c10m:
+                        with st.popover(f"⚙️", use_container_width=True):
+                            st.caption("Ações")
+                            if st.button("🗑️ Excluir Atend.", key=f"del_apt_{aid}"):
+                                # Confirmação de Segurança (UX #5)
+                                if DatabaseManager.delete_appointment(aid):
+                                    st.toast("Atendimento excluído!", icon="🗑️")
                                     st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erro: {e}")
+                            
+                            st.divider()
+                            for stx in ["Agendado", "Atendido", "Concluído", "Cancelado"]:
+                                if st.button(stx, key=f"st_{stx}_{aid}"):
+                                    try:
+                                        db.atualizar_status(aid, stx)
+                                        st.toast(f"Status atualizado: {stx}", icon="🔄")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erro: {e}")
 
                 # Editor inline por atendimento
                 if st.session_state.get(f"edit_open_{aid}"):
