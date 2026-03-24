@@ -567,7 +567,7 @@ class AppointmentsPage:
                             if DatabaseManager.add_appointment(novo_atendimento):
                                 security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
                                 
-                                st.success("✅ Atendimento cadastrado!")
+                                st.toast("Atendimento cadastrado com sucesso!", icon="✅")
                                 # Limpar notas IA após sucesso
                                 if 'temp_ai_obs' in st.session_state:
                                     del st.session_state['temp_ai_obs']
@@ -784,7 +784,7 @@ class AppointmentsPage:
                         if st.button("🗑️ Excluir Atend.", key=f"del_apt_{aid}"):
                             # Confirmação de Segurança (UX #5)
                             if DatabaseManager.delete_appointment(aid):
-                                st.success("Excluído")
+                                st.toast("Atendimento excluído!", icon="🗑️")
                                 st.rerun()
                         
                         st.divider()
@@ -792,7 +792,7 @@ class AppointmentsPage:
                             if st.button(stx, key=f"st_{stx}_{aid}"):
                                 try:
                                     db.atualizar_status(aid, stx)
-                                    st.success(f"Status: {stx}")
+                                    st.toast(f"Status atualizado: {stx}", icon="🔄")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Erro: {e}")
@@ -870,7 +870,7 @@ class AppointmentsPage:
                                                 db.excluir_arquivo(old_id2)
                                         except Exception:
                                             pass
-                                    st.success("Alterações salvas")
+                                    st.toast("Alterações salvas com sucesso!", icon="✅")
                                     st.session_state[f"edit_open_{aid}"] = False
                                     st.rerun()
                                 except Exception as e:
@@ -1204,9 +1204,9 @@ class UploadPage:
                     saved_path = save_uploaded_pdf(uploaded_file)
                     if saved_path:
                         if saved_path.startswith("db:"):
-                            st.success("Arquivo salvo no banco de dados.")
+                            st.toast("Arquivo salvo no banco de dados com sucesso!", icon="✅")
                         else:
-                            st.success(f"Arquivo salvo em: {saved_path}")
+                            st.toast(f"Arquivo salvo em: {saved_path}", icon="✅")
         st.markdown("### 📁 Arquivos Salvos")
         # Listar do banco
         try:
