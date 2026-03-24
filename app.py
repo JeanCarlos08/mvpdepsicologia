@@ -896,6 +896,56 @@ class AppointmentsPage:
                                     except Exception as e:
                                         st.error(f"Erro: {e}")
 
+                # ─── MANUTENÇÃO DE DADOS ───────────────────────────────────────
+                with st.container(border=True):
+                    st.markdown("##### 🔧 Manutenção de Dados")
+                    tab_edit, tab_del, tab_rec = st.tabs(["✏️ Editar", "🗑️ Excluir", "🔎 Recuperar Dados"])
+
+                    with tab_edit:
+                        st.caption("Abra o formulário completo de edição para este atendimento.")
+                        if st.button("✏️ Abrir Formulário de Edição", key=f"maint_edit_{aid}", use_container_width=True):
+                            st.session_state[f"edit_open_{aid}"] = True
+                            st.rerun()
+
+                    with tab_del:
+                        st.caption("⚠️ A exclusão é permanente. Ative a confirmação antes de prosseguir.")
+                        confirm_key = f"confirm_del_{aid}"
+                        confirmar = st.checkbox("Confirmar exclusão permanente", key=confirm_key)
+                        if confirmar:
+                            if st.button("🗑️ Excluir Definitivamente", key=f"maint_del_{aid}", type="primary", use_container_width=True):
+                                if DatabaseManager.delete_appointment(aid):
+                                    st.toast("Atendimento excluído!", icon="🗑️")
+                                    st.rerun()
+                                else:
+                                    st.error("Erro ao excluir. Tente novamente.")
+
+                    with tab_rec:
+                        st.caption("Dados originais armazenados no banco. Use para verificar ou corrigir manualmente.")
+                        st.dataframe({
+                            "Campo": ["ID", "Empresa", "Nome", "Modalidade", "Data", "Hora", "Status", "Observações", "Laudo", "Avaliação"],
+                            "Valor Salvo": [
+                                str(row[0]), str(row[1]), str(row[2]), str(row[3]),
+                                str(row[4]), str(row[5]), str(row[8]), str(row[9] or "—"),
+                                "✅ Anexado" if row[6] else "—",
+                                "✅ Anexada" if row[7] else "—",
+                            ]
+                        }, use_container_width=True, hide_index=True)
+                        # Download dos dados brutos como CSV para auditoria
+                        import json
+                        raw_json = json.dumps({
+                            "id": row[0], "empresa": str(row[1]), "nome": str(row[2]),
+                            "modalidade": str(row[3]), "data": str(row[4]), "hora": str(row[5]),
+                            "status": str(row[8]), "observacoes": str(row[9] or ""),
+                        }, ensure_ascii=False, indent=2)
+                        st.download_button(
+                            "⬇️ Baixar registro como JSON",
+                            data=raw_json,
+                            file_name=f"atendimento_{aid}_backup.json",
+                            mime="application/json",
+                            key=f"dl_raw_{aid}"
+                        )
+                # ─── FIM MANUTENÇÃO DE DADOS ───────────────────────────────────
+
                 # Parecer Clínico com IA (Bug 2 fix) - USANDO CONTAINER para evitar erro de nesting
                 with st.container(border=True):
                     st.markdown(f"##### 🪄 Gerar Parecer Clínico com IA — #{aid}")
