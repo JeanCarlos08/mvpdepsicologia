@@ -896,8 +896,9 @@ class AppointmentsPage:
                                     except Exception as e:
                                         st.error(f"Erro: {e}")
 
-                # Parecer Clínico com IA (Bug 2 fix)
-                with st.expander(f"🪄 Gerar Parecer Clínico com IA — #{aid}", expanded=False):
+                # Parecer Clínico com IA (Bug 2 fix) - USANDO CONTAINER para evitar erro de nesting
+                with st.container(border=True):
+                    st.markdown(f"##### 🪄 Gerar Parecer Clínico com IA — #{aid}")
                     st.caption("Escreva suas anotações brutas e a IA transforma em um parecer clínico formal.")
                     obs_rascunho = st.text_area(
                         "Suas anotações (rascunho)",
