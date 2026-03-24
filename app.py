@@ -906,7 +906,8 @@ class AppointmentsPage:
                 status_raw = str(row[8])
                 status_class = f"status-{status_raw.lower().replace('í','i')}"
                 
-                with st.expander(f"📌 {nome} | {empresa} | {data_s}", expanded=False):
+                with st.container(border=True):
+                    st.markdown(f"**📌 {nome} | {empresa} | {data_s}**")
                     c10, c20 = st.columns([3, 1])
                     with c10:
                         st.info(f"ID: #{aid} | {modalidade}")
@@ -1066,7 +1067,8 @@ class AppointmentsPage:
 
                 # Editor inline por atendimento
                 if st.session_state.get(f"edit_open_{aid}"):
-                    with st.expander(f"Editar atendimento #{aid}", expanded=True):
+                    with st.container(border=True):
+                        st.markdown(f"**✏️ Editar atendimento #{aid}**")
                         with st.form(f"form_edit_{aid}"):
                             colu1, colu2, colu3 = st.columns(3)
                             with colu1:
