@@ -7,8 +7,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 from fpdf import FPDF
-import requests
-from streamlit_lottie import st_lottie
 # Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
 # ...restante do arquivo permanece inalterado...
 
@@ -27,16 +25,6 @@ except Exception:
     # Não interromper a interface: DatabaseManager.initialize_database mantém a mesma responsabilidade    
     pass
 
-@st.cache_data
-def load_lottieurl(url: str):
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except:
-        return None
-    pass
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 DATE_FORMAT = "%d/%m/%Y"
@@ -526,14 +514,7 @@ class DashboardPage:
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.info(dicas)
 
-        if not total_appointments:
-            st.divider()
-            lottie_empty = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_yd8fntno.json")
-            col_e1, col_e2, col_e3 = st.columns([1,2,1])
-            with col_e2:
-                if lottie_empty:
-                    st_lottie(lottie_empty, height=200, key="empty_dash")
-                st.info("O painel está vazio. Cadastre seu primeiro atendimento para ver a mágica acontecer! ✨")
+            st.info("✨ Painel vazio. Cadastre seu primeiro atendimento para ver a mágica acontecer!")
         
         if stats.get("modalidades") and total_appointments > 0:
             vals = list(stats["modalidades"].values())
@@ -1344,17 +1325,10 @@ class AuthPage:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        # Layout de Login Premium (Versão 100% Estável)
         col_la1, col_la2, col_la3 = st.columns([1, 2, 1])
         with col_la2:
-            # Arte Premium: Animação Lottie (Segurança/Login)
-            lottie_lock = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_xyadoh9h.json")
-            if lottie_lock:
-                st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
-            else:
-                st.subheader("🔐")
-            
-            st.subheader("🔒 Acesso Restrito")
+            st.markdown("# 🔒")
+            st.subheader("Acesso Restrito")
             st.caption("Portal Administrativo - Gestão Clínica")
             
             with st.container(border=True):
