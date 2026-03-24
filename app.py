@@ -825,47 +825,47 @@ class AppointmentsPage:
                         st.markdown(f"**Identificador:** #{aid} | **Modalidade:** {modalidade}")
                         st.markdown(f"Status Atual: <span class='status-badge {status_class}'>{status_raw}</span>", unsafe_allow_html=True)
                     
-                    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
-                with c1:
-                    st.write(f"📄 {nome} — {empresa}")
-                with c2:
-                    if laudo_ref:
-                        _download_button_from_ref(laudo_ref, "⬇️ Laudo", key=f"dl_laudo_{aid}")
-                    else:
-                        st.caption("Laudo: —")
-                with c3:
-                    if aval_ref:
-                        _download_button_from_ref(aval_ref, "⬇️ Avaliação", key=f"dl_aval_{aid}")
-                    else:
-                        st.caption("Avaliação: —")
-                with c4:
-                    if laudo_ref and st.button("👁️ Ver Laudo", key=f"pv_laudo_{aid}"):
-                        _preview_pdf_from_ref(laudo_ref, title=f"Laudo - {nome}")
-                with c5:
-                    if aval_ref and st.button("👁️ Ver Aval.", key=f"pv_aval_{aid}"):
-                        _preview_pdf_from_ref(aval_ref, title=f"Avaliação - {nome}")
-                with c6:
-                    if isinstance(laudo_ref, str) and laudo_ref.startswith("db:"):
-                        if st.button("🗑️ Laudo", key=f"rm_laudo_{aid}"):
-                            try:
-                                fid = int(laudo_ref.split(":",1)[1])
-                                db.limpar_anexo_atendimento(aid, "laudo_pdf")
-                                db.excluir_arquivo(fid)
-                                st.success("Laudo excluído")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao excluir laudo: {e}")
-                with c7:
-                    if isinstance(aval_ref, str) and aval_ref.startswith("db:"):
-                        if st.button("🗑️ Aval.", key=f"rm_aval_{aid}"):
-                            try:
-                                fid = int(aval_ref.split(":",1)[1])
-                                db.limpar_anexo_atendimento(aid, "avaliacao_pdf")
-                                db.excluir_arquivo(fid)
-                                st.success("Avaliação excluída")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao excluir avaliação: {e}")
+                    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10m = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
+                    with c1:
+                        st.write(f"📄 {nome} — {empresa}")
+                    with c2:
+                        if laudo_ref:
+                            _download_button_from_ref(laudo_ref, "⬇️ Laudo", key=f"dl_laudo_{aid}")
+                        else:
+                            st.caption("Laudo: —")
+                    with c3:
+                        if aval_ref:
+                            _download_button_from_ref(aval_ref, "⬇️ Avaliação", key=f"dl_aval_{aid}")
+                        else:
+                            st.caption("Avaliação: —")
+                    with c4:
+                        if laudo_ref and st.button("👁️ Ver Laudo", key=f"pv_laudo_{aid}"):
+                            _preview_pdf_from_ref(laudo_ref, title=f"Laudo - {nome}")
+                    with c5:
+                        if aval_ref and st.button("👁️ Ver Aval.", key=f"pv_aval_{aid}"):
+                            _preview_pdf_from_ref(aval_ref, title=f"Avaliação - {nome}")
+                    with c6:
+                        if isinstance(laudo_ref, str) and laudo_ref.startswith("db:"):
+                            if st.button("🗑️ Laudo", key=f"rm_laudo_{aid}"):
+                                try:
+                                    fid = int(laudo_ref.split(":",1)[1])
+                                    db.limpar_anexo_atendimento(aid, "laudo_pdf")
+                                    db.excluir_arquivo(fid)
+                                    st.success("Laudo excluído")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao excluir laudo: {e}")
+                    with c7:
+                        if isinstance(aval_ref, str) and aval_ref.startswith("db:"):
+                            if st.button("🗑️ Aval.", key=f"rm_aval_{aid}"):
+                                try:
+                                    fid = int(aval_ref.split(":",1)[1])
+                                    db.limpar_anexo_atendimento(aid, "avaliacao_pdf")
+                                    db.excluir_arquivo(fid)
+                                    st.success("Avaliação excluída")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao excluir avaliação: {e}")
                 with c8:
                     if st.button("✏️ Editar", key=f"edit_{aid}"):
                         st.session_state[f"edit_open_{aid}"] = True
@@ -1371,35 +1371,20 @@ class AuthPage:
 
         st.markdown("<br><br>", unsafe_allow_html=True) # Espaçamento superior
         
-        # Início do Container Centralizado
-        st.markdown("<div class='auth-card'>", unsafe_allow_html=True)
+        # Início do Container Centralizado - Versão Estiva (CSS puro)
+        st.markdown("<div class='auth-container-premium'>", unsafe_allow_html=True)
         
         # Arte Premium: Animação Lottie (Segurança/Login)
-        # Tenta carregar a animação dinâmica de cadeado/segurança
         lottie_lock = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_xyadoh9h.json")
         if lottie_lock:
-            # Container estilizado para não perder a proporção
             st.markdown("<div style='display: flex; justify-content: center; margin-bottom: -20px;'>", unsafe_allow_html=True)
             st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
             st.markdown("</div>", unsafe_allow_html=True)
         else:
-            # Fallback elegante caso o LottieFiles falhe ou haja bloqueio de rede
-            st.markdown(
-                """
-                <div style="display: flex; justify-content: center; margin-bottom: 25px;">
-                    <div style="width: 120px; height: 120px; background: rgba(255,255,255,0.2); 
-                                border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-                                border: 2px solid rgba(255,255,255,0.5); font-size: 50px;">
-                        🔐
-                    </div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            st.markdown("---") # Fallback simples
 
-
-        st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
-        st.markdown("<p>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center;'>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center;'>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
         with st.form('auth_form'):
             user = st.text_input('Usuário')
             pwd = st.text_input('Senha', type='password')
@@ -1411,8 +1396,7 @@ class AuthPage:
                 admin_pass = (db.APP_ADMIN_PASS or "").strip()
                 
                 if not admin_user or not admin_pass:
-                    st.error("Erro de Segurança: Credenciais de administração não configuradas no servidor.")
-                    security.log_access('AUTH_CRITICAL', 'Tentativa de login sem credenciais configuradas no .env/Secrets')
+                    st.error("Erro de Segurança: Credenciais não configuradas.")
                 elif user == admin_user and pwd == admin_pass:
                     st.session_state['user_authenticated'] = True
                     st.session_state['user_name'] = user
@@ -1429,90 +1413,6 @@ class AuthPage:
                         st.error('Credenciais inválidas')
                     security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
         st.markdown("</div>", unsafe_allow_html=True)
-        # Injetar JS via components para garantir estilo nos inputs do auth-card
-        js = r"""
-<script>
-(function(){
-    try{
-        function applyAuthStyles(wrap){
-            if(!wrap) return;
-            const inputs = wrap.querySelectorAll('input, textarea');
-            inputs.forEach(i=>{
-                try{
-                    i.style.setProperty('color', '#000000', 'important');
-                    i.style.setProperty('background', '#ffffff', 'important');
-                    i.style.setProperty('caret-color', '#000000', 'important');
-                    i.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
-                    i.style.setProperty('border', '3px solid #39FF14', 'important');
-                    i.style.setProperty('box-shadow', '0 0 12px #39FF14, 0 0 5px rgba(57, 255, 20, 0.2)', 'important');
-                }catch(e){}
-            });
-            let style = document.getElementById('auth-card-placeholder-style');
-            if(!style){
-                style = document.createElement('style');
-                style.id = 'auth-card-placeholder-style';
-                style.innerHTML = '.auth-card input::placeholder, .auth-card textarea::placeholder{ color: rgba(0,0,0,0.45) !important; }';
-                // Evitar append se já estiver presente por outro processo concorrente
-                if(!document.head.contains(style)){
-                    document.head.appendChild(style);
-                }
-            } else {
-                // Se existir mas não estiver no head, tentar anexar com segurança
-                if(!document.head.contains(style)){
-                    try{
-                        document.head.appendChild(style);
-                    }catch(e){/* ignore */}
-                }
-            }
-        }
-
-        const observer = new MutationObserver(function(mutations){
-            const wrap = document.querySelector('.auth-card');
-            if(wrap){
-                applyAuthStyles(wrap);
-                // Aplicado com sucesso – desconectar observer para evitar múltiplas alterações
-                try{ observer.disconnect(); }catch(e){}
-                try{ if(typeof intervalId !== 'undefined') clearInterval(intervalId); }catch(e){}
-            }
-        });
-        try{ observer.observe(document.body, { childList: true, subtree: true }); }catch(e){}
-
-        // Apply once now
-        const wrapNow = document.querySelector('.auth-card');
-        if(wrapNow){
-            applyAuthStyles(wrapNow);
-            try{ observer.disconnect(); }catch(e){}
-        }
-        // Fallback: reaplicar por alguns ciclos e adicionar listener para Enter
-        let tries = 0; const maxTries = 6;
-        const intervalId = setInterval(()=>{
-            const w = document.querySelector('.auth-card');
-            if(w){
-                applyAuthStyles(w);
-                try{ clearInterval(intervalId); }catch(e){}
-                // adicionar listener para Enter -> clicar no botão Login (ignora textarea)
-                try{
-                    w.addEventListener('keydown', function(ev){
-                        if(ev.key === 'Enter' && ev.target && ev.target.tagName !== 'TEXTAREA'){
-                            const btn = w.querySelector('button');
-                            if(btn){ btn.click(); ev.preventDefault(); }
-                        }
-                    });
-                }catch(e){}
-            }
-            tries++;
-            if(tries>=maxTries) try{ clearInterval(intervalId); }catch(e){}
-        }, 300);
-
-    }catch(e){console.log(e)}
-})();
-</script>
-"""
-        try:
-            components.html(js, height=10)
-        except Exception:
-            # fallback silencioso se components não puder executar
-            pass
 
 class ClinicalManagementApp:
     def __init__(self):
@@ -1573,16 +1473,15 @@ class ClinicalManagementApp:
                         import json
                         context = json.dumps(appts, default=str)
                         answer = AIManager.chat_with_data(user_msg, context)
-                        st.info(answer)
+                st.info(answer)
                 
-                # Logout movido para o fundo
-                st.markdown("<div style='position: fixed; bottom: 20px; width: 260px;'>", unsafe_allow_html=True)
-                if st.button('🚪 Encerrar Sessão', use_container_width=True):
+                # Logout - Versão Estável (Sem wrappers HTML quebrados)
+                st.divider()
+                if st.button('🚪 Encerrar Sessão', use_container_width=True, key="logout_btn_sidebar"):
                     security.log_access('AUTH_LOGOUT', f"Usuário {u_name} deslogado")
                     st.session_state['user_authenticated'] = False
                     st.session_state['user_name'] = ''
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
         else:
             page_key = "dashboard" # Fallback para AuthPage.render() disparar no bloco abaixo
         if page_key == "dashboard":
