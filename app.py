@@ -7,6 +7,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 from fpdf import FPDF
+import requests
+from streamlit_lottie import st_lottie
 # Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
 # ...restante do arquivo permanece inalterado...
 
@@ -22,7 +24,18 @@ st.set_page_config(
 try:
     db.create_tables_if_needed()
 except Exception:
-    # Não interromper a interface: DatabaseManager.initialize_database mantém a mesma responsabilidade
+    # Não interromper a interface: DatabaseManager.initialize_database mantém a mesma responsabilidade    
+    pass
+
+@st.cache_data
+def load_lottieurl(url: str):
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
+        return None
     pass
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
@@ -165,91 +178,162 @@ def display_cards(cards):
             )
 
 def render_page_header(title, subtitle, inverse=False):
-    st.markdown(f"<h1 style='color: #ffffff; margin-bottom: 0px;'>{title}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: rgba(255,255,255,0.9); font-size: 1.1rem; margin-bottom: 25px;'>{subtitle}</p>", unsafe_allow_html=True)
+    # Hero Section Premium
+    bg_color = "rgba(255, 255, 255, 0.1)" if not inverse else "rgba(0,0,0,0.1)"
+    st.markdown(f"""
+    <div style="
+        background: {bg_color};
+        padding: 30px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        border: 1px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+    ">
+        <h1 style="color: #ffffff; margin: 0; font-size: 2.2rem; letter-spacing: -1px;">{title}</h1>
+        <p style="color: rgba(255,255,255,0.8); font-size: 1.1rem; margin-top: 5px; margin-bottom: 0;">{subtitle}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def apply_custom_css(dark_mode=False, advanced=False):
+    # Paleta Dinâmica
+    bg_main = "#121212" if dark_mode else "#73C883"
+    bg_sidebar = "#1a1a1a" if dark_mode else "#4da768"
+    card_bg = "rgba(255, 255, 255, 0.05)" if dark_mode else "rgba(255, 255, 255, 0.15)"
+    text_main = "#ffffff"
+    
     st.markdown(
-        '''<style>
+        f'''<style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
         
-        /* Reset e Cores Originais */
-        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        /* Reset e Cores Dinâmicas */
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
             font-family: 'Outfit', sans-serif;
-            background-color: #73C883 !important;
-        }
-        [data-testid="stMainViewContainer"] {
-            background-color: #73C883 !important;
-        }
+            background-color: {bg_main} !important;
+        }}
+        [data-testid="stMainViewContainer"] {{
+            background-color: {bg_main} !important;
+        }}
 
         /* Container Principal */
-        .main .block-container {
+        .main .block-container {{
             padding-top: 2rem;
             max-width: 1200px;
-        }
+        }}
 
-        /* Sidebar Original */
-        [data-testid="stSidebar"] {
-            background-color: #4da768 !important;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.05);
-        }
-        [data-testid="stSidebar"] * {
+        /* Sidebar Dinâmica */
+        [data-testid="stSidebar"] {{
+            background-color: {bg_sidebar} !important;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+        }}
+        [data-testid="stSidebar"] * {{
             color: #ffffff !important;
-        }
+        }}
+        
+        /* Profile Sidebar Area */
+        .sidebar-profile {{
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+        .profile-avatar {{
+            width: 45px;
+            height: 45px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }}
+        .profile-info {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .profile-name {{
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: white;
+        }}
+        .profile-role {{
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+        }}
         
         /* Headers em Branco */
-        h1, h2, h3 {
+        h1, h2, h3 {{
             font-family: 'Outfit', sans-serif;
             font-weight: 700 !important;
             color: #ffffff !important;
             letter-spacing: -0.5px;
-        }
+        }}
 
         /* Cards de Métricas (Mantendo Estilo Profissional com Nuance) */
-        [data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.15) !important;
+        [data-testid="stMetric"] {{
+            background: {card_bg} !important;
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px !important;
             padding: 20px !important;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05) !important;
             transition: all 0.3s ease;
-        }
-        [data-testid="stMetric"]:hover {
+        }}
+        [data-testid="stMetric"]:hover {{
             transform: translateY(-4px);
             background: rgba(255, 255, 255, 0.2) !important;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
-        }
-        [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
+        }}
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
             color: #ffffff !important;
-        }
-        [data-testid="stMetricLabel"] {
+        }}
+        [data-testid="stMetricLabel"] {{
             font-weight: 600 !important;
             text-transform: uppercase;
             letter-spacing: 0.8px;
             opacity: 0.9;
-        }
+        }}
 
         /* Tabelas e DataFrames (Fundo Branco para Legibilidade) */
-        .stDataFrame, [data-testid="stTable"] {
-            background: white;
+        .stDataFrame, [data-testid="stTable"] {{
+            background: {"#1e1e1e" if dark_mode else "white"};
             border-radius: 12px;
             overflow: hidden;
             border: none;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        }
+        }}
 
         /* Formulários e Inputs */
-        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input {
+        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input {{
             border-radius: 10px !important;
             border: 1px solid rgba(255,255,255,0.2) !important;
             padding: 10px 14px !important;
-            background: rgba(255,255,255,0.9) !important;
-            color: #1a1a1a !important;
-        }
+            background: rgba(255,255,255,{0.1 if dark_mode else 0.9}) !important;
+            color: {"white" if dark_mode else "#1a1a1a"} !important;
+        }}
+
+        /* Status Badges */
+        .status-badge {{
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .status-agendado {{ background: #3498db; }}
+        .status-atendido {{ background: #2ecc71; }}
+        .status-concluido {{ background: #1e8449; }}
+        .status-cancelado {{ background: #e74c3c; }}
 
         /* Botões Original + Estilo */
-        .stButton > button {
+        .stButton > button {{
             width: 100%;
             border-radius: 10px !important;
             background: linear-gradient(90deg, #4DA768 0%, #3a8e56 100%) !important;
@@ -259,24 +343,24 @@ def apply_custom_css(dark_mode=False, advanced=False):
             border: 1px solid rgba(255,255,255,0.2) !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
-        }
-        .stButton > button:hover {
+        }}
+        .stButton > button:hover {{
             transform: scale(1.02);
             box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
-        }
+        }}
 
         /* Expander Estilizado */
-        .stExpander {
+        .stExpander {{
             border: none !important;
             background: rgba(255,255,255,0.1) !important;
             border-radius: 12px !important;
             backdrop-filter: blur(5px);
             margin-bottom: 1rem !important;
-        }
-        .stExpander * { color: white !important; }
+        }}
+        .stExpander * {{ color: {"white" if dark_mode else "white"} !important; }}
 
         /* Badge de Database */
-        .db-badge {
+        .db-badge {{
             background: rgba(255, 255, 255, 0.2);
             color: #ffffff !important;
             padding: 4px 12px;
@@ -284,18 +368,18 @@ def apply_custom_css(dark_mode=False, advanced=False):
             font-size: 0.85rem;
             font-weight: 600;
             border: 1px solid rgba(255,255,255,0.1);
-        }
+        }}
         
         /* Scrollbars */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ffffff; }
+        ::-webkit-scrollbar {{ width: 8px; }}
+        ::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.05); }}
+        ::-webkit-scrollbar-thumb {{ background: rgba(255,255,255,0.3); border-radius: 10px; }}
+        ::-webkit-scrollbar-thumb:hover {{ background: #ffffff; }}
 
         </style>''', unsafe_allow_html=True)
 
 def apply_plotly_theme(dark_mode=False):
-    pio.templates.default = "plotly_white"
+    pio.templates.default = "plotly_dark" if dark_mode else "plotly_white"
 
 def save_uploaded_pdf(uploaded_file):
     """Salva PDF no banco (BYTEA) e retorna um marcador 'db:<id>'.
@@ -453,8 +537,15 @@ class DashboardPage:
                 st.info(dicas)
 
         if not total_appointments:
-            st.info("Sem dados ainda. Cadastre alguns atendimentos para visualizar o painel.")
-        if stats.get("modalidades"):
+            st.markdown("<br>", unsafe_allow_html=True)
+            lottie_empty = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_yd8fntno.json")
+            col_e1, col_e2, col_e3 = st.columns([1,2,1])
+            with col_e2:
+                if lottie_empty:
+                    st_lottie(lottie_empty, height=200, key="empty_dash")
+                st.info("O painel está vazio. Cadastre seu primeiro atendimento para ver a mágica acontecer! ✨")
+        
+        if stats.get("modalidades") and total_appointments > 0:
             vals = list(stats["modalidades"].values())
             labels = list(stats["modalidades"].keys())
             fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade", 
@@ -725,8 +816,16 @@ class AppointmentsPage:
             for row in page_rows:
                 aid, empresa, nome, modalidade, data_s, hora_s = row[0], row[1], row[2], row[3], row[4], row[5]
                 laudo_ref, aval_ref, status_row = row[6], row[7], row[8]
+                status_raw = str(row[8])
+                status_class = f"status-{status_raw.lower().replace('í','i')}"
                 
-                c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
+                with st.expander(f"📌 {nome} | {empresa} | {data_s}", expanded=False):
+                    c10, c20 = st.columns([3, 1])
+                    with c10:
+                        st.markdown(f"**Identificador:** #{aid} | **Modalidade:** {modalidade}")
+                        st.markdown(f"Status Atual: <span class='status-badge {status_class}'>{status_raw}</span>", unsafe_allow_html=True)
+                    
+                    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
                 with c1:
                     st.write(f"📄 {nome} — {empresa}")
                 with c2:
@@ -1069,6 +1168,15 @@ class SettingsPage:
 
         display_cards(cards)
 
+        st.markdown("### 🎨 Personalização Visual")
+        ui_col1, ui_col2 = st.columns(2)
+        with ui_col1:
+            dm = st.toggle("Ativar Tema Dark Ultra-Premium 🌙", value=st.session_state.get('premium_dark_mode', False), key="dm_toggle")
+            if dm != st.session_state.get('premium_dark_mode', False):
+                st.session_state['premium_dark_mode'] = dm
+                st.rerun()
+        
+        st.markdown("### 🛠️ Ferramentas do Sistema")
         col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
@@ -1266,29 +1374,29 @@ class AuthPage:
         # Início do Container Centralizado
         st.markdown("<div class='auth-card'>", unsafe_allow_html=True)
         
-        # Arte de Psicologia (Imagem Pessoas Pexels)
-        st.markdown(
-            """
-            <div style="display: flex; justify-content: center; margin-bottom: 25px;">
-                <div style="
-                    width: 150px; 
-                    height: 150px; 
-                    background: #ffffff; 
-                    border-radius: 50%; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    border: 4px solid #73C883;
-                    box-shadow: 0 0 20px rgba(255,255,255,0.4);
-                    overflow: hidden;
-                ">
-                    <img src="https://images.pexels.com/photos/1460833/pexels-photo-1460833.jpeg" 
-                         style="width: 100%; height: 100%; object-fit: cover;">
+        # Arte Premium: Animação Lottie (Segurança/Login)
+        # Tenta carregar a animação dinâmica de cadeado/segurança
+        lottie_lock = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_xyadoh9h.json")
+        if lottie_lock:
+            # Container estilizado para não perder a proporção
+            st.markdown("<div style='display: flex; justify-content: center; margin-bottom: -20px;'>", unsafe_allow_html=True)
+            st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            # Fallback elegante caso o LottieFiles falhe ou haja bloqueio de rede
+            st.markdown(
+                """
+                <div style="display: flex; justify-content: center; margin-bottom: 25px;">
+                    <div style="width: 120px; height: 120px; background: rgba(255,255,255,0.2); 
+                                border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+                                border: 2px solid rgba(255,255,255,0.5); font-size: 50px;">
+                        🔐
+                    </div>
                 </div>
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
+                """, 
+                unsafe_allow_html=True
+            )
+
 
         st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
         st.markdown("<p>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
@@ -1425,33 +1533,26 @@ class ClinicalManagementApp:
             if 'user_authenticated' not in st.session_state or not st.session_state['user_authenticated']:
                 st.session_state['user_authenticated'] = True
                 st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
-        apply_custom_css()
-        apply_plotly_theme()
+        
+        # Carregar Preferências de UI
+        is_dark = st.session_state.get('premium_dark_mode', False)
+        apply_custom_css(dark_mode=is_dark)
+        apply_plotly_theme(dark_mode=is_dark)
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
-                st.markdown("## 🩺 SISTEMA CLÍNICO")
-                st.markdown("*Gestão Clínica*")
-                conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
-                st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
-                # Logout rápido
-                if 'user_authenticated' in st.session_state and st.session_state['user_authenticated']:
-                    st.write(f"Usuário: {st.session_state.get('user_name', '')}")
-                    if st.button('🚪 Logout'):
-                        security.log_access('AUTH_LOGOUT', f"Usuário {st.session_state.get('user_name','')} deslogado")
-                        st.session_state['user_authenticated'] = False
-                        st.session_state['user_name'] = ''
-                        # Reiniciar a interface; experimental_rerun pode não existir em algumas versões do Streamlit
-                        try:
-                            rerun = getattr(st, 'experimental_rerun', None)
-                            if callable(rerun):
-                                rerun()
-                            else:
-                                raise AttributeError('experimental_rerun ausente')
-                        except Exception:
-                            try:
-                                st.stop()
-                            except Exception:
-                                pass
+                # Area de Perfil Premium
+                u_name = st.session_state.get('user_name', 'Admin')
+                st.markdown(f"""
+                <div class="sidebar-profile">
+                    <div class="profile-avatar">👨‍⚕️</div>
+                    <div class="profile-info">
+                        <div class="profile-name">{u_name}</div>
+                        <div class="profile-role">Administrador</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("### 🧭 Navegação")
                 pages = {
                     "🏠 Dashboard": "dashboard",
                     "📅 Atendimentos": "appointments",
@@ -1459,22 +1560,29 @@ class ClinicalManagementApp:
                     "📤 Upload": "upload",
                     "⚙️ Configurações": "settings"
                 }
-                # Fornecer key única para evitar StreamlitDuplicateElementId em casos de re-render
-                selected_page = st.radio("Navegação", list(pages.keys()), index=0, key='nav_radio')
+                selected_page = st.radio("Selecione a página", list(pages.keys()), index=0, key='nav_radio', label_visibility="collapsed")
                 page_key = pages[selected_page]
 
                 st.divider()
                 st.markdown("### 💬 IA Assistente")
-                user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input")
+                user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input", placeholder="Ex: Resumo de hoje")
                 if user_msg:
                     with st.spinner("IA processando..."):
                         from ai_manager import AIManager
-                        # Pegar resumo dos atendimentos para contexto (limitado para evitar estouro de tokens)
                         appts = DatabaseManager.get_all_appointments()[:100]
                         import json
                         context = json.dumps(appts, default=str)
                         answer = AIManager.chat_with_data(user_msg, context)
                         st.info(answer)
+                
+                # Logout movido para o fundo
+                st.markdown("<div style='position: fixed; bottom: 20px; width: 260px;'>", unsafe_allow_html=True)
+                if st.button('🚪 Encerrar Sessão', use_container_width=True):
+                    security.log_access('AUTH_LOGOUT', f"Usuário {u_name} deslogado")
+                    st.session_state['user_authenticated'] = False
+                    st.session_state['user_name'] = ''
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
         else:
             page_key = "dashboard" # Fallback para AuthPage.render() disparar no bloco abaixo
         if page_key == "dashboard":
