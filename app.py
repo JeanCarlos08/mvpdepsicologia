@@ -1153,10 +1153,8 @@ class SettingsPage:
             unsafe_allow_html=True,
         )
 
-        st.markdown(
-            "<div class='settings-page page-settings' style='padding:6px;border-radius:6px;'>",
-            unsafe_allow_html=True,
-        )
+        with st.container(border=True):
+            st.markdown("<h3 style='margin-top:0;'>🛠️ Painel de Controle</h3>", unsafe_allow_html=True)
 
         conn_ok = verificar_conexao()
         stats = DatabaseManager.get_statistics()
@@ -1251,7 +1249,7 @@ class SettingsPage:
             Security.log_error("AUDIT_LIST", e)
             st.warning("Não foi possível carregar os logs de auditoria.")
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        # Fim do container configurado via with na linha 1156
 
 class ReportsPage:
     @staticmethod
@@ -1369,50 +1367,38 @@ class AuthPage:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        st.markdown("<br><br>", unsafe_allow_html=True) # Espaçamento superior
-        
-        # Início do Container Centralizado - Versão Estiva (CSS puro)
-        st.markdown("<div class='auth-container-premium'>", unsafe_allow_html=True)
-        
-        # Arte Premium: Animação Lottie (Segurança/Login)
-        lottie_lock = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_xyadoh9h.json")
-        if lottie_lock:
-            st.markdown("<div style='display: flex; justify-content: center; margin-bottom: -20px;'>", unsafe_allow_html=True)
-            st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("---") # Fallback simples
+        # Layout de Login Premium (Versão 100% Estável)
+        col_la1, col_la2, col_la3 = st.columns([1, 2, 1])
+        with col_la2:
+            # Arte Premium: Animação Lottie (Segurança/Login)
+            lottie_lock = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_xyadoh9h.json")
+            if lottie_lock:
+                st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
+            else:
+                st.markdown("<h1 style='text-align:center;'>🔐</h1>", unsafe_allow_html=True)
 
-        st.markdown("<h2 style='text-align:center;'>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center;'>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
-        with st.form('auth_form'):
-            user = st.text_input('Usuário')
-            pwd = st.text_input('Senha', type='password')
-            submitted = st.form_submit_button('Entrar', type='primary')
+            st.markdown("<h2 style='text-align:center; color:white;'>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.8);'>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
+            
+            with st.container(border=True):
+                with st.form('auth_form', clear_on_submit=False):
+                    user = st.text_input('Usuário')
+                    pwd = st.text_input('Senha', type='password')
+                    submitted = st.form_submit_button('Entrar', type='primary', use_container_width=True)
 
-            if submitted:
-                # Carregar do módulo db (que já lê de .env / secrets)
-                admin_user = (db.APP_ADMIN_USER or "").strip()
-                admin_pass = (db.APP_ADMIN_PASS or "").strip()
-                
-                if not admin_user or not admin_pass:
-                    st.error("Erro de Segurança: Credenciais não configuradas.")
-                elif user == admin_user and pwd == admin_pass:
-                    st.session_state['user_authenticated'] = True
-                    st.session_state['user_name'] = user
-                    st.session_state['login_attempts'] = 0
-                    st.session_state['lockout_time'] = None
-                    security.log_access('AUTH_LOGIN', f'Usuário {user} autenticado via AuthPage')
-                    st.rerun()
-                else:
-                    st.session_state['login_attempts'] += 1
-                    if st.session_state['login_attempts'] >= 5:
-                        st.session_state['lockout_time'] = datetime.now()
-                        st.error("Muitas tentativas falhas. Bloqueio temporário ativado.")
-                    else:
-                        st.error('Credenciais inválidas')
-                    security.log_access('AUTH_FAIL', f'Tentativa falha via AuthPage: {user}')
-        st.markdown("</div>", unsafe_allow_html=True)
+                    if submitted:
+                        admin_user = (db.APP_ADMIN_USER or "").strip()
+                        admin_pass = (db.APP_ADMIN_PASS or "").strip()
+                        
+                        if not admin_user or not admin_pass:
+                            st.error("Erro de Segurança: Credenciais não configuradas.")
+                        elif user == admin_user and pwd == admin_pass:
+                            st.session_state['user_authenticated'] = True
+                            st.session_state['user_name'] = user
+                            st.rerun()
+                        else:
+                            st.session_state['login_attempts'] += 1
+                            st.error('Credenciais inválidas')
 
 class ClinicalManagementApp:
     def __init__(self):
@@ -1465,6 +1451,7 @@ class ClinicalManagementApp:
 
                 st.divider()
                 st.markdown("### 💬 IA Assistente")
+                answer = ""
                 user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input", placeholder="Ex: Resumo de hoje")
                 if user_msg:
                     with st.spinner("IA processando..."):
@@ -1473,7 +1460,8 @@ class ClinicalManagementApp:
                         import json
                         context = json.dumps(appts, default=str)
                         answer = AIManager.chat_with_data(user_msg, context)
-                st.info(answer)
+                if answer:
+                    st.info(answer)
                 
                 # Logout - Versão Estável (Sem wrappers HTML quebrados)
                 st.divider()
