@@ -1,4 +1,4 @@
-# JULIANA - Gestão Clínica (MVP)
+# Gestão Clínica (MVP)
 
 [![Deploy to Streamlit](https://img.shields.io/badge/Deploy%20to-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://share.streamlit.io/deploy?repository=JeanCarlos08/mvpdepsicologia&branch=main&mainFilePath=app.py)
 

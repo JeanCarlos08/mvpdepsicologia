@@ -180,7 +180,7 @@ class AIManager:
         
         try:
             prompt = f"""
-            Você é a 'IA Juliana', assistente de gestão clínica. 
+            Você é a 'IA Assistente', assistente de gestão clínica. 
             Com base nos dados abaixo (JSON), responda à pergunta do usuário.
             
             Dados atuais:

@@ -12,7 +12,7 @@ from fpdf import FPDF
 
 # Configurar página do Streamlit
 st.set_page_config(
-    page_title="JULIANA - Gestão Clínica",
+    page_title="Sistema de Gestão Clínica",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -407,7 +407,7 @@ class AtendimentoData:
 class DashboardPage:
     @staticmethod
     def render() -> None:
-        render_page_header("🩺 JULIANA - Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
+        render_page_header("🩺 Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
         st.markdown(f"<div><span class='db-badge'>🗄️ Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'}</span> <span class='db-badge'>Postgres</span></div><br>", unsafe_allow_html=True)
         try:
@@ -439,7 +439,7 @@ class DashboardPage:
         
         if total_appointments > 0:
             st.markdown("---")
-            st.markdown("### 🧠 Dicas da IA Juliana")
+            st.markdown("### 🧠 Dicas da IA Assistente")
             with st.spinner("Gerando insights de negócio..."):
                 import json
                 stats_resumo = {
@@ -1291,7 +1291,7 @@ class AuthPage:
         )
 
         st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
-        st.markdown("<p>Portal Administrativo Juliana Gestão Clínica</p>", unsafe_allow_html=True)
+        st.markdown("<p>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
         with st.form('auth_form'):
             user = st.text_input('Usuário')
             pwd = st.text_input('Senha', type='password')
@@ -1429,7 +1429,7 @@ class ClinicalManagementApp:
         apply_plotly_theme()
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
-                st.markdown("## 🩺 JULIANA")
+                st.markdown("## 🩺 SISTEMA CLÍNICO")
                 st.markdown("*Gestão Clínica*")
                 conn_status = "🟢 Conectado" if verificar_conexao() else "🔴 Desconectado"
                 st.caption(f"Status: {conn_status}", unsafe_allow_html=True)
@@ -1464,7 +1464,7 @@ class ClinicalManagementApp:
                 page_key = pages[selected_page]
 
                 st.divider()
-                st.markdown("### 💬 IA Juliana")
+                st.markdown("### 💬 IA Assistente")
                 user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input")
                 if user_msg:
                     with st.spinner("IA processando..."):
