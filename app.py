@@ -178,21 +178,9 @@ def display_cards(cards):
             )
 
 def render_page_header(title, subtitle, inverse=False):
-    # Hero Section Premium
-    bg_color = "rgba(255, 255, 255, 0.1)" if not inverse else "rgba(0,0,0,0.1)"
-    st.markdown(f"""
-    <div style="
-        background: {bg_color};
-        padding: 30px;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        border: 1px solid rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-    ">
-        <h1 style="color: #ffffff; margin: 0; font-size: 2.2rem; letter-spacing: -1px;">{title}</h1>
-        <p style="color: rgba(255,255,255,0.8); font-size: 1.1rem; margin-top: 5px; margin-bottom: 0;">{subtitle}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.title(title)
+    st.caption(subtitle)
+    st.divider()
 
 def apply_custom_css(dark_mode=False, advanced=False):
     # Paleta Dinâmica
@@ -493,7 +481,9 @@ class DashboardPage:
     def render() -> None:
         render_page_header("🩺 Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.markdown(f"<div><span class='db-badge'>🗄️ Banco de Dados: {'Conectado' if conn_ok else 'Desconectado'}</span> <span class='db-badge'>Postgres</span></div><br>", unsafe_allow_html=True)
+        st.info(f"🗄️ Status do Sistema: {'Conectado ao Postgres' if conn_ok else 'Desconectado'}")
+        st.caption("PostgreSQL | IA Assistente | Gestão Clínica")
+        st.divider()
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
@@ -537,7 +527,7 @@ class DashboardPage:
                 st.info(dicas)
 
         if not total_appointments:
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.divider()
             lottie_empty = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_yd8fntno.json")
             col_e1, col_e2, col_e3 = st.columns([1,2,1])
             with col_e2:
@@ -712,10 +702,7 @@ class AppointmentsPage:
         df["Laudo"] = df["Laudo PDF"].apply(lambda x: "SIM" if x else "NÃO")
         df["Avaliação"] = df["Avaliação PDF"].apply(lambda x: "SIM" if x else "NÃO")
 
-        st.markdown(
-            "<h3 class='card-title' style='color:#000000 !important;'>📋 Lista de Atendimentos</h3>",
-            unsafe_allow_html=True,
-        )
+        st.subheader("📋 Lista de Atendimentos")
 
         # Paginação simples
         total_rows = len(df)
@@ -822,8 +809,8 @@ class AppointmentsPage:
                 with st.expander(f"📌 {nome} | {empresa} | {data_s}", expanded=False):
                     c10, c20 = st.columns([3, 1])
                     with c10:
-                        st.markdown(f"**Identificador:** #{aid} | **Modalidade:** {modalidade}")
-                        st.markdown(f"Status Atual: <span class='status-badge {status_class}'>{status_raw}</span>", unsafe_allow_html=True)
+                        st.info(f"ID: #{aid} | {modalidade}")
+                        st.write(f"Status: **{status_raw}**")
                     
                     c1, c2, c3, c4, c5, c6, c7, c8, c9, c10m = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 1.2, 1.2])
                     with c1:
@@ -871,11 +858,10 @@ class AppointmentsPage:
                         st.session_state[f"edit_open_{aid}"] = True
                 with c9:
                     # Integração WhatsApp (UX #1)
-                    clean_phone = "".join(filter(str.isdigit, "5500000000000")) # Placeholder para telefone se houvesse campo
                     msg = f"Olá {nome}, confirmamos seu atendimento clínico na {empresa} para o dia {data_s} às {hora_s}."
                     import urllib.parse
                     wp_url = f"https://wa.me/?text={urllib.parse.quote(msg)}"
-                    st.markdown(f'<a href="{wp_url}" target="_blank" style="text-decoration:none;"><button style="width:100%; border-radius:8px; background:#25D366; color:white; border:none; padding:5px; font-size:14px; cursor:pointer;">🟢 Zap</button></a>', unsafe_allow_html=True)
+                    st.link_button("🟢 WhatsApp", wp_url, use_container_width=True)
                 
                 with c10:
                     with st.popover(f"⚙️", use_container_width=True):
@@ -1116,15 +1102,7 @@ class SettingsPage:
     def render() -> None:
         render_page_header("⚙️ Configurações", "Administração do Sistema")
 
-        # Forçar paleta visual apenas para a página de configurações
-        # Injetar uma classe no <body> para escopo confiável dos estilos (override do estilo global)
-        try:
-            components.html(
-                """<script>try{document.body.classList.add('page-settings');}catch(e){};</script>""",
-                height=0,
-            )
-        except Exception:
-            pass
+        # CSS Local para Configurações (Apenas o estilo, sem injeção de script)
 
         st.markdown(
             """
@@ -1154,7 +1132,7 @@ class SettingsPage:
         )
 
         with st.container(border=True):
-            st.markdown("<h3 style='margin-top:0;'>🛠️ Painel de Controle</h3>", unsafe_allow_html=True)
+            st.subheader("🛠️ Painel de Controle")
 
         conn_ok = verificar_conexao()
         stats = DatabaseManager.get_statistics()
@@ -1359,8 +1337,7 @@ class AuthPage:
         # Verificar se está em lockout
         if st.session_state['lockout_time']:
             time_diff = (datetime.now() - st.session_state['lockout_time']).total_seconds()
-            if time_diff < 30:
-                st.markdown("<br><br>", unsafe_allow_html=True)
+            if time_diff < 30: # Lockout de 30 segundos
                 st.error(f"🚨 Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
                 return
             else:
@@ -1375,10 +1352,10 @@ class AuthPage:
             if lottie_lock:
                 st_lottie(lottie_lock, height=160, width=160, key="login_lock", speed=1.5)
             else:
-                st.markdown("<h1 style='text-align:center;'>🔐</h1>", unsafe_allow_html=True)
-
-            st.markdown("<h2 style='text-align:center; color:white;'>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center; color:rgba(255,255,255,0.8);'>Portal Administrativo - Gestão Clínica</p>", unsafe_allow_html=True)
+                st.subheader("🔐")
+            
+            st.subheader("🔒 Acesso Restrito")
+            st.caption("Portal Administrativo - Gestão Clínica")
             
             with st.container(border=True):
                 with st.form('auth_form', clear_on_submit=False):
@@ -1427,16 +1404,9 @@ class ClinicalManagementApp:
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
                 # Area de Perfil Premium
+                # Area de Perfil
                 u_name = st.session_state.get('user_name', 'Admin')
-                st.markdown(f"""
-                <div class="sidebar-profile">
-                    <div class="profile-avatar">👨‍⚕️</div>
-                    <div class="profile-info">
-                        <div class="profile-name">{u_name}</div>
-                        <div class="profile-role">Administrador</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"👨‍⚕️ {u_name} - Administrador")
 
                 st.markdown("### 🧭 Navegação")
                 pages = {
