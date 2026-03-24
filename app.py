@@ -1357,44 +1357,27 @@ class AuthPage:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        # Layout de duas colunas: Brand | Formulário
-        space_l, col_brand, col_form, space_r = st.columns([0.5, 1.1, 1.1, 0.5])
+        # Layout centralizado e minimalista
+        _, col_center, _ = st.columns([1, 1.4, 1])
 
-        with col_brand:
-            st.markdown("")
-            st.markdown("")
-            st.markdown("# 🩺 Gestão Clínica")
-            st.markdown("### Sistema de Controle e Inteligência Clínica")
-            st.caption("Portal Administrativo Profissional")
-            st.divider()
-            st.markdown("**O que você encontra aqui:**")
-            st.markdown("✅ Agendamento e controle de atendimentos")
-            st.markdown("✅ Laudos e avaliações PDF integrados")
-            st.markdown("✅ Relatórios e exportações dinâmicas")
-            st.markdown("✅ IA Assistente para insights e pareceres")
-            st.markdown("✅ Backup e auditoria completos")
-            st.divider()
-            st.caption("🔒 Acesso protegido • Dados criptografados • 100% seguro")
-
-        with col_form:
-            st.markdown("")
-            st.markdown("")
-            st.markdown("## 🔐 Acesso Restrito")
-            st.caption("Entre com suas credenciais para continuar")
+        with col_center:
+            st.markdown("# 🩺")
+            st.markdown("## Gestão Clínica")
+            st.caption("Portal Administrativo")
             st.markdown("")
 
             with st.form('auth_form', clear_on_submit=False):
-                user = st.text_input('👤 Usuário', placeholder='Digite seu usuário...')
-                pwd = st.text_input('🔑 Senha', type='password', placeholder='Digite sua senha...')
+                user = st.text_input('Usuário', placeholder='Digite seu usuário...')
+                pwd = st.text_input('Senha', type='password', placeholder='Digite sua senha...')
                 st.markdown("")
-                submitted = st.form_submit_button('▶️  Entrar no Sistema', type='primary', use_container_width=True)
+                submitted = st.form_submit_button('Entrar', type='primary', use_container_width=True)
 
                 if submitted:
                     admin_user = (db.APP_ADMIN_USER or "").strip()
                     admin_pass = (db.APP_ADMIN_PASS or "").strip()
 
                     if not admin_user or not admin_pass:
-                        st.error("Erro de Segurança: Credenciais não configuradas.")
+                        st.error("Credenciais não configuradas no sistema.")
                     elif user == admin_user and pwd == admin_pass:
                         st.session_state['user_authenticated'] = True
                         st.session_state['user_name'] = user
@@ -1403,9 +1386,9 @@ class AuthPage:
                         st.session_state['login_attempts'] += 1
                         if st.session_state['login_attempts'] >= 5:
                             st.session_state['lockout_time'] = datetime.now()
-                        st.error('❌ Credenciais inválidas. Verifique e tente novamente.')
+                        st.error('Credenciais inválidas.')
 
-            st.caption(f"Tentativas: {st.session_state['login_attempts']} / 5")
+            st.caption(f"🔒 Acesso seguro  •  Tentativas: {st.session_state['login_attempts']}/5")
 
 class ClinicalManagementApp:
     def __init__(self):
