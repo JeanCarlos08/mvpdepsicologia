@@ -669,6 +669,92 @@ class AppointmentsPage:
                                 st.rerun()
                             else:
                                 st.error("Erro ao cadastrar atendimento.")
+
+        with st.expander("✏️ Editar Atendimento", expanded=False):
+            st.caption("Busque um atendimento pelo ID ou nome/empresa para editar seus dados.")
+            col_search1, col_search2 = st.columns([2, 1])
+            with col_search1:
+                busca_editor = st.text_input(
+                    "🔎 Buscar por Nome, Empresa ou ID",
+                    placeholder="Ex: João Silva  ou  32",
+                    key="editor_busca"
+                ).strip()
+            with col_search2:
+                st.markdown("&nbsp;")  # espaço vertical
+                buscar_btn = st.button("Buscar", key="editor_buscar_btn", type="primary", use_container_width=True)
+
+            if busca_editor:
+                all_apts = DatabaseManager.get_all_appointments()
+                # Filtrar por ID exato ou por nome/empresa
+                resultados = []
+                for r in all_apts:
+                    if busca_editor.isdigit() and str(r[0]) == busca_editor:
+                        resultados.append(r)
+                    elif not busca_editor.isdigit() and (
+                        busca_editor.lower() in str(r[1]).lower() or
+                        busca_editor.lower() in str(r[2]).lower()
+                    ):
+                        resultados.append(r)
+
+                if not resultados:
+                    st.warning("Nenhum atendimento encontrado para essa busca.")
+                else:
+                    st.success(f"{len(resultados)} atendimento(s) encontrado(s).")
+                    for r_edit in resultados:
+                        aid_e = r_edit[0]
+                        lbl = f"#{aid_e} — {r_edit[2]} | {r_edit[1]} | {r_edit[3]}"
+                        with st.container(border=True):
+                            st.markdown(f"**{lbl}**")
+                            if st.button("✏️ Editar este atendimento", key=f"ed_btn_{aid_e}", use_container_width=True):
+                                st.session_state[f"edit_open_{aid_e}"] = True
+                            if st.session_state.get(f"edit_open_{aid_e}"):
+                                with st.form(f"form_edit_top_{aid_e}"):
+                                    row_e = r_edit
+                                    ed1, ed2, ed3 = st.columns(3)
+                                    with ed1:
+                                        ev_empresa = st.text_input("Empresa", value=str(row_e[1]), max_chars=100).strip()
+                                        ev_modal = st.selectbox("Modalidade", [m.value for m in ModalidadeAtendimento],
+                                            index=[m.value for m in ModalidadeAtendimento].index(str(row_e[3])) if row_e[3] in [m.value for m in ModalidadeAtendimento] else 0)
+                                        ev_status = st.selectbox("Status", ["Agendado","Atendido","Concluído","Cancelado"],
+                                            index=["Agendado","Atendido","Concluído","Cancelado"].index(str(row_e[8])) if row_e[8] in ["Agendado","Atendido","Concluído","Cancelado"] else 0)
+                                    with ed2:
+                                        ev_nome = st.text_input("Nome", value=str(row_e[2]), max_chars=100).strip()
+                                        try:
+                                            ev_dt = pd.to_datetime(str(row_e[4]), dayfirst=True, errors="coerce").date()
+                                        except Exception:
+                                            ev_dt = date.today()
+                                        ev_data = st.date_input("Data", value=ev_dt, min_value=date(1900,1,1), max_value=date(2100,12,31))
+                                    with ed3:
+                                        try:
+                                            hh_e, mm_e = str(row_e[5]).split(":")[:2]
+                                            ev_tm = time(int(hh_e), int(mm_e))
+                                        except Exception:
+                                            ev_tm = time(8, 0)
+                                        ev_hora = st.time_input("Hora", value=ev_tm)
+                                        ev_obs = st.text_area("Observações", value=str(row_e[9] or ""), max_chars=1000).strip()
+                                    s_save, s_cancel = st.columns(2)
+                                    with s_save:
+                                        saved = st.form_submit_button("💾 Salvar Alterações", type="primary")
+                                    with s_cancel:
+                                        cancelled = st.form_submit_button("Cancelar")
+                                    if saved:
+                                        try:
+                                            db.atualizar_campos_atendimento(aid_e, {
+                                                "empresa": ev_empresa, "nome": ev_nome,
+                                                "modalidade": ev_modal,
+                                                "data": ev_data.strftime(DATE_FORMAT) if ev_data else None,
+                                                "hora": ev_hora.strftime(TIME_FORMAT) if ev_hora else None,
+                                                "status": ev_status, "observacoes": ev_obs,
+                                            })
+                                            st.toast("Alterações salvas!", icon="✅")
+                                            st.session_state[f"edit_open_{aid_e}"] = False
+                                            st.rerun()
+                                        except Exception as ex:
+                                            st.error(f"Erro ao salvar: {ex}")
+                                    if cancelled:
+                                        st.session_state[f"edit_open_{aid_e}"] = False
+                                        st.rerun()
+
         AppointmentsPage._render_table(filters)
 
     @staticmethod
