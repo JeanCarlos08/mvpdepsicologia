@@ -13,7 +13,6 @@ from fpdf import FPDF
 # Configurar página do Streamlit
 st.set_page_config(
     page_title="Sistema de Gestão Clínica",
-    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -1361,7 +1360,6 @@ class AuthPage:
         _, col_center, _ = st.columns([1, 1.4, 1])
 
         with col_center:
-            st.markdown("# 🩺")
             st.markdown("## Gestão Clínica")
             st.caption("Portal Administrativo")
             st.markdown("")
