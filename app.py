@@ -546,7 +546,7 @@ class DashboardPage:
                 from ai_manager import AIManager
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.info(dicas)
-
+        else:
             st.info("✨ Painel vazio. Cadastre seu primeiro atendimento para ver a mágica acontecer!")
         
         if stats.get("modalidades") and total_appointments > 0:
@@ -895,6 +895,37 @@ class AppointmentsPage:
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"Erro: {e}")
+
+                # Parecer Clínico com IA (Bug 2 fix)
+                with st.expander(f"🪄 Gerar Parecer Clínico com IA — #{aid}", expanded=False):
+                    st.caption("Escreva suas anotações brutas e a IA transforma em um parecer clínico formal.")
+                    obs_rascunho = st.text_area(
+                        "Suas anotações (rascunho)",
+                        placeholder="Ex: Paciente ansioso, leve insônia, MAS APTO ao trabalho. Recomendo acompanhamento.",
+                        key=f"parecer_obs_{aid}",
+                        height=100
+                    )
+                    if st.button("✍️ Gerar Parecer Formal", key=f"btn_parecer_{aid}", type="primary"):
+                        if not obs_rascunho.strip():
+                            st.warning("Escreva suas anotações antes de gerar o parecer.")
+                        else:
+                            with st.spinner("IA redigindo o parecer clínico..."):
+                                from ai_manager import AIManager
+                                parecer = AIManager.generate_clinical_draft(
+                                    nome=str(nome),
+                                    empresa=str(empresa),
+                                    modalidade=str(modalidade),
+                                    observacoes=obs_rascunho.strip()
+                                )
+                            st.markdown("---")
+                            st.markdown(parecer)
+                            st.download_button(
+                                label="⬇️ Baixar Parecer (.txt)",
+                                data=parecer,
+                                file_name=f"parecer_{str(nome).replace(' ','_')}_{aid}.txt",
+                                mime="text/plain",
+                                key=f"dl_parecer_{aid}"
+                            )
 
                 # Editor inline por atendimento
                 if st.session_state.get(f"edit_open_{aid}"):
