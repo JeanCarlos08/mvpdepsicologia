@@ -1357,13 +1357,9 @@ class SettingsPage:
         
         with c2:
             st.caption("Cores dos Cards")
-            card_bg = st.color_picker("Fundo dos Cards", value=st.session_state.get('card_bg_color', '#ffffff'))
-            if card_bg != st.session_state.get('card_bg_color', '#ffffff'):
-                # Converter hex para rgba suave se for branco
-                if card_bg.lower() == "#ffffff":
-                    st.session_state['card_bg_color'] = "rgba(255, 255, 255, 0.15)"
-                else:
-                    st.session_state['card_bg_color'] = card_bg
+            card_bg_hex = st.color_picker("Fundo dos Cards", value=st.session_state.get('card_bg_hex', '#ffffff'))
+            if card_bg_hex != st.session_state.get('card_bg_hex', '#ffffff'):
+                st.session_state['card_bg_hex'] = card_bg_hex
                 st.rerun()
                 
             card_txt = st.color_picker("Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
@@ -1375,7 +1371,7 @@ class SettingsPage:
             st.session_state['accent_color'] = '#4DA768'
             st.session_state['card_text_color'] = '#ffffff'
             st.session_state['main_bg_color'] = '#73C883'
-            st.session_state['card_bg_color'] = 'rgba(255, 255, 255, 0.15)'
+            st.session_state['card_bg_hex'] = '#ffffff'
             st.session_state['premium_dark_mode'] = False
             st.rerun()
         
@@ -1638,16 +1634,19 @@ class ClinicalManagementApp:
             st.session_state['card_text_color'] = "#ffffff"
         if 'main_bg_color' not in st.session_state:
             st.session_state['main_bg_color'] = "#73C883"
-        if 'card_bg_color' not in st.session_state:
-            st.session_state['card_bg_color'] = "rgba(255, 255, 255, 0.15)"
+        if 'card_bg_hex' not in st.session_state:
+            st.session_state['card_bg_hex'] = "#ffffff"
             
         is_dark = st.session_state.get('premium_dark_mode', False)
         accent = st.session_state.get('accent_color', '#4DA768')
         txt_color = st.session_state.get('card_text_color', '#ffffff')
         main_bg = st.session_state.get('main_bg_color', '#73C883')
-        card_bg = st.session_state.get('card_bg_color', 'rgba(255, 255, 255, 0.15)')
+        card_bg_hex = st.session_state.get('card_bg_hex', '#ffffff')
         
-        apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg)
+        # Lógica de transparência para o fundo do card (Glassmorphism se for branco)
+        card_bg_css = "rgba(255, 255, 255, 0.15)" if card_bg_hex.lower() == "#ffffff" else card_bg_hex
+        
+        apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg_css)
         apply_plotly_theme(dark_mode=is_dark)
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
