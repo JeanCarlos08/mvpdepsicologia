@@ -282,6 +282,14 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 	"""
 	CREATE INDEX IF NOT EXISTS idx_atendimentos_nome ON atendimentos (nome);
 	""",
+	"""
+	CREATE TABLE IF NOT EXISTS user_preferences (
+		id SERIAL PRIMARY KEY,
+		pref_key VARCHAR(100) UNIQUE NOT NULL,
+		pref_value TEXT,
+		updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	);
+	""",
 )
 
 
@@ -349,6 +357,50 @@ def ensure_indexes() -> None:
 
 def create_tables_if_needed() -> None:  # compatibilidade legado
 	ensure_schema()
+
+
+# ---------- Preferências do Usuário ----------
+
+def save_preference(key: str, value: str) -> bool:
+	"""Salva ou atualiza uma preferência do usuário no banco (ex: foto de perfil em base64)."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute("""
+				INSERT INTO user_preferences (pref_key, pref_value, updated_at)
+				VALUES (%s, %s, NOW())
+				ON CONFLICT (pref_key)
+				DO UPDATE SET pref_value = EXCLUDED.pref_value, updated_at = NOW()
+			""", (str(key)[:100], value))
+		return True
+	except Exception:
+		return False
+
+
+def get_preference(key: str, default: Optional[str] = None) -> Optional[str]:
+	"""Recupera uma preferência do usuário pelo key. Retorna default se não existir."""
+	try:
+		with _connection_scope(commit=False) as conn:
+			cur = _get_cursor(conn)
+			cur.execute(
+				"SELECT pref_value FROM user_preferences WHERE pref_key = %s",
+				(str(key)[:100],)
+			)
+			row = cur.fetchone()
+			return row["pref_value"] if row else default
+	except Exception:
+		return default
+
+
+def delete_preference(key: str) -> bool:
+	"""Remove uma preferência do banco."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute("DELETE FROM user_preferences WHERE pref_key = %s", (str(key)[:100],))
+			return cur.rowcount > 0
+	except Exception:
+		return False
 
 
 def verificar_conexao() -> bool:

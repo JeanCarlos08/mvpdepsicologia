@@ -1402,7 +1402,66 @@ class SettingsPage:
             st.session_state['premium_dark_mode'] = False
             st.rerun()
         
-        st.markdown("### 🛠️ Ferramentas do Sistema")
+        st.write("---")
+        st.markdown("### 📷 Foto de Perfil")
+        st.caption("Essa foto aparecerá no card da barra lateral.")
+        
+        photo_col1, photo_col2 = st.columns([1, 2])
+        with photo_col1:
+            # Preview da foto atual
+            if st.session_state.get('profile_photo_b64'):
+                st.markdown(
+                    f"""<div style='width:80px;height:80px;border-radius:50%;
+                    overflow:hidden;border:3px solid rgba(255,255,255,0.4);
+                    box-shadow:0 4px 16px rgba(0,0,0,0.2);'>
+                    <img src='data:image/jpeg;base64,{st.session_state['profile_photo_b64']}'
+                    style='width:100%;height:100%;object-fit:cover;'/></div>""",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    """<div style='width:80px;height:80px;border-radius:50%;
+                    background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.3);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:32px;'>&#128100;</div>""",
+                    unsafe_allow_html=True
+                )
+        with photo_col2:
+            uploaded_photo = st.file_uploader(
+                "Escolher foto",
+                type=["jpg", "jpeg", "png", "webp"],
+                key="profile_photo_upload",
+                label_visibility="collapsed"
+            )
+            if uploaded_photo:
+                photo_bytes = uploaded_photo.getvalue()
+                if len(photo_bytes) > 2 * 1024 * 1024:
+                    st.error("❌ Foto muito grande. Máximo: 2MB.")
+                else:
+                    b64_photo = base64.b64encode(photo_bytes).decode('utf-8')
+                    mime = uploaded_photo.type or 'image/jpeg'
+                    # Salva na sessão
+                    st.session_state['profile_photo_b64'] = b64_photo
+                    st.session_state['profile_photo_mime'] = mime
+                    # Salva permanentemente no banco
+                    try:
+                        db.save_preference('profile_photo_b64', b64_photo)
+                        db.save_preference('profile_photo_mime', mime)
+                        st.toast("Foto salva com sucesso!", icon="✅")
+                    except Exception:
+                        st.toast("Foto atualizada (apenas nesta sessão).", icon="⚠️")
+                    st.rerun()
+            if st.session_state.get('profile_photo_b64'):
+                if st.button("🗑️ Remover foto", key="remove_photo_btn"):
+                    st.session_state.pop('profile_photo_b64', None)
+                    st.session_state.pop('profile_photo_mime', None)
+                    try:
+                        db.delete_preference('profile_photo_b64')
+                        db.delete_preference('profile_photo_mime')
+                    except Exception:
+                        pass
+                    st.rerun()
+
         col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
@@ -1654,7 +1713,7 @@ class ClinicalManagementApp:
                 st.session_state['user_authenticated'] = True
                 st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
         
-        # Carregar Preferências de UI
+        # Carregar preferências de UI
         if 'accent_color' not in st.session_state:
             st.session_state['accent_color'] = "#4DA768"
         if 'card_text_color' not in st.session_state:
@@ -1663,6 +1722,17 @@ class ClinicalManagementApp:
             st.session_state['main_bg_color'] = "#73C883"
         if 'card_bg_hex' not in st.session_state:
             st.session_state['card_bg_hex'] = "#ffffff"
+        
+        # Carregar foto de perfil do banco (apenas uma vez por sessão)
+        if 'profile_photo_b64' not in st.session_state:
+            try:
+                saved_photo = db.get_preference('profile_photo_b64')
+                saved_mime = db.get_preference('profile_photo_mime', 'image/jpeg')
+                if saved_photo:
+                    st.session_state['profile_photo_b64'] = saved_photo
+                    st.session_state['profile_photo_mime'] = saved_mime
+            except Exception:
+                pass
             
         is_dark = st.session_state.get('premium_dark_mode', False)
         accent = st.session_state.get('accent_color', '#4DA768')
@@ -1679,33 +1749,34 @@ class ClinicalManagementApp:
             with st.sidebar:
                 u_name = st.session_state.get('user_name', 'Admin')
                 # Card de perfil premium
+                photo_b64 = st.session_state.get('profile_photo_b64', '')
+                photo_mime = st.session_state.get('profile_photo_mime', 'image/jpeg')
+                if photo_b64:
+                    avatar_html = (
+                        f"<div style='width:40px;height:40px;border-radius:50%;overflow:hidden;"
+                        f"border:2px solid rgba(255,255,255,0.5);flex-shrink:0;"
+                        f"box-shadow:0 2px 8px rgba(0,0,0,0.2);'>"
+                        f"<img src='data:{photo_mime};base64,{photo_b64}' "
+                        f"style='width:100%;height:100%;object-fit:cover;'/></div>"
+                    )
+                else:
+                    avatar_html = (
+                        "<div style='width:40px;height:40px;"
+                        "background:linear-gradient(135deg,#ffffff33,#ffffff22);"
+                        "border:2px solid rgba(255,255,255,0.4);border-radius:50%;"
+                        "display:flex;align-items:center;justify-content:center;"
+                        "font-size:18px;flex-shrink:0;'>&#128105;&#8205;&#9877;&#65039;</div>"
+                    )
                 st.markdown(
-                    f"""
-                    <div style='
-                        background: rgba(255,255,255,0.12);
-                        border: 1px solid rgba(255,255,255,0.18);
-                        border-radius: 16px;
-                        padding: 14px 16px;
-                        margin-bottom: 8px;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        backdrop-filter: blur(8px);
-                    '>
-                        <div style='
-                            width:40px;height:40px;
-                            background:linear-gradient(135deg,#ffffff33,#ffffff22);
-                            border:2px solid rgba(255,255,255,0.4);
-                            border-radius:50%;
-                            display:flex;align-items:center;justify-content:center;
-                            font-size:18px;flex-shrink:0;
-                        '></div>
+                    f"""<div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
+                    border-radius:16px;padding:14px 16px;margin-bottom:8px;
+                    display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);'>
+                        {avatar_html}
                         <div>
                             <div style='font-weight:700;font-size:0.88rem;color:#fff;letter-spacing:0.2px;'>{u_name}</div>
                             <div style='font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.5px;text-transform:uppercase;font-weight:600;'>Administradora</div>
                         </div>
-                    </div>
-                    """,
+                    </div>""",
                     unsafe_allow_html=True
                 )
                 st.markdown(
@@ -1714,6 +1785,7 @@ class ClinicalManagementApp:
                     margin:12px 0 6px 4px;'>Menu</div>""",
                     unsafe_allow_html=True
                 )
+
                 pages = {
                     "⌂ Dashboard": "dashboard",
                     "⦿ Atendimentos": "appointments",
