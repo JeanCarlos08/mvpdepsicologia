@@ -158,13 +158,55 @@ class DatabaseManager:
 
 def display_cards(cards):
     cols = st.columns(len(cards))
+    accent = st.session_state.get('accent_color', '#4DA768')
+    txt = st.session_state.get('card_text_color', '#ffffff')
+    card_bg = st.session_state.get('card_bg_hex', '#ffffff')
+    bg_css = "rgba(255,255,255,0.14)" if card_bg.lower() == "#ffffff" else card_bg
+
     for i, card in enumerate(cards):
         with cols[i]:
-            st.metric(
-                label=f"{card.get('icon', '')} {card.get('title', '')}",
-                value=card.get('value', ''),
-                delta=card.get('delta', None)
+            icon  = card.get('icon', '📋')
+            title = card.get('title', '')
+            value = card.get('value', 0)
+            delta = card.get('delta', None)
+
+            delta_html = ""
+            if delta is not None:
+                sign  = "▲" if str(delta).startswith('+') or (isinstance(delta, (int,float)) and delta > 0) else "▼"
+                color = "#4ade80" if sign == "▲" else "#f87171"
+                delta_html = f"<div style='font-size:0.72rem;font-weight:600;color:{color};margin-top:2px;'>{sign} {delta}</div>"
+
+            st.markdown(
+                f"""
+                <div style="
+                    background: {bg_css};
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 20px;
+                    padding: 22px 20px 18px 20px;
+                    box-shadow: 0 4px 24px rgba(0,0,0,0.07),
+                                inset 0 1px 0 rgba(255,255,255,0.18);
+                    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+                    cursor: default;
+                    margin-bottom: 4px;
+                ">
+                    <div style="font-size:1.6rem;margin-bottom:8px;line-height:1;">{icon}</div>
+                    <div style="
+                        font-size:0.7rem;font-weight:700;
+                        text-transform:uppercase;letter-spacing:1.2px;
+                        color:{txt};opacity:0.75;margin-bottom:6px;
+                    ">{title}</div>
+                    <div style="
+                        font-size:2rem;font-weight:800;
+                        color:{txt};letter-spacing:-1px;line-height:1;
+                    ">{value}</div>
+                    {delta_html}
+                </div>
+                """,
+                unsafe_allow_html=True
             )
+
 
 def render_page_header(title, subtitle, inverse=False):
     st.markdown(
