@@ -1,7 +1,20 @@
 import os
+import pathlib
 import google.generativeai as genai
 from typing import Optional
 import db
+
+
+def _log_error(action: str, error: Exception) -> None:
+    """Log técnico interno do ai_manager, sem depender do app.py."""
+    try:
+        log_dir = pathlib.Path(__file__).resolve().parent / "logs"
+        log_dir.mkdir(exist_ok=True)
+        from datetime import datetime
+        with open(log_dir / "error.log", "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now().isoformat()} - {action}: {str(error)}\n")
+    except Exception:
+        pass
 
 def _get_api_key() -> Optional[str]:
     """Recupera a chave da API do Google Gemini do ambiente ou Streamlit Secrets."""
@@ -89,8 +102,7 @@ class AIManager:
             
             return response.text if response else "A IA não retornou uma resposta válida."
         except Exception as e:
-            from app import Security
-            Security.log_error("AI_PDF_ANALYSIS", e)
+            _log_error("AI_PDF_ANALYSIS", e)
             return "Não foi possível analisar o documento no momento. Tente novamente em instantes."
 
     @classmethod
@@ -121,8 +133,7 @@ class AIManager:
             response = cls._model.generate_content(prompt)
             return response.text if response else "Falha ao gerar o parecer."
         except Exception as e:
-            from app import Security
-            Security.log_error("AI_DRAFT_GEN", e)
+            _log_error("AI_DRAFT_GEN", e)
             return "Não foi possível gerar o parecer no momento. Verifique sua conexão e tente novamente."
 
     @classmethod
@@ -193,6 +204,5 @@ class AIManager:
             response = cls._model.generate_content(prompt)
             return response.text
         except Exception as e:
-            from app import Security
-            Security.log_error("AI_CHAT", e)
+            _log_error("AI_CHAT", e)
             return "Não foi possível processar sua pergunta no momento. Tente novamente."
