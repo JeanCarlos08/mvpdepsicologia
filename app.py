@@ -486,7 +486,7 @@ def generate_pdf_report(df):
         except Exception:
             pass
 
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
 
 class AtendimentoData:
     def __init__(self, empresa, nome, modalidade, data, hora, laudo_pdf="", avaliacao_pdf="", observacoes=""):
