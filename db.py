@@ -321,6 +321,18 @@ def _migrate_date_time_columns() -> None:
 	except Exception as e:
 		print(f"MIGRATION_WARNING: Erro ao migrar colunas: {e}")
 
+def _migrate_modalidade_periodico() -> None:
+	"""Corrige registros antigos com modalidade 'Período' para 'Periódico'."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute(
+				"UPDATE atendimentos SET modalidade = %s WHERE modalidade = %s",
+				("Periódico", "Período")
+			)
+	except Exception:
+		pass
+
 def ensure_schema() -> None:
 	"""Garante que a estrutura do banco esteja correta e migrada."""
 	with _connection_scope() as conn:
@@ -333,6 +345,9 @@ def ensure_schema() -> None:
 	
 	# Rodar migração de tipos se necessário (Sênior)
 	_migrate_date_time_columns()
+	# Corrigir nome de modalidade Período -> Periódico
+	_migrate_modalidade_periodico()
+
 	# Garantir índices atualizados
 	ensure_indexes()
 

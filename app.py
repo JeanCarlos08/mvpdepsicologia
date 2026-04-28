@@ -35,7 +35,7 @@ PRIMARY_ACCENT = "#4DA768"
 class ModalidadeAtendimento(Enum):
     ADMISSIONAL = "Admissional"
     DEMISSIONAL = "Demissional"
-    PERIODO = "Período"
+    PERIODICO = "Periódico"
     MUDANCA_FUNCAO = "Mudança de função"
 
 class Security:
