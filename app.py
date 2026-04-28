@@ -1767,47 +1767,31 @@ class ClinicalManagementApp:
                         "display:flex;align-items:center;justify-content:center;"
                         "font-size:18px;flex-shrink:0;'>&#128105;&#8205;&#9877;&#65039;</div>"
                     )
-                # Avatar clícavel com ícone de câmera
+                # Avatar com foto ou ícone padrão
                 if photo_b64:
                     avatar_inner = (
                         f"<img src='data:{photo_mime};base64,{photo_b64}' "
                         f"style='width:100%;height:100%;object-fit:cover;border-radius:50%;'/>"
                     )
                 else:
-                    avatar_inner = "<span style='font-size:22px;line-height:40px;'>&#128105;&#8205;&#9877;&#65039;</span>"
+                    avatar_inner = "<span style='font-size:22px;line-height:44px;'>&#128105;&#8205;&#9877;&#65039;</span>"
 
                 st.markdown(
-                    f"""
-                    <style>
-                    /* Ocultar label e botão padrão do uploader da sidebar */
-                    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
-                        display: none !important;
-                    }}
-                    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] {{
-                        display: none !important;
-                    }}
-                    [data-testid="stSidebar"] .sidebar-avatar-upload label {{
-                        cursor: pointer !important;
-                    }}
-                    </style>
-                    <div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
+                    f"""<div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
                     border-radius:16px;padding:14px 16px;margin-bottom:8px;
                     display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);'>
-                        <div style='position:relative;width:44px;height:44px;flex-shrink:0;'>
-                            <div style='width:44px;height:44px;border-radius:50%;overflow:hidden;
-                                border:2px solid rgba(255,255,255,0.4);
-                                box-shadow:0 2px 8px rgba(0,0,0,0.2);
-                                display:flex;align-items:center;justify-content:center;
-                                background:rgba(255,255,255,0.15);'>
-                                {avatar_inner}
-                            </div>
+                        <div style='width:44px;height:44px;border-radius:50%;overflow:hidden;
+                            border:2px solid rgba(255,255,255,0.4);
+                            box-shadow:0 2px 8px rgba(0,0,0,0.2);
+                            display:flex;align-items:center;justify-content:center;
+                            background:rgba(255,255,255,0.15);flex-shrink:0;'>
+                            {avatar_inner}
                         </div>
                         <div>
                             <div style='font-weight:700;font-size:0.88rem;color:#fff;letter-spacing:0.2px;'>{u_name}</div>
                             <div style='font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.5px;text-transform:uppercase;font-weight:600;'>Administradora</div>
                         </div>
-                    </div>
-                    """,
+                    </div>""",
                     unsafe_allow_html=True
                 )
 
