@@ -193,7 +193,6 @@ def get_connection():
 		)
 	except Exception as e:
 		# Segurança Sênior: Logar internamente e manter erro genérico para o usuário
-		print(f"DEBUG_INTERNAL_DB_ERROR: {e}")
 		raise RuntimeError("Falha ao conectar ao banco de dados. Verifique as credenciais.")
 	try:
 		# garantir client_encoding consistente

@@ -1,14 +1,16 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import db
+import os
+import base64
 import pathlib
+import urllib.parse
 from datetime import datetime, date, time
 from enum import Enum
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 from fpdf import FPDF
-# Observação: o carregamento de variáveis do .env é feito em db.py com fallback de encoding
-# ...restante do arquivo permanece inalterado...
 
 # Configurar página do Streamlit
 st.set_page_config(
@@ -750,7 +752,8 @@ class AppointmentsPage:
                                             st.session_state[f"edit_open_{aid_e}"] = False
                                             st.rerun()
                                         except Exception as ex:
-                                            st.error(f"Erro ao salvar: {ex}")
+                                            Security.log_error("EDIT_SAVE_TOP", ex)
+                                            st.error("Erro ao salvar as alterações. Verifique os dados e tente novamente.")
                                     if cancelled:
                                         st.session_state[f"edit_open_{aid_e}"] = False
                                         st.rerun()
@@ -1143,7 +1146,8 @@ class AppointmentsPage:
                                     st.session_state[f"edit_open_{aid}"] = False
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"Erro ao salvar: {e}")
+                                    Security.log_error("EDIT_SAVE_INLINE", e)
+                                    st.error("Erro ao salvar as alterações. Verifique os dados e tente novamente.")
                             elif cancel:
                                 st.session_state[f"edit_open_{aid}"] = False
                                 st.rerun()
@@ -1450,8 +1454,21 @@ class ReportsPage:
             st.plotly_chart(fig, use_container_width=True)
         st.markdown("### ⬇️ Exportar Relatório")
         if formato == "CSV":
-            csv_data = df.to_csv(index=False).encode("utf-8-sig")
-            st.download_button("Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
+            csv_data = df.to_csv(index=False, sep=";").encode("utf-8-sig")
+            st.download_button("⬇️ Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
+        elif formato == "Excel":
+            try:
+                import io
+                buf = io.BytesIO()
+                df.to_excel(buf, index=False, engine="openpyxl")
+                st.download_button(
+                    "⬇️ Baixar Excel",
+                    data=buf.getvalue(),
+                    file_name="relatorio_atendimentos.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except ImportError:
+                st.warning("Para exportar Excel, instale a biblioteca openpyxl: `pip install openpyxl`")
 
 class UploadPage:
     @staticmethod
@@ -1471,10 +1488,7 @@ class UploadPage:
                 else:
                     saved_path = save_uploaded_pdf(uploaded_file)
                     if saved_path:
-                        if saved_path.startswith("db:"):
-                            st.toast("Arquivo salvo no banco de dados com sucesso!", icon="✅")
-                        else:
-                            st.toast(f"Arquivo salvo em: {saved_path}", icon="✅")
+                        st.toast("Arquivo salvo com sucesso!", icon="✅")
         st.markdown("### 📁 Arquivos Salvos")
         # Listar do banco
         try:
@@ -1632,7 +1646,9 @@ class ClinicalManagementApp:
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
-                AppointmentsPage.render({})
+                if 'app_filters' not in st.session_state:
+                    st.session_state['app_filters'] = {}
+                AppointmentsPage.render(st.session_state['app_filters'])
         elif page_key == "reports":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()

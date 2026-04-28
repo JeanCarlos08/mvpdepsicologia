@@ -91,7 +91,7 @@ class AIManager:
         except Exception as e:
             from app import Security
             Security.log_error("AI_PDF_ANALYSIS", e)
-            return f"Falha na análise da IA: {str(e)}"
+            return "Não foi possível analisar o documento no momento. Tente novamente em instantes."
 
     @classmethod
     def generate_clinical_draft(cls, nome: str, empresa: str, modalidade: str, observacoes: str) -> str:
@@ -123,7 +123,7 @@ class AIManager:
         except Exception as e:
             from app import Security
             Security.log_error("AI_DRAFT_GEN", e)
-            return f"Erro na IA: {str(e)}"
+            return "Não foi possível gerar o parecer no momento. Verifique sua conexão e tente novamente."
 
     @classmethod
     def generate_dashboard_insights(cls, stats_json: str) -> str:
@@ -193,4 +193,6 @@ class AIManager:
             response = cls._model.generate_content(prompt)
             return response.text
         except Exception as e:
-            return f"Erro no chat: {str(e)}"
+            from app import Security
+            Security.log_error("AI_CHAT", e)
+            return "Não foi possível processar sua pergunta no momento. Tente novamente."
