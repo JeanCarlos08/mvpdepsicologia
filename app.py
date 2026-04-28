@@ -1767,22 +1767,78 @@ class ClinicalManagementApp:
                         "display:flex;align-items:center;justify-content:center;"
                         "font-size:18px;flex-shrink:0;'>&#128105;&#8205;&#9877;&#65039;</div>"
                     )
+                # Avatar clícavel com ícone de câmera
+                if photo_b64:
+                    avatar_inner = (
+                        f"<img src='data:{photo_mime};base64,{photo_b64}' "
+                        f"style='width:100%;height:100%;object-fit:cover;border-radius:50%;'/>"
+                    )
+                else:
+                    avatar_inner = "<span style='font-size:22px;line-height:40px;'>&#128105;&#8205;&#9877;&#65039;</span>"
+
                 st.markdown(
-                    f"""<div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
+                    f"""
+                    <style>
+                    /* Ocultar label e botão padrão do uploader da sidebar */
+                    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
+                        display: none !important;
+                    }}
+                    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] {{
+                        display: none !important;
+                    }}
+                    [data-testid="stSidebar"] .sidebar-avatar-upload label {{
+                        cursor: pointer !important;
+                    }}
+                    </style>
+                    <div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
                     border-radius:16px;padding:14px 16px;margin-bottom:8px;
                     display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);'>
-                        {avatar_html}
+                        <div style='position:relative;width:44px;height:44px;flex-shrink:0;'>
+                            <div style='width:44px;height:44px;border-radius:50%;overflow:hidden;
+                                border:2px solid rgba(255,255,255,0.4);
+                                box-shadow:0 2px 8px rgba(0,0,0,0.2);
+                                display:flex;align-items:center;justify-content:center;
+                                background:rgba(255,255,255,0.15);'>
+                                {avatar_inner}
+                            </div>
+                        </div>
                         <div>
                             <div style='font-weight:700;font-size:0.88rem;color:#fff;letter-spacing:0.2px;'>{u_name}</div>
                             <div style='font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.5px;text-transform:uppercase;font-weight:600;'>Administradora</div>
                         </div>
-                    </div>""",
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
+
+                # Uploader de foto compacto direto na sidebar
+                sidebar_photo = st.file_uploader(
+                    "📷 Alterar foto de perfil",
+                    type=["jpg", "jpeg", "png", "webp"],
+                    key="sidebar_photo_upload",
+                    label_visibility="visible"
+                )
+                if sidebar_photo:
+                    photo_bytes = sidebar_photo.getvalue()
+                    if len(photo_bytes) > 2 * 1024 * 1024:
+                        st.error("❌ Máx 2MB")
+                    else:
+                        b64 = base64.b64encode(photo_bytes).decode('utf-8')
+                        mime = sidebar_photo.type or 'image/jpeg'
+                        st.session_state['profile_photo_b64'] = b64
+                        st.session_state['profile_photo_mime'] = mime
+                        try:
+                            db.save_preference('profile_photo_b64', b64)
+                            db.save_preference('profile_photo_mime', mime)
+                            st.toast("Foto atualizada!", icon="✅")
+                        except Exception:
+                            pass
+                        st.rerun()
+
                 st.markdown(
                     """<div style='font-size:0.7rem;font-weight:700;letter-spacing:2px;
                     text-transform:uppercase;color:rgba(255,255,255,0.5);
-                    margin:12px 0 6px 4px;'>Menu</div>""",
+                    margin:4px 0 6px 4px;'>Menu</div>""",
                     unsafe_allow_html=True
                 )
 
