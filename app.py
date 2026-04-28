@@ -1341,12 +1341,12 @@ class SettingsPage:
                 st.session_state['premium_dark_mode'] = dm
                 st.rerun()
         with ui_col2:
-            accent_color = st.color_input("Cor de Destaque", value=st.session_state.get('accent_color', '#4DA768'))
+            accent_color = st.color_picker("Cor de Destaque", value=st.session_state.get('accent_color', '#4DA768'))
             if accent_color != st.session_state.get('accent_color', '#4DA768'):
                 st.session_state['accent_color'] = accent_color
                 st.rerun()
         with ui_col3:
-            card_txt_color = st.color_input("Cor do Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
+            card_txt_color = st.color_picker("Cor do Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
             if card_txt_color != st.session_state.get('card_text_color', '#ffffff'):
                 st.session_state['card_text_color'] = card_txt_color
                 st.rerun()
