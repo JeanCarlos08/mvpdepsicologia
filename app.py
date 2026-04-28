@@ -171,10 +171,10 @@ def render_page_header(title, subtitle, inverse=False):
     st.caption(subtitle)
     st.divider()
 
-def apply_custom_css(dark_mode=False, advanced=False):
+def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color="#ffffff"):
     # Paleta Dinâmica
     bg_main = "#121212" if dark_mode else "#73C883"
-    bg_sidebar = "#1a1a1a" if dark_mode else "#4da768"
+    bg_sidebar = "#1a1a1a" if dark_mode else primary_accent
     card_bg = "rgba(255, 255, 255, 0.05)" if dark_mode else "rgba(255, 255, 255, 0.15)"
     text_main = "#ffffff"
     
@@ -266,7 +266,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
         }}
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
-            color: #ffffff !important;
+            color: {card_text_color} !important;
         }}
         [data-testid="stMetricLabel"] {{
             font-weight: 600 !important;
@@ -313,7 +313,7 @@ def apply_custom_css(dark_mode=False, advanced=False):
         .stButton > button {{
             width: 100%;
             border-radius: 10px !important;
-            background: linear-gradient(90deg, #4DA768 0%, #3a8e56 100%) !important;
+            background: linear-gradient(90deg, {primary_accent} 0%, {primary_accent}ee 100%) !important;
             color: white !important;
             font-weight: 600 !important;
             padding: 10px 24px !important;
@@ -526,11 +526,12 @@ class DashboardPage:
             Security.log_error("DASHBOARD_STATS", e)
             st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
+        accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
         cards = [
-            {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": PRIMARY_ACCENT},
-            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": PRIMARY_ACCENT},
-            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": PRIMARY_ACCENT},
-            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": PRIMARY_ACCENT},
+            {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": accent},
+            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": accent},
+            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
         ]
         display_cards(cards)
         
@@ -1333,12 +1334,28 @@ class SettingsPage:
         display_cards(cards)
 
         st.markdown("### 🎨 Personalização Visual")
-        ui_col1, ui_col2 = st.columns(2)
+        ui_col1, ui_col2, ui_col3 = st.columns(3)
         with ui_col1:
             dm = st.toggle("Ativar Tema Dark Ultra-Premium 🌙", value=st.session_state.get('premium_dark_mode', False), key="dm_toggle")
             if dm != st.session_state.get('premium_dark_mode', False):
                 st.session_state['premium_dark_mode'] = dm
                 st.rerun()
+        with ui_col2:
+            accent_color = st.color_input("Cor de Destaque", value=st.session_state.get('accent_color', '#4DA768'))
+            if accent_color != st.session_state.get('accent_color', '#4DA768'):
+                st.session_state['accent_color'] = accent_color
+                st.rerun()
+        with ui_col3:
+            card_txt_color = st.color_input("Cor do Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
+            if card_txt_color != st.session_state.get('card_text_color', '#ffffff'):
+                st.session_state['card_text_color'] = card_txt_color
+                st.rerun()
+        
+        if st.button("🔄 Resetar Cores Padrão"):
+            st.session_state['accent_color'] = '#4DA768'
+            st.session_state['card_text_color'] = '#ffffff'
+            st.session_state['premium_dark_mode'] = False
+            st.rerun()
         
         st.markdown("### 🛠️ Ferramentas do Sistema")
         col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -1593,8 +1610,16 @@ class ClinicalManagementApp:
                 st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
         
         # Carregar Preferências de UI
+        if 'accent_color' not in st.session_state:
+            st.session_state['accent_color'] = "#4DA768"
+        if 'card_text_color' not in st.session_state:
+            st.session_state['card_text_color'] = "#ffffff"
+            
         is_dark = st.session_state.get('premium_dark_mode', False)
-        apply_custom_css(dark_mode=is_dark)
+        accent = st.session_state.get('accent_color', '#4DA768')
+        txt_color = st.session_state.get('card_text_color', '#ffffff')
+        
+        apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color)
         apply_plotly_theme(dark_mode=is_dark)
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
