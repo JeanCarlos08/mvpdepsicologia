@@ -414,6 +414,40 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             letter-spacing: 0.1px;
         }}
 
+        /* ── SIDEBAR FILE UPLOADER → BOTÃO COMPACTO ── */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] {{
+            display: none !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            min-height: unset !important;
+            box-shadow: none !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > button {{
+            width: 100% !important;
+            background: rgba(255,255,255,0.1) !important;
+            border: 1px solid rgba(255,255,255,0.22) !important;
+            border-radius: 10px !important;
+            color: rgba(255,255,255,0.85) !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            padding: 7px 12px !important;
+            letter-spacing: 0.3px !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            margin: 0 !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > button:hover {{
+            background: rgba(255,255,255,0.2) !important;
+            border-color: rgba(255,255,255,0.4) !important;
+            color: #fff !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] small {{
+            display: none !important;
+        }}
+
         </style>''', unsafe_allow_html=True)
 
 def apply_plotly_theme(dark_mode=False):
@@ -1797,10 +1831,10 @@ class ClinicalManagementApp:
 
                 # Uploader de foto compacto direto na sidebar
                 sidebar_photo = st.file_uploader(
-                    "📷 Alterar foto de perfil",
+                    "📷 Trocar foto",
                     type=["jpg", "jpeg", "png", "webp"],
                     key="sidebar_photo_upload",
-                    label_visibility="visible"
+                    label_visibility="collapsed"
                 )
                 if sidebar_photo:
                     photo_bytes = sidebar_photo.getvalue()
