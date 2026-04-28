@@ -171,11 +171,11 @@ def render_page_header(title, subtitle, inverse=False):
     st.caption(subtitle)
     st.divider()
 
-def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color="#ffffff"):
+def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color="#ffffff", main_bg_color="#73C883", card_bg_color="rgba(255, 255, 255, 0.15)"):
     # Paleta Dinâmica
-    bg_main = "#121212" if dark_mode else "#73C883"
+    bg_main = "#121212" if dark_mode else main_bg_color
     bg_sidebar = "#1a1a1a" if dark_mode else primary_accent
-    card_bg = "rgba(255, 255, 255, 0.05)" if dark_mode else "rgba(255, 255, 255, 0.15)"
+    card_bg = "rgba(255, 255, 255, 0.05)" if dark_mode else card_bg_color
     text_main = "#ffffff"
     
     st.markdown(
@@ -1334,26 +1334,48 @@ class SettingsPage:
         display_cards(cards)
 
         st.markdown("### 🎨 Personalização Visual")
-        ui_col1, ui_col2, ui_col3 = st.columns(3)
+        ui_col1, ui_col2 = st.columns(2)
         with ui_col1:
             dm = st.toggle("Ativar Tema Dark Ultra-Premium 🌙", value=st.session_state.get('premium_dark_mode', False), key="dm_toggle")
             if dm != st.session_state.get('premium_dark_mode', False):
                 st.session_state['premium_dark_mode'] = dm
                 st.rerun()
-        with ui_col2:
-            accent_color = st.color_picker("Cor de Destaque", value=st.session_state.get('accent_color', '#4DA768'))
+        
+        st.write("---")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.caption("Cores do Sistema")
+            accent_color = st.color_picker("Barra Lateral e Botões", value=st.session_state.get('accent_color', '#4DA768'))
             if accent_color != st.session_state.get('accent_color', '#4DA768'):
                 st.session_state['accent_color'] = accent_color
                 st.rerun()
-        with ui_col3:
-            card_txt_color = st.color_picker("Cor do Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
-            if card_txt_color != st.session_state.get('card_text_color', '#ffffff'):
-                st.session_state['card_text_color'] = card_txt_color
+            
+            main_bg = st.color_picker("Fundo Principal do App", value=st.session_state.get('main_bg_color', '#73C883'))
+            if main_bg != st.session_state.get('main_bg_color', '#73C883'):
+                st.session_state['main_bg_color'] = main_bg
+                st.rerun()
+        
+        with c2:
+            st.caption("Cores dos Cards")
+            card_bg = st.color_picker("Fundo dos Cards", value=st.session_state.get('card_bg_color', '#ffffff'))
+            if card_bg != st.session_state.get('card_bg_color', '#ffffff'):
+                # Converter hex para rgba suave se for branco
+                if card_bg.lower() == "#ffffff":
+                    st.session_state['card_bg_color'] = "rgba(255, 255, 255, 0.15)"
+                else:
+                    st.session_state['card_bg_color'] = card_bg
+                st.rerun()
+                
+            card_txt = st.color_picker("Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
+            if card_txt != st.session_state.get('card_text_color', '#ffffff'):
+                st.session_state['card_text_color'] = card_txt
                 st.rerun()
         
         if st.button("🔄 Resetar Cores Padrão"):
             st.session_state['accent_color'] = '#4DA768'
             st.session_state['card_text_color'] = '#ffffff'
+            st.session_state['main_bg_color'] = '#73C883'
+            st.session_state['card_bg_color'] = 'rgba(255, 255, 255, 0.15)'
             st.session_state['premium_dark_mode'] = False
             st.rerun()
         
@@ -1614,12 +1636,18 @@ class ClinicalManagementApp:
             st.session_state['accent_color'] = "#4DA768"
         if 'card_text_color' not in st.session_state:
             st.session_state['card_text_color'] = "#ffffff"
+        if 'main_bg_color' not in st.session_state:
+            st.session_state['main_bg_color'] = "#73C883"
+        if 'card_bg_color' not in st.session_state:
+            st.session_state['card_bg_color'] = "rgba(255, 255, 255, 0.15)"
             
         is_dark = st.session_state.get('premium_dark_mode', False)
         accent = st.session_state.get('accent_color', '#4DA768')
         txt_color = st.session_state.get('card_text_color', '#ffffff')
+        main_bg = st.session_state.get('main_bg_color', '#73C883')
+        card_bg = st.session_state.get('card_bg_color', 'rgba(255, 255, 255, 0.15)')
         
-        apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color)
+        apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg)
         apply_plotly_theme(dark_mode=is_dark)
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
