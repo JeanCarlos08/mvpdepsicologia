@@ -1442,6 +1442,7 @@ class SettingsPage:
             dm = st.toggle("Ativar Tema Dark Ultra-Premium 🌙", value=st.session_state.get('premium_dark_mode', False), key="dm_toggle")
             if dm != st.session_state.get('premium_dark_mode', False):
                 st.session_state['premium_dark_mode'] = dm
+                db.save_preference('premium_dark_mode', 'true' if dm else 'false')
                 st.rerun()
         
         st.write("---")
@@ -1451,11 +1452,13 @@ class SettingsPage:
             accent_color = st.color_picker("Barra Lateral e Botões", value=st.session_state.get('accent_color', '#4DA768'))
             if accent_color != st.session_state.get('accent_color', '#4DA768'):
                 st.session_state['accent_color'] = accent_color
+                db.save_preference('accent_color', accent_color)
                 st.rerun()
             
             main_bg = st.color_picker("Fundo Principal do App", value=st.session_state.get('main_bg_color', '#73C883'))
             if main_bg != st.session_state.get('main_bg_color', '#73C883'):
                 st.session_state['main_bg_color'] = main_bg
+                db.save_preference('main_bg_color', main_bg)
                 st.rerun()
         
         with c2:
@@ -1463,11 +1466,13 @@ class SettingsPage:
             card_bg_hex = st.color_picker("Fundo dos Cards", value=st.session_state.get('card_bg_hex', '#ffffff'))
             if card_bg_hex != st.session_state.get('card_bg_hex', '#ffffff'):
                 st.session_state['card_bg_hex'] = card_bg_hex
+                db.save_preference('card_bg_hex', card_bg_hex)
                 st.rerun()
                 
             card_txt = st.color_picker("Texto dos Cards", value=st.session_state.get('card_text_color', '#ffffff'))
             if card_txt != st.session_state.get('card_text_color', '#ffffff'):
                 st.session_state['card_text_color'] = card_txt
+                db.save_preference('card_text_color', card_txt)
                 st.rerun()
         
         if st.button("🔄 Resetar Cores Padrão"):
@@ -1476,6 +1481,9 @@ class SettingsPage:
             st.session_state['main_bg_color'] = '#73C883'
             st.session_state['card_bg_hex'] = '#ffffff'
             st.session_state['premium_dark_mode'] = False
+            # Limpar do banco
+            for key in ['accent_color', 'card_text_color', 'main_bg_color', 'card_bg_hex', 'premium_dark_mode']:
+                db.delete_preference(key)
             st.rerun()
         
         st.write("---")
@@ -1789,15 +1797,18 @@ class ClinicalManagementApp:
                 st.session_state['user_authenticated'] = True
                 st.session_state['user_name'] = st.session_state.get('user_name', 'guest')
         
-        # Carregar preferências de UI
+        # Carregar preferências de UI do Banco de Dados (Persistência Permanente)
         if 'accent_color' not in st.session_state:
-            st.session_state['accent_color'] = "#4DA768"
+            st.session_state['accent_color'] = db.get_preference('accent_color', "#4DA768")
         if 'card_text_color' not in st.session_state:
-            st.session_state['card_text_color'] = "#ffffff"
+            st.session_state['card_text_color'] = db.get_preference('card_text_color', "#ffffff")
         if 'main_bg_color' not in st.session_state:
-            st.session_state['main_bg_color'] = "#73C883"
+            st.session_state['main_bg_color'] = db.get_preference('main_bg_color', "#73C883")
         if 'card_bg_hex' not in st.session_state:
-            st.session_state['card_bg_hex'] = "#ffffff"
+            st.session_state['card_bg_hex'] = db.get_preference('card_bg_hex', "#ffffff")
+        if 'premium_dark_mode' not in st.session_state:
+            saved_dark = db.get_preference('premium_dark_mode', 'false')
+            st.session_state['premium_dark_mode'] = (saved_dark == 'true')
         
         # Carregar foto de perfil do banco (apenas uma vez por sessão)
         if 'profile_photo_b64' not in st.session_state:
