@@ -1823,7 +1823,15 @@ class AuthPage:
         _, col_center, _ = st.columns([1, 1.2, 1])
 
         with col_center:
-            st.markdown("""
+            photo_b64 = db.get_preference('profile_photo_b64')
+            photo_mime = db.get_preference('profile_photo_mime', 'image/jpeg')
+            
+            if photo_b64:
+                avatar_html = f"<img src='data:{photo_mime};base64,{photo_b64}' style='width:100%; height:100%; object-fit:cover; border-radius:22px;'/>"
+            else:
+                avatar_html = "🩺"
+
+            st.markdown(f"""
                 <div style="text-align: center; margin-bottom: 2rem;">
                     <div style="
                         width: 80px; height: 80px; 
@@ -1834,7 +1842,8 @@ class AuthPage:
                         font-size: 3rem; margin: 0 auto 1.5rem auto;
                         box-shadow: 0 12px 32px rgba(0,0,0,0.15);
                         backdrop-filter: blur(12px);
-                    ">🩺</div>
+                        padding: 0;
+                    ">{avatar_html}</div>
                     <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0px; letter-spacing: -1px;">Gestão Clínica</h1>
                     <p style="color: rgba(255,255,255,0.6); font-size: 0.95rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Portal Administrativo</p>
                 </div>
