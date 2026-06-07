@@ -235,225 +235,295 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         f'''<style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
-        /* ── BASE ── */
+        /* ── BASE & TYPOGRAPHY PREMIUM ── */
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
         [data-testid="stMainViewContainer"] {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
             background-color: {bg_main} !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            text-rendering: optimizeLegibility !important;
         }}
         * {{ font-family: 'Plus Jakarta Sans', sans-serif !important; }}
 
+        /* ── CUSTOM SCROLLBAR PREMIUM ── */
+        ::-webkit-scrollbar {{
+            width: 8px;
+            height: 8px;
+        }}
+        ::-webkit-scrollbar-track {{
+            background: rgba(0,0,0,0.02); 
+            border-radius: 12px;
+        }}
+        ::-webkit-scrollbar-thumb {{
+            background: rgba(255,255,255,0.15); 
+            border-radius: 12px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }}
+        ::-webkit-scrollbar-thumb:hover {{
+            background: rgba(255,255,255,0.25);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }}
+
         /* ── CONTAINER ── */
         .main .block-container {{
-            padding-top: 1.8rem;
+            padding-top: 2rem;
             max-width: 1280px;
         }}
 
-        /* ── SIDEBAR ── */
+        /* ── SIDEBAR PREMIUM ── */
         [data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, {bg_sidebar} 0%, {bg_sidebar}cc 100%) !important;
-            box-shadow: 6px 0 24px rgba(0,0,0,0.15);
-            border-right: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(180deg, {bg_sidebar} 0%, {bg_sidebar}E6 100%) !important;
+            box-shadow: 8px 0 32px rgba(0,0,0,0.18);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
         }}
         [data-testid="stSidebar"] * {{ color: #ffffff !important; }}
         [data-testid="stSidebar"] .stRadio label {{
             font-weight: 500 !important;
-            font-size: 0.92rem !important;
-            letter-spacing: 0.2px !important;
-            padding: 2px 0 !important;
+            font-size: 0.95rem !important;
+            letter-spacing: 0.3px !important;
+            padding: 4px 0 !important;
+            transition: opacity 0.2s ease;
+        }}
+        [data-testid="stSidebar"] .stRadio label:hover {{
+            opacity: 0.8;
         }}
         [data-testid="stSidebar"] [data-testid="stTextInput"] input {{
-            background: rgba(255,255,255,0.12) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-            border-radius: 10px !important;
+            background: rgba(255,255,255,0.1) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            border-radius: 12px !important;
             color: #ffffff !important;
-            font-size: 0.88rem !important;
+            font-size: 0.9rem !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stTextInput"] input:focus {{
+            border-color: rgba(255,255,255,0.4) !important;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.1) !important;
+            background: rgba(255,255,255,0.15) !important;
         }}
 
-        /* ── TÍTULOS ── */
+        /* ── TITULOS PREMIUM ── */
         h1 {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
             font-weight: 800 !important;
-            font-size: 2rem !important;
-            letter-spacing: -0.8px !important;
-            background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.75) 100%);
+            font-size: 2.2rem !important;
+            letter-spacing: -1px !important;
+            line-height: 1.2 !important;
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.6) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            margin-bottom: 0.5rem !important;
         }}
         h2, h3 {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
             font-weight: 700 !important;
             color: #ffffff !important;
-            letter-spacing: -0.4px;
+            letter-spacing: -0.5px;
         }}
         h4, h5, h6 {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
             font-weight: 600 !important;
-            color: rgba(255,255,255,0.9) !important;
+            color: rgba(255,255,255,0.85) !important;
         }}
         p, span, div, label {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
+            line-height: 1.6;
         }}
 
-        /* ── CARDS DE MÉTRICAS ── */
+        /* ── CARDS DE MÉTRICAS (GLASSMORPHISM PRO) ── */
         [data-testid="stMetric"] {{
             background: {card_bg} !important;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            border-radius: 20px !important;
-            padding: 22px 24px !important;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.15) !important;
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px !important;
+            padding: 24px !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }}
         [data-testid="stMetric"]:hover {{
-            transform: translateY(-5px) scale(1.01);
-            border-color: rgba(255,255,255,0.4);
-            box-shadow: 0 16px 48px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+            transform: translateY(-6px) scale(1.02);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 20px 48px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3) !important;
         }}
         [data-testid="stMetricLabel"] {{
             color: {card_text_color} !important;
             font-weight: 600 !important;
-            font-size: 0.72rem !important;
+            font-size: 0.75rem !important;
             text-transform: uppercase;
-            letter-spacing: 1.2px;
-            opacity: 0.8;
+            letter-spacing: 1.5px;
+            opacity: 0.85;
+            margin-bottom: 8px;
         }}
         [data-testid="stMetricValue"] {{
             color: {card_text_color} !important;
             font-weight: 800 !important;
-            font-size: 2rem !important;
-            letter-spacing: -1px;
+            font-size: 2.2rem !important;
+            letter-spacing: -1.2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }}
         [data-testid="stMetricDelta"] {{ color: {card_text_color} !important; }}
 
-        /* ── TABELAS ── */
+        /* ── TABELAS ELEGANTES ── */
         .stDataFrame, [data-testid="stTable"] {{
             background: {"#1e1e1e" if dark_mode else "white"};
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
-            border: none;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            transition: box-shadow 0.3s ease;
+        }}
+        .stDataFrame:hover, [data-testid="stTable"]:hover {{
+            box-shadow: 0 15px 50px rgba(0,0,0,0.12);
         }}
 
-        /* ── INPUTS ── */
-        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input {{
-            border-radius: 12px !important;
-            border: 1.5px solid rgba(255,255,255,0.2) !important;
-            padding: 10px 16px !important;
-            background: rgba(255,255,255,{0.08 if dark_mode else 0.92}) !important;
+        /* ── INPUTS E FORMULÁRIOS ── */
+        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input, .stTimeInput input {{
+            border-radius: 14px !important;
+            border: 1.5px solid rgba(255,255,255,0.15) !important;
+            padding: 12px 18px !important;
+            background: rgba(255,255,255,{0.05 if dark_mode else 0.95}) !important;
             color: {"white" if dark_mode else "#1a1a1a"} !important;
-            font-size: 0.92rem !important;
+            font-size: 0.95rem !important;
             font-weight: 500 !important;
-            transition: border-color 0.2s ease !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }}
-        .stTextInput input:focus, .stTextArea textarea:focus {{
+        .stTextInput input:hover, .stSelectbox select:hover, .stTextArea textarea:hover {{
+            border-color: rgba(255,255,255,0.3) !important;
+            background: rgba(255,255,255,{0.08 if dark_mode else 1}) !important;
+        }}
+        .stTextInput input:focus, .stSelectbox select:focus, .stTextArea textarea:focus, .stDateInput input:focus, .stTimeInput input:focus {{
             border-color: {primary_accent} !important;
-            box-shadow: 0 0 0 3px {primary_accent}33 !important;
+            box-shadow: 0 0 0 4px {primary_accent}25, inset 0 2px 4px rgba(0,0,0,0.02) !important;
+            background: rgba(255,255,255,{0.1 if dark_mode else 1}) !important;
+            outline: none !important;
         }}
 
         /* ── STATUS BADGES ── */
         .status-badge {{
-            display: inline-block;
-            padding: 3px 12px;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 14px;
             border-radius: 50px;
             font-size: 0.72rem;
             font-weight: 700;
             color: white !important;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }}
-        .status-agendado {{ background: linear-gradient(90deg,#3498db,#2980b9); }}
-        .status-atendido {{ background: linear-gradient(90deg,#2ecc71,#27ae60); }}
-        .status-concluido {{ background: linear-gradient(90deg,#1e8449,#145a32); }}
-        .status-cancelado {{ background: linear-gradient(90deg,#e74c3c,#c0392b); }}
+        .status-agendado {{ background: linear-gradient(135deg,#3498db,#2980b9); }}
+        .status-atendido {{ background: linear-gradient(135deg,#2ecc71,#27ae60); }}
+        .status-concluido {{ background: linear-gradient(135deg,#1e8449,#145a32); }}
+        .status-cancelado {{ background: linear-gradient(135deg,#e74c3c,#c0392b); }}
 
-        /* ── BOTÕES ── */
+        /* ── BOTÕES MAGNÉTICOS ── */
         .stButton > button {{
             width: 100%;
-            border-radius: 12px !important;
-            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}bb 100%) !important;
+            border-radius: 14px !important;
+            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}D9 100%) !important;
             color: white !important;
             font-weight: 700 !important;
-            font-size: 0.88rem !important;
-            letter-spacing: 0.3px !important;
-            padding: 10px 24px !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+            font-size: 0.92rem !important;
+            letter-spacing: 0.4px !important;
+            padding: 12px 24px !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            border-bottom: 1px solid rgba(0,0,0,0.1) !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }}
         .stButton > button:hover {{
-            transform: translateY(-2px) scale(1.01) !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
-            border-color: rgba(255,255,255,0.3) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+            border-color: rgba(255,255,255,0.4) !important;
+            filter: brightness(1.05);
         }}
-        .stButton > button:active {{ transform: translateY(0px) scale(0.99) !important; }}
+        .stButton > button:active {{ 
+            transform: translateY(1px) !important; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 2px 4px rgba(0,0,0,0.1) !important;
+        }}
 
-        /* ── EXPANDER ── */
+        /* ── EXPANDER (ACORDEÃO) ── */
         .stExpander {{
-            border: 1px solid rgba(255,255,255,0.12) !important;
-            background: rgba(255,255,255,0.08) !important;
-            border-radius: 16px !important;
-            backdrop-filter: blur(8px);
-            margin-bottom: 1rem !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%) !important;
+            border-radius: 20px !important;
+            backdrop-filter: blur(12px);
+            margin-bottom: 1.2rem !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }}
+        .stExpander:hover {{
+            border-color: rgba(255,255,255,0.2) !important;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.08);
         }}
         .stExpander > div > div > div > div > p {{
-            font-weight: 600 !important;
-            font-size: 0.9rem !important;
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            letter-spacing: 0.2px;
         }}
         .stExpander * {{ color: white !important; }}
 
         /* ── DIVIDER ── */
         hr {{
-            border-color: rgba(255,255,255,0.15) !important;
-            margin: 1.2rem 0 !important;
+            border-color: rgba(255,255,255,0.1) !important;
+            margin: 1.5rem 0 !important;
+            background-image: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent) !important;
+            border: none;
+            height: 1px;
         }}
 
         /* ── ALERTS / INFO ── */
         [data-testid="stAlert"] {{
-            border-radius: 14px !important;
-            border: none !important;
-            backdrop-filter: blur(8px);
+            border-radius: 16px !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         }}
 
-        /* ── SCROLLBAR ── */
-        ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
-        ::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.05); border-radius: 10px; }}
-        ::-webkit-scrollbar-thumb {{ background: rgba(255,255,255,0.25); border-radius: 10px; }}
-        ::-webkit-scrollbar-thumb:hover {{ background: rgba(255,255,255,0.5); }}
-
-        /* ── LOGIN ── */
+        /* ── LOGIN FORM ── */
         [data-testid="stForm"] {{
-            background: rgba(255,255,255,0.07) !important;
-            border: 1px solid rgba(255,255,255,0.16) !important;
-            border-radius: 24px !important;
-            padding: 2.5rem !important;
-            backdrop-filter: blur(24px) !important;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.12) !important;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            border-top: 1px solid rgba(255,255,255,0.25) !important;
+            border-radius: 28px !important;
+            padding: 3rem !important;
+            backdrop-filter: blur(32px) !important;
+            -webkit-backdrop-filter: blur(32px) !important;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.2) !important;
         }}
         [data-testid="stFormSubmitButton"] button {{
-            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}99 100%) !important;
+            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}CC 100%) !important;
             color: white !important;
-            border-radius: 14px !important;
-            font-size: 1rem !important;
-            font-weight: 700 !important;
-            padding: 0.7rem 2rem !important;
-            border: none !important;
-            box-shadow: 0 6px 24px rgba(77,167,104,0.35) !important;
-            letter-spacing: 0.3px !important;
-            transition: all 0.3s ease !important;
+            border-radius: 16px !important;
+            font-size: 1.05rem !important;
+            font-weight: 800 !important;
+            padding: 0.8rem 2.5rem !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            box-shadow: 0 8px 28px rgba(77,167,104,0.4), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+            letter-spacing: 0.5px !important;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         }}
         [data-testid="stFormSubmitButton"] button:hover {{
-            transform: translateY(-2px) !important;
-            box-shadow: 0 10px 32px rgba(77,167,104,0.5) !important;
+            transform: translateY(-4px) !important;
+            box-shadow: 0 14px 36px rgba(77,167,104,0.5), inset 0 1px 0 rgba(255,255,255,0.4) !important;
+            filter: brightness(1.1);
         }}
 
         /* ── CAPTION / SMALL TEXT ── */
         .stCaption, [data-testid="stCaptionContainer"] {{
-            font-size: 0.78rem !important;
-            opacity: 0.72;
-            letter-spacing: 0.1px;
+            font-size: 0.8rem !important;
+            opacity: 0.7;
+            letter-spacing: 0.2px;
+            font-weight: 500;
         }}
 
         /* ── SIDEBAR FILE UPLOADER → BOTÃO COMPACTO ── */
@@ -469,22 +539,25 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > button {{
             width: 100% !important;
-            background: rgba(255,255,255,0.1) !important;
-            border: 1px solid rgba(255,255,255,0.22) !important;
-            border-radius: 10px !important;
-            color: rgba(255,255,255,0.85) !important;
-            font-size: 0.78rem !important;
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            border-radius: 12px !important;
+            color: rgba(255,255,255,0.9) !important;
+            font-size: 0.82rem !important;
             font-weight: 600 !important;
-            padding: 7px 12px !important;
-            letter-spacing: 0.3px !important;
+            padding: 8px 14px !important;
+            letter-spacing: 0.4px !important;
             cursor: pointer !important;
-            transition: all 0.2s ease !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
             margin: 0 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > button:hover {{
-            background: rgba(255,255,255,0.2) !important;
-            border-color: rgba(255,255,255,0.4) !important;
+            background: rgba(255,255,255,0.15) !important;
+            border-color: rgba(255,255,255,0.3) !important;
             color: #fff !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }}
         [data-testid="stSidebar"] [data-testid="stFileUploader"] small {{
             display: none !important;
@@ -1917,6 +1990,7 @@ class ClinicalManagementApp:
                     "⌂ Dashboard": "dashboard",
                     "⦿ Atendimentos": "appointments",
                     "☰ Relatórios": "reports",
+                    "📝 Editor Docs": "docs_editor",
                     "↑ Upload": "upload",
                     "⚙ Configurações": "settings"
                 }
@@ -1963,6 +2037,22 @@ class ClinicalManagementApp:
                 AuthPage.render()
             else:
                 ReportsPage.render()
+        elif page_key == "docs_editor":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                render_page_header("📝 Editor Google Docs", "Edição e visualização de documentos integrados")
+                st.markdown("Cole o link de compartilhamento ou edição do seu Google Docs abaixo para abrir o documento diretamente no aplicativo.")
+                
+                docs_url = st.text_input("URL do Google Docs", value=st.session_state.get('last_docs_url', ''), placeholder="Ex: https://docs.google.com/document/d/.../edit")
+                
+                if docs_url:
+                    st.session_state['last_docs_url'] = docs_url
+                    import streamlit.components.v1 as components
+                    st.markdown("<style>iframe{border-radius:12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 40px rgba(0,0,0,0.15); width: 100%; background: #ffffff;}</style>", unsafe_allow_html=True)
+                    components.iframe(docs_url, height=850, scrolling=True)
+                else:
+                    st.info("👆 Cole o link do documento acima para começar a edição.")
         elif page_key == "upload":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
