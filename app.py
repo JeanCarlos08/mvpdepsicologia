@@ -1835,7 +1835,7 @@ class AuthPage:
                         box-shadow: 0 12px 32px rgba(0,0,0,0.15);
                         backdrop-filter: blur(12px);
                     ">🩺</div>
-                    <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0px; letter-spacing: -1px;">Santa Marta</h1>
+                    <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0px; letter-spacing: -1px;">Gestão Clínica</h1>
                     <p style="color: rgba(255,255,255,0.6); font-size: 0.95rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Portal Administrativo</p>
                 </div>
             """, unsafe_allow_html=True)
