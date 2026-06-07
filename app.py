@@ -1818,19 +1818,34 @@ class AuthPage:
                 st.session_state['lockout_time'] = None
                 st.session_state['login_attempts'] = 0
 
-        # Layout centralizado e minimalista
-        _, col_center, _ = st.columns([1, 1.4, 1])
+        # Layout centralizado premium com espaçamento vertical
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        _, col_center, _ = st.columns([1, 1.2, 1])
 
         with col_center:
-            st.markdown("## Gestão Clínica")
-            st.caption("Portal Administrativo")
-            st.markdown("")
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="
+                        width: 80px; height: 80px; 
+                        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+                        border: 1px solid rgba(255,255,255,0.2);
+                        border-radius: 24px;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 3rem; margin: 0 auto 1.5rem auto;
+                        box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+                        backdrop-filter: blur(12px);
+                    ">🩺</div>
+                    <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0px; letter-spacing: -1px;">Santa Marta</h1>
+                    <p style="color: rgba(255,255,255,0.6); font-size: 0.95rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Portal Administrativo</p>
+                </div>
+            """, unsafe_allow_html=True)
 
             with st.form('auth_form', clear_on_submit=False):
-                user = st.text_input('Usuário', placeholder='Digite seu usuário...')
-                pwd = st.text_input('Senha', type='password', placeholder='Digite sua senha...')
-                st.markdown("")
-                submitted = st.form_submit_button('Entrar', type='primary', use_container_width=True)
+                st.markdown("<div style='margin-bottom: 1rem; color: rgba(255,255,255,0.9); font-weight: 600;'>Acesse sua conta</div>", unsafe_allow_html=True)
+                user = st.text_input('👤 Usuário', placeholder='Digite seu usuário...')
+                pwd = st.text_input('🔑 Senha', type='password', placeholder='Digite sua senha...')
+                st.markdown("<br>", unsafe_allow_html=True)
+                submitted = st.form_submit_button('Entrar Seguramente ➔', type='primary', use_container_width=True)
 
                 if submitted:
                     admin_user = (db.APP_ADMIN_USER or "").strip()
