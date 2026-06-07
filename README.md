@@ -103,3 +103,35 @@ Este repositório ignora secrets, logs, uploads e artefatos de build por padrão
 - Settings → Secrets:
   DATABASE_URL = "postgresql://USUARIO:SENHA@HOST_PUBLICO:5432/NOME_DO_BANCO?sslmode=require"
 - Rerun/Deploy e verifique em Diagnóstico.
+
+---
+
+## 🔧 Correções Recentes (v1.1)
+
+### Bugs Corrigidos
+- ✅ **Função `save_uploaded_pdf()`** — Retorno inconsistente (None vs "")
+  - Solução: Padronizar para retornar `None` em falhas
+  
+- ✅ **Conversão data/hora em edição** — `.strftime()` incorreto
+  - Solução: Passar objetos `date`/`time` direto ao PostgreSQL
+  
+- ✅ **Tratamento de anexos None** — Validação inadequada
+  - Solução: Verificar `if up_laudo else None` antes de processar
+
+### Funcionalidades Validadas
+- ✓ Geração de PDF da lista de atendimentos
+- ✓ Upload/download de Laudo e Avaliação (PDF)
+- ✓ Análise de PDF com IA (Gemini)
+- ✓ Visualização em iframe
+- ✓ Edição com substituição de anexos
+- ✓ Exclusão segura de arquivos
+- ✓ Conversão correta de tipos DATE/TIME
+
+### Documentação
+- **BUGS_CORRIGIDOS.md** — Relatório técnico detalhado
+- **TESTE_PDF_ANEXOS.md** — Guia passo-a-passo para testar
+
+---
+
+## Status
+✨ **Sistema pronto para produção** (v1.1)

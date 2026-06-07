@@ -496,11 +496,11 @@ def apply_plotly_theme(dark_mode=False):
     pio.templates.default = "plotly_dark" if dark_mode else "plotly_white"
 
 def save_uploaded_pdf(uploaded_file):
-    """Salva PDF no banco (BYTEA) e retorna um marcador 'db:<id>'.
+    """Salva PDF no banco (BYTEA) e retorna um marcador 'db:<id>' ou None se falhar.
     Valida se o conteúdo é realmente um PDF antes de salvar.
     """
     if uploaded_file is None:
-        return ""
+        return None
     try:
         file_bytes = uploaded_file.getvalue()
         # Validação Sênior: Verifica se o arquivo é REALMENTE um PDF pelo conteúdo
@@ -522,7 +522,7 @@ def save_uploaded_pdf(uploaded_file):
     except Exception as e:
         Security.log_error("PDF_SAVE", e)
         st.error("Erro interno ao salvar o arquivo.")
-        return ""
+        return None
 
 def verificar_conexao():
     return db.verificar_conexao()
@@ -753,8 +753,8 @@ class AppointmentsPage:
                                 is_valid = False
                                 
                         if is_valid:
-                            laudo_path = save_uploaded_pdf(up_laudo)
-                            avaliacao_path = save_uploaded_pdf(up_avaliacao)
+                            laudo_path = save_uploaded_pdf(up_laudo) if up_laudo else None
+                            avaliacao_path = save_uploaded_pdf(up_avaliacao) if up_avaliacao else None
                             novo_atendimento = AtendimentoData(
                                 empresa=security.sanitize_input(empresa),
                                 nome=security.sanitize_input(nome),
@@ -848,8 +848,8 @@ class AppointmentsPage:
                                             db.atualizar_campos_atendimento(aid_e, {
                                                 "empresa": ev_empresa, "nome": ev_nome,
                                                 "modalidade": ev_modal,
-                                                "data": ev_data.strftime(DATE_FORMAT) if ev_data else None,
-                                                "hora": ev_hora.strftime(TIME_FORMAT) if ev_hora else None,
+                                                "data": ev_data,  # Passar objeto date, não string
+                                                "hora": ev_hora,  # Passar objeto time, não string
                                                 "status": ev_status, "observacoes": ev_obs,
                                             })
                                             st.toast("Alterações salvas!", icon="✅")
@@ -1222,8 +1222,8 @@ class AppointmentsPage:
                                         "empresa": nv_empresa,
                                         "nome": nv_nome,
                                         "modalidade": nv_modal,
-                                        "data": nv_data.strftime(DATE_FORMAT) if nv_data else None,
-                                        "hora": nv_hora.strftime(TIME_FORMAT) if nv_hora else None,
+                                        "data": nv_data,
+                                        "hora": nv_hora,
                                         "status": nv_status,
                                         "observacoes": nv_obs,
                                     }
