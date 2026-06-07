@@ -2041,18 +2041,45 @@ class ClinicalManagementApp:
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
-                render_page_header("📝 Editor Google Docs", "Edição e visualização de documentos integrados")
-                st.markdown("Cole o link de compartilhamento ou edição do seu Google Docs abaixo para abrir o documento diretamente no aplicativo.")
+                render_page_header("📝 Editor de Laudos", "Edição segura no Google Docs")
+                st.markdown("Para evitar bloqueios de segurança do Google (que pedem confirmação de e-mail repetidamente), os laudos agora abrem em uma nova aba com 100% das funcionalidades do Google Docs liberadas.")
                 
                 docs_url = st.text_input("URL do Google Docs", value=st.session_state.get('last_docs_url', 'https://docs.google.com/document/d/1FDYCKMZaEMWAiOO1ovq9R0bQ0L4vTpEZr6DGohcppJY/edit'), placeholder="Ex: https://docs.google.com/document/d/.../edit")
                 
                 if docs_url:
                     st.session_state['last_docs_url'] = docs_url
-                    import streamlit.components.v1 as components
-                    st.markdown("<style>iframe{border-radius:12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 40px rgba(0,0,0,0.15); width: 100%; background: #ffffff;}</style>", unsafe_allow_html=True)
-                    components.iframe(docs_url, height=850, scrolling=True)
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    col1, col2, col3 = st.columns([1,2,1])
+                    with col2:
+                        # Criando um botão de link gigante e premium
+                        st.markdown(f"""
+                            <a href="{docs_url}" target="_blank" style="text-decoration: none;">
+                                <div style="
+                                    background: linear-gradient(135deg, #4DA768 0%, #3e8a54 100%);
+                                    color: white;
+                                    padding: 20px;
+                                    border-radius: 16px;
+                                    text-align: center;
+                                    font-size: 1.2rem;
+                                    font-weight: 800;
+                                    box-shadow: 0 10px 30px rgba(77,167,104,0.4);
+                                    transition: transform 0.2s, box-shadow 0.2s;
+                                    border: 2px solid rgba(255,255,255,0.2);
+                                ">
+                                    🚀 Abrir Editor de Laudos (Google Docs)
+                                    <div style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; margin-top: 5px;">Abre em nova aba segura</div>
+                                </div>
+                            </a>
+                            <style>
+                                a > div:hover {{
+                                    transform: translateY(-4px);
+                                    box-shadow: 0 15px 40px rgba(77,167,104,0.6) !important;
+                                }}
+                            </style>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.info("👆 Cole o link do documento acima para começar a edição.")
+                    st.info("👆 Cole o link do documento acima para habilitar o botão.")
         elif page_key == "upload":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
