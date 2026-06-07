@@ -589,7 +589,7 @@ def generate_pdf_report(df):
         except Exception:
             pass
 
-    return pdf.output()
+    return bytes(pdf.output())
 
 class AtendimentoData:
     def __init__(self, empresa, nome, modalidade, data, hora, laudo_pdf="", avaliacao_pdf="", observacoes=""):
