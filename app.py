@@ -2044,7 +2044,7 @@ class ClinicalManagementApp:
                 render_page_header("📝 Editor Google Docs", "Edição e visualização de documentos integrados")
                 st.markdown("Cole o link de compartilhamento ou edição do seu Google Docs abaixo para abrir o documento diretamente no aplicativo.")
                 
-                docs_url = st.text_input("URL do Google Docs", value=st.session_state.get('last_docs_url', ''), placeholder="Ex: https://docs.google.com/document/d/.../edit")
+                docs_url = st.text_input("URL do Google Docs", value=st.session_state.get('last_docs_url', 'https://docs.google.com/document/d/1FDYCKMZaEMWAiOO1ovq9R0bQ0L4vTpEZr6DGohcppJY/edit'), placeholder="Ex: https://docs.google.com/document/d/.../edit")
                 
                 if docs_url:
                     st.session_state['last_docs_url'] = docs_url
