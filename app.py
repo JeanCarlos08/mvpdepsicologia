@@ -762,6 +762,31 @@ class AppointmentsPage:
             filters["date_start"] = d1
             filters["date_end"] = d2
         with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
+            # ─── Anexos e análise de IA (FORA do form — st.button não pode ficar dentro de st.form) ───
+            st.markdown("#### 📎 Anexos (opcional)")
+            c1a, c2a = st.columns(2)
+            with c1a:
+                up_laudo = st.file_uploader("📄 Laudo PDF", type=["pdf"], key="up_laudo_new")
+                if up_laudo:
+                    size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
+                    st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
+                    if st.button("🪄 Analisar Laudo com IA", key="ai_btn_laudo"):
+                        with st.spinner("IA analisando laudo..."):
+                            from ai_manager import AIManager
+                            ai_res = AIManager.analyze_pdf_content(up_laudo.getvalue(), up_laudo.name)
+                            st.session_state['temp_ai_obs'] = ai_res
+            with c2a:
+                up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
+                if up_avaliacao:
+                    size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
+                    st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
+                    if st.button("🪄 Analisar Avaliação com IA", key="ai_btn_aval"):
+                        with st.spinner("IA analisando avaliação..."):
+                            from ai_manager import AIManager
+                            ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
+                            st.session_state['temp_ai_obs'] = ai_res
+
+            # ─── Formulário principal (sem st.button dentro) ───
             with st.form("appointment_form_new", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -772,32 +797,10 @@ class AppointmentsPage:
                 with col2:
                     nome = st.text_input("👤 Nome do Paciente", max_chars=100).strip()
                     hora_sel = st.time_input("⏰ Horário")
-                st.markdown("#### 📎 Anexos (opcional)")
-                c1a, c2a = st.columns(2)
-                with c1a:
-                    up_laudo = st.file_uploader("📄 Laudo PDF", type=["pdf"], key="up_laudo_new")
-                    if up_laudo:
-                        size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
-                        st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
-                        if st.button("🪄 Analisar Laudo com IA", key="ai_btn_laudo"):
-                            with st.spinner("IA analisando laudo..."):
-                                from ai_manager import AIManager
-                                ai_res = AIManager.analyze_pdf_content(up_laudo.getvalue(), up_laudo.name)
-                                st.session_state['temp_ai_obs'] = ai_res
-                with c2a:
-                    up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
-                    if up_avaliacao:
-                        size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
-                        st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
-                        if st.button("🪄 Analisar Avaliação com IA", key="ai_btn_aval"):
-                            with st.spinner("IA analisando avaliação..."):
-                                from ai_manager import AIManager
-                                ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
-                                st.session_state['temp_ai_obs'] = ai_res
-                
+
                 initial_obs = st.session_state.get('temp_ai_obs', '')
                 observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...")
-                
+
                 c_act1, c_act2 = st.columns([1, 1])
                 with c_act1:
                     submitted = st.form_submit_button("💾 Salvar", type="primary")
@@ -811,20 +814,20 @@ class AppointmentsPage:
                         st.error("Preencha os campos obrigatórios (Empresa e Nome).")
                     else:
                         from ai_manager import AIManager
-                        
+
                         is_valid = True
                         if up_laudo:
                             valid_laudo, msg_laudo = AIManager.validate_clinical_pdf(up_laudo.getvalue())
                             if not valid_laudo:
                                 st.error(f"❌ Documento bloqueado (Laudo): {msg_laudo}")
                                 is_valid = False
-                                
+
                         if up_avaliacao:
                             valid_aval, msg_aval = AIManager.validate_clinical_pdf(up_avaliacao.getvalue())
                             if not valid_aval:
                                 st.error(f"❌ Documento bloqueado (Avaliação): {msg_aval}")
                                 is_valid = False
-                                
+
                         if is_valid:
                             laudo_path = save_uploaded_pdf(up_laudo) if up_laudo else None
                             avaliacao_path = save_uploaded_pdf(up_avaliacao) if up_avaliacao else None
@@ -832,15 +835,14 @@ class AppointmentsPage:
                                 empresa=security.sanitize_input(empresa),
                                 nome=security.sanitize_input(nome),
                                 modalidade=modalidade,
-                                data=data_sel, # Passar objeto date diretamente
-                                hora=hora_sel, # Passar objeto time diretamente
+                                data=data_sel,  # Passar objeto date diretamente
+                                hora=hora_sel,  # Passar objeto time diretamente
                                 laudo_pdf=laudo_path,
                                 avaliacao_pdf=avaliacao_path,
                                 observacoes=security.sanitize_input(observacoes)
                             )
                             if DatabaseManager.add_appointment(novo_atendimento):
                                 security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
-                                
                                 st.toast("Atendimento cadastrado com sucesso!", icon="✅")
                                 # Limpar notas IA após sucesso
                                 if 'temp_ai_obs' in st.session_state:

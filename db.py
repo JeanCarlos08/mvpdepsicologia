@@ -738,6 +738,14 @@ def listar_auditoria(limit: int = 100) -> List[Dict[str, Any]]:
 
 # As credenciais admin devem ser configuradas via variáveis de ambiente (.env) ou Secrets do Streamlit Cloud.
 # Não armazene senhas diretamente no código fonte.
-APP_ADMIN_USER = os.getenv("APP_ADMIN_USER")
-APP_ADMIN_PASS = os.getenv("APP_ADMIN_PASS")
-APP_REQUIRE_AUTH = os.getenv("APP_REQUIRE_AUTH", "true").lower() == "true"
+def _get_admin_config(key: str, default: Optional[str] = None) -> Optional[str]:
+	try:
+		if st and hasattr(st, "secrets") and key in st.secrets:
+			return st.secrets[key]
+	except Exception:
+		pass
+	return os.getenv(key, default)
+
+APP_ADMIN_USER = _get_admin_config("APP_ADMIN_USER")
+APP_ADMIN_PASS = _get_admin_config("APP_ADMIN_PASS")
+APP_REQUIRE_AUTH = (_get_admin_config("APP_REQUIRE_AUTH", "true") or "true").lower() == "true"
