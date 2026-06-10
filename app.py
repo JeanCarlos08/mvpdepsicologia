@@ -762,7 +762,17 @@ class AppointmentsPage:
             filters["date_start"] = d1
             filters["date_end"] = d2
         with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
-            # ─── Anexos e análise de IA (FORA do form — st.button não pode ficar dentro de st.form) ───
+            # ─── Campos do formulário (widgets simples, sem st.form) ───
+            col1, col2 = st.columns(2)
+            with col1:
+                empresa = st.text_input("🏢 Empresa/Organização", max_chars=100, key="new_apt_empresa").strip()
+                modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento], key="new_apt_modal")
+                data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="new_apt_data")
+            with col2:
+                nome = st.text_input("👤 Nome do Paciente", max_chars=100, key="new_apt_nome").strip()
+                hora_sel = st.time_input("⏰ Horário", key="new_apt_hora")
+
+            # ─── Anexos PDF (fora de qualquer form para preservar o estado do arquivo) ───
             st.markdown("#### 📎 Anexos (opcional)")
             c1a, c2a = st.columns(2)
             with c1a:
@@ -786,70 +796,57 @@ class AppointmentsPage:
                             ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
                             st.session_state['temp_ai_obs'] = ai_res
 
-            # ─── Formulário principal (sem st.button dentro) ───
-            with st.form("appointment_form_new", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    empresa = st.text_input("🏢 Empresa/Organização", max_chars=100).strip()
-                    # Modalidades padronizadas (ignoramos outras entradas do DB)
-                    modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento])
-                    data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31))
-                with col2:
-                    nome = st.text_input("👤 Nome do Paciente", max_chars=100).strip()
-                    hora_sel = st.time_input("⏰ Horário")
+            initial_obs = st.session_state.get('temp_ai_obs', '')
+            observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...", key="new_apt_obs")
 
-                initial_obs = st.session_state.get('temp_ai_obs', '')
-                observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...")
+            c_act1, c_act2 = st.columns([1, 1])
+            with c_act1:
+                submitted = st.button("💾 Salvar", type="primary", key="new_apt_salvar", use_container_width=True)
+            with c_act2:
+                if st.button("🧹 Limpar Notas IA", key="new_apt_limpar", use_container_width=True):
+                    st.session_state['temp_ai_obs'] = ''
+                    st.rerun()
 
-                c_act1, c_act2 = st.columns([1, 1])
-                with c_act1:
-                    submitted = st.form_submit_button("💾 Salvar", type="primary")
-                with c_act2:
-                    if st.form_submit_button("🧹 Limpar Notas IA"):
-                        st.session_state['temp_ai_obs'] = ''
-                        st.rerun()
+            if submitted:
+                if not empresa or not nome:
+                    st.error("Preencha os campos obrigatórios (Empresa e Nome).")
+                else:
+                    from ai_manager import AIManager
 
-                if submitted:
-                    if not empresa or not nome:
-                        st.error("Preencha os campos obrigatórios (Empresa e Nome).")
-                    else:
-                        from ai_manager import AIManager
+                    is_valid = True
+                    if up_laudo:
+                        valid_laudo, msg_laudo = AIManager.validate_clinical_pdf(up_laudo.getvalue())
+                        if not valid_laudo:
+                            st.error(f"❌ Documento bloqueado (Laudo): {msg_laudo}")
+                            is_valid = False
 
-                        is_valid = True
-                        if up_laudo:
-                            valid_laudo, msg_laudo = AIManager.validate_clinical_pdf(up_laudo.getvalue())
-                            if not valid_laudo:
-                                st.error(f"❌ Documento bloqueado (Laudo): {msg_laudo}")
-                                is_valid = False
+                    if up_avaliacao:
+                        valid_aval, msg_aval = AIManager.validate_clinical_pdf(up_avaliacao.getvalue())
+                        if not valid_aval:
+                            st.error(f"❌ Documento bloqueado (Avaliação): {msg_aval}")
+                            is_valid = False
 
-                        if up_avaliacao:
-                            valid_aval, msg_aval = AIManager.validate_clinical_pdf(up_avaliacao.getvalue())
-                            if not valid_aval:
-                                st.error(f"❌ Documento bloqueado (Avaliação): {msg_aval}")
-                                is_valid = False
-
-                        if is_valid:
-                            laudo_path = save_uploaded_pdf(up_laudo) if up_laudo else None
-                            avaliacao_path = save_uploaded_pdf(up_avaliacao) if up_avaliacao else None
-                            novo_atendimento = AtendimentoData(
-                                empresa=security.sanitize_input(empresa),
-                                nome=security.sanitize_input(nome),
-                                modalidade=modalidade,
-                                data=data_sel,  # Passar objeto date diretamente
-                                hora=hora_sel,  # Passar objeto time diretamente
-                                laudo_pdf=laudo_path,
-                                avaliacao_pdf=avaliacao_path,
-                                observacoes=security.sanitize_input(observacoes)
-                            )
-                            if DatabaseManager.add_appointment(novo_atendimento):
-                                security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
-                                st.toast("Atendimento cadastrado com sucesso!", icon="✅")
-                                # Limpar notas IA após sucesso
-                                if 'temp_ai_obs' in st.session_state:
-                                    del st.session_state['temp_ai_obs']
-                                st.rerun()
-                            else:
-                                st.error("Erro ao cadastrar atendimento.")
+                    if is_valid:
+                        laudo_path = save_uploaded_pdf(up_laudo) if up_laudo else None
+                        avaliacao_path = save_uploaded_pdf(up_avaliacao) if up_avaliacao else None
+                        novo_atendimento = AtendimentoData(
+                            empresa=security.sanitize_input(empresa),
+                            nome=security.sanitize_input(nome),
+                            modalidade=modalidade,
+                            data=data_sel,
+                            hora=hora_sel,
+                            laudo_pdf=laudo_path,
+                            avaliacao_pdf=avaliacao_path,
+                            observacoes=security.sanitize_input(observacoes)
+                        )
+                        if DatabaseManager.add_appointment(novo_atendimento):
+                            security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
+                            st.toast("Atendimento cadastrado com sucesso!", icon="✅")
+                            if 'temp_ai_obs' in st.session_state:
+                                del st.session_state['temp_ai_obs']
+                            st.rerun()
+                        else:
+                            st.error("Erro ao cadastrar atendimento.")
 
         with st.expander("✏️ Editar Atendimento", expanded=False):
             st.caption("Busque um atendimento pelo ID ou nome/empresa para editar seus dados.")
