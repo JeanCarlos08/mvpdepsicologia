@@ -1820,60 +1820,60 @@ class AuthPage:
         # ── CSS global da tela de login ──
         st.markdown("""
             <style>
-            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
             [data-testid="stHeader"], footer, #MainMenu { display: none !important; }
             [data-testid="stAppViewContainer"] {
-                background: linear-gradient(160deg, #4DA768 0%, #2d7a45 100%) !important;
+                background: linear-gradient(160deg, #4DA768 0%, #1e5c35 100%) !important;
                 min-height: 100vh;
             }
             [data-testid="stMainViewContainer"] { background: transparent !important; }
             .main .block-container { padding-top: 0.5rem !important; }
             div[data-testid="stForm"] {
-                background: transparent !important;
-                border: none !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
+                background: rgba(255,255,255,0.08) !important;
+                border: 1px solid rgba(255,255,255,0.18) !important;
+                border-radius: 24px !important;
+                padding: 2rem 1.8rem !important;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+                backdrop-filter: blur(20px) !important;
             }
-            .login-wrap .stTextInput label {
-                color: #374151 !important;
+            div[data-testid="stForm"] label {
+                color: rgba(255,255,255,0.9) !important;
                 font-weight: 600 !important;
-                font-size: 0.85rem !important;
-                font-family: 'Plus Jakarta Sans', sans-serif !important;
+                font-family: 'Inter', sans-serif !important;
             }
-            .login-wrap .stTextInput input {
-                background: #f9fafb !important;
-                border: 1.5px solid #e5e7eb !important;
-                color: #111827 !important;
+            div[data-testid="stForm"] input {
+                background: rgba(255,255,255,0.12) !important;
+                border: 1px solid rgba(255,255,255,0.25) !important;
+                color: #ffffff !important;
                 border-radius: 12px !important;
-                padding: 10px 14px !important;
             }
-            .login-wrap .stTextInput input:focus {
-                border-color: #4DA768 !important;
-                box-shadow: 0 0 0 3px rgba(77,167,104,0.2) !important;
+            div[data-testid="stForm"] input::placeholder { color: rgba(255,255,255,0.45) !important; }
+            div[data-testid="stForm"] input:focus {
+                border-color: rgba(255,255,255,0.6) !important;
+                box-shadow: 0 0 0 3px rgba(255,255,255,0.15) !important;
             }
-            .login-wrap [data-testid="stFormSubmitButton"] button {
-                background: linear-gradient(135deg, #4DA768 0%, #3a8a54 100%) !important;
+            div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+                background: rgba(255,255,255,0.22) !important;
                 color: #fff !important;
+                border: 1px solid rgba(255,255,255,0.35) !important;
                 border-radius: 14px !important;
                 font-size: 1rem !important;
-                font-weight: 800 !important;
+                font-weight: 700 !important;
                 padding: 14px !important;
-                box-shadow: 0 6px 20px rgba(77,167,104,0.35) !important;
-                border: none !important;
-                letter-spacing: 0.3px !important;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
                 transition: all 0.3s ease !important;
+                backdrop-filter: blur(8px) !important;
             }
-            .login-wrap [data-testid="stFormSubmitButton"] button:hover {
+            div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
+                background: rgba(255,255,255,0.32) !important;
                 transform: translateY(-2px) !important;
-                box-shadow: 0 12px 28px rgba(77,167,104,0.5) !important;
-                filter: brightness(1.1) !important;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        _, col_center, _ = st.columns([1, 1.35, 1])
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        _, col_center, _ = st.columns([1, 1.2, 1])
 
         with col_center:
             photo_b64 = db.get_preference('profile_photo_b64')
@@ -1885,36 +1885,38 @@ class AuthPage:
                     f"style='width:100%;height:100%;object-fit:cover;border-radius:50%;'/>"
                 )
             else:
-                avatar_html = "<span style='font-size:2.8rem;line-height:88px;'>🩺</span>"
+                avatar_html = "<span style='font-size:3rem;line-height:80px;'>🩺</span>"
 
             attempts = st.session_state['login_attempts']
 
             st.markdown(f"""
-                <div style="text-align:center;margin-bottom:20px;">
+                <div style="text-align:center;margin-bottom:1.8rem;">
                     <div style="
-                        width:88px;height:88px;border-radius:50%;overflow:hidden;
-                        margin:0 auto 14px auto;
-                        border:3px solid rgba(255,255,255,0.45);
-                        box-shadow:0 8px 28px rgba(0,0,0,0.3);
-                        display:flex;align-items:center;justify-content:center;
-                        background:rgba(255,255,255,0.12);
+                        width: 80px; height: 80px;
+                        background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+                        border: 1px solid rgba(255,255,255,0.25);
+                        border-radius: 24px;
+                        display: flex; align-items: center; justify-content: center;
+                        margin: 0 auto 1.2rem auto;
+                        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+                        backdrop-filter: blur(12px);
+                        overflow: hidden;
                     ">{avatar_html}</div>
-                    <div style="color:#fff;font-size:2rem;font-weight:800;letter-spacing:-0.5px;
-                               font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:4px;">Gestão Clínica</div>
-                    <div style="color:rgba(255,255,255,0.6);font-size:0.72rem;font-weight:700;
-                               letter-spacing:2.5px;text-transform:uppercase;
-                               font-family:'Plus Jakarta Sans',sans-serif;">Portal Administrativo</div>
+                    <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:0;letter-spacing:-1px;
+                               color:#fff;font-family:'Inter',sans-serif;">Gestão Clínica</h1>
+                    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;
+                              letter-spacing:1.5px;text-transform:uppercase;
+                              font-family:'Inter',sans-serif;margin-top:4px;">Portal Administrativo</p>
                 </div>
             """, unsafe_allow_html=True)
 
-            st.markdown('<div class="login-wrap" style="background:#fff;border-radius:20px;padding:28px 24px 20px;box-shadow:0 10px 36px rgba(0,0,0,0.18);">', unsafe_allow_html=True)
-            st.markdown('<div style="color:#4DA768;font-size:1rem;font-weight:700;text-align:center;margin-bottom:12px;font-family:Plus Jakarta Sans,sans-serif;">Acesse sua conta</div>', unsafe_allow_html=True)
+            st.markdown(f"<div style='color:rgba(255,255,255,0.85);font-weight:600;margin-bottom:0.8rem;font-family:Inter,sans-serif;'>Acesse sua conta</div>", unsafe_allow_html=True)
 
             with st.form('auth_form', clear_on_submit=False):
-                user = st.text_input('👤 Usuário', placeholder='Digite seu usuário')
-                pwd  = st.text_input('🔑 Senha', type='password', placeholder='Digite sua senha')
+                user = st.text_input('👤 Usuário', placeholder='Digite seu usuário...')
+                pwd  = st.text_input('🔑 Senha', type='password', placeholder='Digite sua senha...')
                 st.markdown("<br>", unsafe_allow_html=True)
-                submitted = st.form_submit_button('Entrar Seguramente →', type='primary', use_container_width=True)
+                submitted = st.form_submit_button('Entrar Seguramente ➔', type='primary', use_container_width=True)
 
                 if submitted:
                     admin_user = (db.APP_ADMIN_USER or "").strip()
@@ -1932,14 +1934,7 @@ class AuthPage:
                             st.session_state['lockout_time'] = datetime.now()
                         st.error('Credenciais inválidas.')
 
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown(f"""
-                <div style="text-align:center;color:rgba(255,255,255,0.55);font-size:0.78rem;
-                            font-weight:500;margin-top:16px;font-family:'Plus Jakarta Sans',sans-serif;">
-                    🔒 Acesso seguro &nbsp;•&nbsp; Tentativas: {attempts}/5
-                </div>
-            """, unsafe_allow_html=True)
+            st.caption(f"🔒 Acesso seguro  •  Tentativas: {attempts}/5")
 
 class ClinicalManagementApp:
     def __init__(self):
