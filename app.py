@@ -1823,7 +1823,7 @@ class AuthPage:
             @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
             [data-testid="stHeader"], footer, #MainMenu { display: none !important; }
             [data-testid="stAppViewContainer"] {
-                background: linear-gradient(160deg, #1b5e35 0%, #0f3d20 100%) !important;
+                background: linear-gradient(160deg, #4DA768 0%, #2d7a45 100%) !important;
                 min-height: 100vh;
             }
             [data-testid="stMainViewContainer"] { background: transparent !important; }
@@ -1849,24 +1849,24 @@ class AuthPage:
                 padding: 10px 14px !important;
             }
             .login-wrap .stTextInput input:focus {
-                border-color: #1b5e35 !important;
-                box-shadow: 0 0 0 3px rgba(27,94,53,0.15) !important;
+                border-color: #4DA768 !important;
+                box-shadow: 0 0 0 3px rgba(77,167,104,0.2) !important;
             }
             .login-wrap [data-testid="stFormSubmitButton"] button {
-                background: linear-gradient(135deg, #1b5e35 0%, #0f3d20 100%) !important;
+                background: linear-gradient(135deg, #4DA768 0%, #3a8a54 100%) !important;
                 color: #fff !important;
                 border-radius: 14px !important;
                 font-size: 1rem !important;
                 font-weight: 800 !important;
                 padding: 14px !important;
-                box-shadow: 0 6px 20px rgba(27,94,53,0.4) !important;
+                box-shadow: 0 6px 20px rgba(77,167,104,0.35) !important;
                 border: none !important;
                 letter-spacing: 0.3px !important;
                 transition: all 0.3s ease !important;
             }
             .login-wrap [data-testid="stFormSubmitButton"] button:hover {
                 transform: translateY(-2px) !important;
-                box-shadow: 0 12px 28px rgba(27,94,53,0.55) !important;
+                box-shadow: 0 12px 28px rgba(77,167,104,0.5) !important;
                 filter: brightness(1.1) !important;
             }
             </style>
@@ -1908,7 +1908,7 @@ class AuthPage:
             """, unsafe_allow_html=True)
 
             st.markdown('<div class="login-wrap" style="background:#fff;border-radius:20px;padding:28px 24px 20px;box-shadow:0 10px 36px rgba(0,0,0,0.18);">', unsafe_allow_html=True)
-            st.markdown('<div style="color:#1b5e35;font-size:1rem;font-weight:700;text-align:center;margin-bottom:12px;font-family:Plus Jakarta Sans,sans-serif;">Acesse sua conta</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#4DA768;font-size:1rem;font-weight:700;text-align:center;margin-bottom:12px;font-family:Plus Jakarta Sans,sans-serif;">Acesse sua conta</div>', unsafe_allow_html=True)
 
             with st.form('auth_form', clear_on_submit=False):
                 user = st.text_input('👤 Usuário', placeholder='Digite seu usuário')
