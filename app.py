@@ -1711,6 +1711,7 @@ class ReportsPage:
             "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
             "Laudo PDF", "Avaliação PDF", "Status", "Observações"
         ])
+        df.insert(0, "Nº", range(1, len(df) + 1))
         st.markdown("### 🧾 Resumo")
         total_atendimentos = len(df)
         total_empresas = df["Empresa"].nunique()
