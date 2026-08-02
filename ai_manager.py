@@ -46,11 +46,12 @@ class AIManager:
             
         genai.configure(api_key=api_key)
         
-        # Lista de modelos disponíveis para esta API Key (versões 2.0 e 2.5)
+        # Lista de modelos disponíveis para esta API Key (versões 2.5, 3 e 3.5)
         candidates = [
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
+            'gemini-3.5-flash',
             'gemini-flash-latest',
+            'gemini-3-flash-preview',
+            'gemini-2.5-flash',
             'gemini-2.5-pro'
         ]
         
@@ -206,3 +207,101 @@ class AIManager:
         except Exception as e:
             _log_error("AI_CHAT", e)
             return "Não foi possível processar sua pergunta no momento. Tente novamente."
+
+    @classmethod
+    def summarize_patient(cls, paciente_json: str, evolucoes_json: str, anamnese_json: str) -> str:
+        """Gera resumo clínico do paciente a partir de prontuário, evoluções e anamnese."""
+        if not cls._initialize():
+            return "IA não disponível."
+        try:
+            prompt = f"""
+            Você é um assistente clínico. Gere um resumo objetivo e organizado do paciente abaixo.
+            Destaque: queixas principais, histórico relevante, medicamentos (se houver), evolução recente
+            e recomendações de acompanhamento. Use linguagem profissional e direta.
+
+            Dados do paciente (JSON):
+            {paciente_json}
+
+            Anamnese (JSON):
+            {anamnese_json}
+
+            Evoluções (JSON):
+            {evolucoes_json}
+
+            Formato do resumo (em português):
+            1) Visão geral (2-3 linhas)
+            2) Queixas principais
+            3) Histórico relevante
+            4) Evolução recente
+            5) Recomendações
+            """
+            response = cls._model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            _log_error("AI_RESUMO_PACIENTE", e)
+            return "Não foi possível gerar o resumo do paciente."
+
+    @classmethod
+    def predict_no_show(cls, stats_json: str) -> str:
+        """Analisa padrões e estima risco de faltas em agendamentos."""
+        if not cls._initialize():
+            return "IA não disponível."
+        try:
+            prompt = f"""
+            Você é um analista de saúde. Com base nos dados de agendamentos abaixo (JSON),
+            identifique padrões de falta/cancelamento e estime o risco de no-show para cada
+            profissional ou turno. Sugira ações práticas para reduzir faltas.
+
+            Dados (JSON):
+            {stats_json}
+
+            Responda em português com: análise de padrões, riscos identificados, e 3-5 sugestões práticas.
+            """
+            response = cls._model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            _log_error("AI_PREVISAO_FALTA", e)
+            return "Não foi possível gerar a análise de faltas."
+
+    @classmethod
+    def extract_text_ocr(cls, file_bytes: bytes, filename: str) -> str:
+        """Extrai texto de imagem/PDF usando visão da IA (OCR)."""
+        if not cls._initialize():
+            return ""
+        try:
+            import base64
+            mime_type = "application/pdf" if filename.lower().endswith(".pdf") else "image/png"
+            img_data = base64.b64encode(file_bytes).decode("utf-8")
+            prompt = "Extraia todo o texto visível deste documento de forma fiel. Ignore marcas d'água."
+            try:
+                response = cls._model.generate_content([
+                    prompt,
+                    {"mime_type": mime_type, "data": img_data},
+                ])
+            except Exception:
+                response = cls._model.generate_content(prompt)
+            return response.text if response else ""
+        except Exception as e:
+            _log_error("AI_OCR", e)
+            return ""
+
+    @classmethod
+    def clinical_draft_receipt(cls, especialidade: str, queixa: str) -> str:
+        """Gera rascunho de prescrição/atestado baseado em especialidade e queixa."""
+        if not cls._initialize():
+            return "IA não disponível."
+        try:
+            prompt = f"""
+            Você é um profissional de saúde redigindo documentos clínicos.
+            Gere um rascunho de prescrição médica para:
+            Especialidade: {especialidade}
+            Queixa/contexto: {queixa}
+
+            Inclua: medicamentos com dosagem sugerida, orientações de uso e alertas.
+            Lembre-se: é apenas um rascunho, o médico deve revisar antes de assinar.
+            """
+            response = cls._model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            _log_error("AI_RASCUNHO_RECEITA", e)
+            return "Não foi possível gerar o rascunho."

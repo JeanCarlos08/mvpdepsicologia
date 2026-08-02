@@ -5,7 +5,7 @@ import os
 import base64
 import pathlib
 import urllib.parse
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from enum import Enum
 import pandas as pd
 import plotly.express as px
@@ -31,6 +31,79 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent
 DATE_FORMAT = "%d/%m/%Y"
 TIME_FORMAT = "%H:%M"
 PRIMARY_ACCENT = "#4DA768"
+
+# ── TEMAS PREMIUM (1 clique) ──
+# Cada tema define: acento (sidebar/botões), fundo principal, fundo dos cards, texto dos cards
+PREMIUM_THEMES = {
+    "Verde Clínica": {"accent": "#1E7A46", "bg": "#73C883", "card_bg": "#ffffff", "card_text": "#ffffff"},
+    "Azul Saúde":   {"accent": "#1D5FA8", "bg": "#5FA8D3", "card_bg": "#ffffff", "card_text": "#ffffff"},
+    "Roxo Psicologia": {"accent": "#6C3FA8", "bg": "#9B7BD6", "card_bg": "#ffffff", "card_text": "#ffffff"},
+    "Vinho":        {"accent": "#8A1F3D", "bg": "#C24A6B", "card_bg": "#ffffff", "card_text": "#ffffff"},
+    "Petróleo":     {"accent": "#124A5B", "bg": "#2E7A8A", "card_bg": "#ffffff", "card_text": "#ffffff"},
+    "Cinza Executive": {"accent": "#37474F", "bg": "#607D8B", "card_bg": "#ffffff", "card_text": "#ffffff"},
+}
+
+# ── BADGES DE STATUS (pills coloridas) ──
+BADGE_STYLES = {
+    "Agendado":   {"bg": "#E8F4FD", "fg": "#1D5FA8"},
+    "Atendido":   {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Concluído":  {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Cancelado":  {"bg": "#FDE8EB", "fg": "#B03045"},
+    "Pendente":   {"bg": "#FFF4E0", "fg": "#B4791F"},
+    "Pago":       {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Atrasado":   {"bg": "#FDE8EB", "fg": "#B03045"},
+    "Check-in":   {"bg": "#FFF4E0", "fg": "#B4791F"},
+    "Em Atendimento": {"bg": "#E3F0FF", "fg": "#1D5FA8"},
+    "Reagendado": {"bg": "#FFF9E0", "fg": "#8A6D1F"},
+    "Presente":   {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Ausente":    {"bg": "#FDE8EB", "fg": "#B03045"},
+    "Ativo":      {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Inativo":    {"bg": "#ECECF0", "fg": "#5A5A66"},
+    "Online":     {"bg": "#E7F9EE", "fg": "#1E7A46"},
+    "Offline":    {"bg": "#ECECF0", "fg": "#5A5A66"},
+}
+
+def status_badge(status):
+    """Gera uma pill colorida para exibir status em tabelas e cards."""
+    style = BADGE_STYLES.get(str(status), {"bg": "#ECECF0", "fg": "#5A5A66"})
+    return (
+        f"<span style='display:inline-block;padding:3px 12px;border-radius:999px;"
+        f"font-size:0.72rem;font-weight:700;letter-spacing:0.4px;"
+        f"background:{style['bg']};color:{style['fg']};"
+        f"border:1px solid {style['bg']};'>{status}</span>"
+    )
+
+def empty_state(icon, title, message):
+    """Empty state premium: ícone grande + texto acolhedor."""
+    st.markdown(
+        f"""
+        <div style="text-align:center;padding:3.5rem 1.5rem;margin:0.5rem 0;
+                    background:rgba(255,255,255,0.05);
+                    border:1.5px dashed rgba(255,255,255,0.25);
+                    border-radius:24px;">
+            <div style="font-size:3.2rem;margin-bottom:0.8rem;filter:grayscale(0.2);">{icon}</div>
+            <div style="font-size:1.15rem;font-weight:700;color:rgba(255,255,255,0.92);">{title}</div>
+            <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:4px;max-width:460px;margin-left:auto;margin-right:auto;">{message}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+AGENDA_MEDICOS = ["Dr(a). Cláudia", "Dr(a). Ana", "Dr(a). Carlos", "Dr(a). Beatriz"]
+
+def _parse_data(valor):
+    """Converte valor de data (str 'DD/MM/YYYY', 'YYYY-MM-DD', date, datetime) para date."""
+    try:
+        if isinstance(valor, datetime):
+            return valor.date()
+        if isinstance(valor, date):
+            return valor
+        texto = str(valor).strip()
+        if "-" in texto:
+            return pd.to_datetime(texto, errors="coerce").date()
+        return pd.to_datetime(texto, dayfirst=True, errors="coerce").date()
+    except Exception:
+        return date(1900, 1, 1)
 
 class ModalidadeAtendimento(Enum):
     ADMISSIONAL = "Admissional"
@@ -601,49 +674,51 @@ def verificar_conexao():
     return db.verificar_conexao()
 
 def generate_pdf_report(df):
+    from fpdf.enums import XPos, YPos
+
     class PDF(FPDF):
         def header(self):
-            self.set_font('Arial', 'B', 16)
-            self.cell(0, 10, 'Relatório de Atendimentos', 0, 1, 'C')
+            self.set_font('Helvetica', 'B', 16)
+            self.cell(0, 10, 'Relatório de Atendimentos', align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(5)
-            self.set_font('Arial', 'I', 10)
-            self.cell(0, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
+            self.set_font('Helvetica', 'I', 10)
+            self.cell(0, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', align='R', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(5)
 
         def footer(self):
             self.set_y(-15)
-            self.set_font('Arial', 'I', 8)
-            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+            self.set_font('Helvetica', 'I', 8)
+            self.cell(0, 10, f'Página {self.page_no()}', align='C')
 
     pdf = PDF('L', 'mm', 'A4')
     pdf.add_page()
-    pdf.set_font("Arial", size=10)
+    pdf.set_font("Helvetica", size=10)
 
     # Columns to export
-    cols = ["Empresa", "Nome", "Modalidade", "Data", "Hora", "Status"]
-    
+    cols = ["Nº", "Empresa", "Nome", "Modalidade", "Data", "Hora", "Status"]
+
     # Column widths adjusted for A4 Landscape (~277mm usable width)
-    # Total width: 70 + 70 + 45 + 25+ 22 + 40 = 272
-    widths = [70, 70, 45, 25, 22, 40] 
+    # Total width: 12 + 68 + 68 + 42 + 25 + 22 + 40 = 277
+    widths = [12, 68, 68, 42, 25, 22, 40]
 
     # Header
-    pdf.set_font("Arial", 'B', 10)
+    pdf.set_font("Helvetica", 'B', 10)
     for i, col in enumerate(cols):
-        pdf.cell(widths[i], 10, col, 1, 0, 'C')
+        pdf.cell(widths[i], 10, col, 1, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
     pdf.ln()
 
     # Rows — font size 8 for data to ensure text fits inside fixed-width columns
-    pdf.set_font("Arial", size=8)
-    
+    pdf.set_font("Helvetica", size=8)
+
     def safe_cell_text(text):
         try:
             return str(text).encode('latin-1', 'replace').decode('latin-1')
-        except:
+        except Exception:
             return str(text)
 
     for index, row in df.iterrows():
         try:
-            # Fixed width cells with safe truncation (28 chars max for 70mm at 8pt)
+            num_txt = safe_cell_text(str(index + 1))
             empresa_txt = safe_cell_text(str(row['Empresa']).strip()[:28])
             nome_txt = safe_cell_text(str(row['Nome']).strip()[:28])
             modal_txt = safe_cell_text(str(row['Modalidade']).strip()[:20])
@@ -651,14 +726,15 @@ def generate_pdf_report(df):
             hora_txt = safe_cell_text(str(row['Hora']).strip())
             status_txt = safe_cell_text(str(row['Status']).strip())
 
-            pdf.cell(widths[0], 8, empresa_txt, 1, 0, 'L')
-            pdf.cell(widths[1], 8, nome_txt, 1, 0, 'L')
-            pdf.cell(widths[2], 8, modal_txt, 1, 0, 'L')
-            pdf.cell(widths[3], 8, data_txt, 1, 0, 'C')
-            pdf.cell(widths[4], 8, hora_txt, 1, 0, 'C')
-            pdf.cell(widths[5], 8, status_txt, 1, 0, 'C')
+            pdf.cell(widths[0], 8, num_txt, 1, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[1], 8, empresa_txt, 1, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[2], 8, nome_txt, 1, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[3], 8, modal_txt, 1, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[4], 8, data_txt, 1, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[5], 8, hora_txt, 1, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
+            pdf.cell(widths[6], 8, status_txt, 1, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
             pdf.ln()
-                
+
         except Exception:
             pass
 
@@ -678,11 +754,58 @@ class AtendimentoData:
 class DashboardPage:
     @staticmethod
     def render() -> None:
-        render_page_header("🩺 Gestão Clínica", "Dashboard Executivo — Indicadores e métricas principais do sistema", inverse=True)
         conn_ok = verificar_conexao()
-        st.info(f"🗄️ Status do Sistema: {'Conectado ao Postgres' if conn_ok else 'Desconectado'}")
+        accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
+        is_dark = st.session_state.get('premium_dark_mode', False)
+        hora = datetime.now().hour
+        saudacao = "Bom dia" if hora < 12 else ("Boa tarde" if hora < 18 else "Boa noite")
+        usuario = st.session_state.get('user_name', 'Admin')
+        nome_exibido = str(usuario).split('@')[0].replace('.', ' ').title() if usuario not in ('Admin', 'admin', 'guest') else "Profissional"
+        data_pt = datetime.now().strftime("%A, %d de %B de %Y")
+        dia_semana = {"Monday": "Segunda-feira", "Tuesday": "Terça-feira", "Wednesday": "Quarta-feira",
+                      "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"}.get(datetime.now().strftime("%A"), "")
+        mes_pt = {"January": "janeiro", "February": "fevereiro", "March": "março", "April": "abril",
+                  "May": "maio", "June": "junho", "July": "julho", "August": "agosto",
+                  "September": "setembro", "October": "outubro", "November": "novembro", "December": "dezembro"}.get(datetime.now().strftime("%B"), "")
+        data_pt = f"{dia_semana}, {datetime.now().day} de {mes_pt} de {datetime.now().year}"
+        hora_pt = datetime.now().strftime("%H:%M")
+        status_html = status_badge("Online" if conn_ok else "Offline")
+        status_label = "Postgres conectado" if conn_ok else "Banco indisponível"
+        overlay = "rgba(0,0,0,0.28)" if is_dark else "rgba(255,255,255,0.10)"
+        st.markdown(
+            f"""
+            <div style="
+                background: linear-gradient(120deg, {accent} 0%, {accent}CC 55%, {accent}88 100%);
+                border: 1px solid rgba(255,255,255,0.18);
+                border-radius: 24px;
+                padding: 2rem 2.2rem;
+                margin-bottom: 1.4rem;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.25);
+                position: relative;
+                overflow: hidden;
+            ">
+                <div style="position:absolute;top:-40px;right:-30px;font-size:8rem;opacity:0.10;transform:rotate(-12deg);">🩺</div>
+                <div style="position:relative;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <p style="font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+                                      color:rgba(255,255,255,0.75);margin:0 0 6px 0;">Dashboard Executivo</p>
+                            <h1 style="margin:0;font-size:2.1rem;font-weight:800;color:#fff;
+                                       letter-spacing:-1px;">{saudacao}, {nome_exibido} 👋</h1>
+                            <p style="font-size:0.9rem;color:rgba(255,255,255,0.85);margin:6px 0 0 0;font-weight:500;">
+                                📅 {data_pt} &nbsp;•&nbsp; 🕐 {hora_pt}</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <div>{status_html}</div>
+                            <p style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin:6px 0 0 0;">{status_label}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         st.caption("PostgreSQL | IA Assistente | Gestão Clínica")
-        st.divider()
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
@@ -726,7 +849,7 @@ class DashboardPage:
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.info(dicas)
         else:
-            st.info("✨ Painel vazio. Cadastre seu primeiro atendimento para ver a mágica acontecer!")
+            empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
         if stats.get("modalidades") and total_appointments > 0:
             vals = list(stats["modalidades"].values())
@@ -736,6 +859,58 @@ class DashboardPage:
             fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
             fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
             st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### 🏢 Atendimentos por Empresa")
+        st.caption("Filtre por período (mês, dia e ano) para ver quantos atendimentos cada empresa possui.")
+        dcol1, dcol2, dcol3, dcol4 = st.columns(4)
+        with dcol1:
+            d_ano = st.selectbox("Ano", sorted({pd.to_datetime(str(a[4]), dayfirst=True, errors='coerce').year for a in appointments if a[4]}, reverse=True) or [date.today().year], key="dash_pie_ano")
+        with dcol2:
+            d_mes = st.selectbox("Mês", list(range(1, 13)), index=date.today().month - 1, format_func=lambda m: f"{m:02d}", key="dash_pie_mes")
+        with dcol3:
+            d_dia = st.selectbox("Dia", list(range(1, 32)), index=date.today().day - 1, key="dash_pie_dia")
+        with dcol4:
+            opcao = st.selectbox("Período", ["Dia específico", "Mês inteiro", "Ano inteiro"], key="dash_pie_periodo")
+
+        def _dt_empresa(a):
+            try:
+                return pd.to_datetime(str(a[4]), dayfirst=True, errors='coerce')
+            except Exception:
+                return pd.NaT
+
+        dados_filtrados = []
+        for a in appointments:
+            if len(a) < 2 or not a[1]:
+                continue
+            dt = _dt_empresa(a)
+            if dt is pd.NaT or pd.isna(dt):
+                continue
+            if opcao == "Dia específico":
+                if dt.year == d_ano and dt.month == d_mes and dt.day == d_dia:
+                    dados_filtrados.append(a[1])
+            elif opcao == "Mês inteiro":
+                if dt.year == d_ano and dt.month == d_mes:
+                    dados_filtrados.append(a[1])
+            else:
+                if dt.year == d_ano:
+                    dados_filtrados.append(a[1])
+
+        if dados_filtrados:
+            emp_counts = pd.Series(dados_filtrados).value_counts()
+            fig2 = px.pie(values=emp_counts.values, names=emp_counts.index, title=f"Atendimentos por Empresa ({opcao})",
+                          color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784'])
+            fig2.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
+            fig2.update_layout(legend_title_text="Empresa", height=440, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
+            st.plotly_chart(fig2, use_container_width=True)
+            st.markdown("#### 📊 Resumo por Empresa")
+            resumo = pd.DataFrame({
+                "Empresa": emp_counts.index,
+                "Atendimentos": emp_counts.values
+            }).reset_index(drop=True)
+            st.dataframe(resumo, use_container_width=True, hide_index=True)
+        else:
+            empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o filtro acima.")
 
 class AppointmentsPage:
     @staticmethod
@@ -875,14 +1050,14 @@ class AppointmentsPage:
                         resultados.append(r)
 
                 if not resultados:
-                    st.warning("Nenhum atendimento encontrado para essa busca.")
+                    empty_state("🔎", "Nenhum resultado", "Não encontramos atendimentos para essa busca. Tente ajustar os filtros.")
                 else:
                     st.success(f"{len(resultados)} atendimento(s) encontrado(s).")
                     for r_edit in resultados:
                         aid_e = r_edit[0]
                         lbl = f"#{aid_e} — {r_edit[2]} | {r_edit[1]} | {r_edit[3]}"
                         with st.container(border=True):
-                            st.markdown(f"**{lbl}**")
+                            st.markdown(f"**{lbl}** &nbsp; {status_badge(str(r_edit[8]) if len(r_edit) > 8 else '')}", unsafe_allow_html=True)
                             if st.button("✏️ Editar este atendimento", key=f"ed_btn_{aid_e}", use_container_width=True):
                                 st.session_state[f"edit_open_{aid_e}"] = True
                             if st.session_state.get(f"edit_open_{aid_e}"):
@@ -940,7 +1115,7 @@ class AppointmentsPage:
     def _render_table(filters):
         appointments = DatabaseManager.get_all_appointments()
         if not appointments:
-            st.info("Nenhum atendimento encontrado.")
+            empty_state("📋", "Nenhum atendimento", "Cadastre um novo atendimento para começar a listagem.")
             return
 
         df = pd.DataFrame(
@@ -1075,7 +1250,7 @@ class AppointmentsPage:
                             st.success("Parecer gerado com sucesso!")
                             st.text_area("Rascunho Final (Copie para o Word)", value=draft, height=400, key=f"draft_{sel_id}")
             else:
-                st.info("Nenhum atendimento na tabela.")
+                empty_state("🗂️", "Tabela vazia", "Não há atendimentos cadastrados para exibir.")
 
 
         with st.expander("📎 Gerenciar por atendimento (visualizar/download/editar/status/exportar)", expanded=False):
@@ -1461,6 +1636,1092 @@ def _build_html_attendance_summary(row_tuple):
 """
         return html
 
+class AgendaPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("📅 Agenda", "Agendamentos, fila de espera, triagem e teleconsulta")
+
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🗓️ Agenda do Dia", "➕ Agendar", "🩺 Triagem", "⏳ Fila de Espera", "🎥 Teleconsulta"])
+
+        pacientes = db.listar_pacientes()
+
+        with tab1:
+            st.markdown("### 🗓️ Agenda")
+            col_a1, col_a2 = st.columns([2, 2])
+            with col_a1:
+                data_sel = st.date_input("Data", value=date.today(), key="agenda_data")
+            with col_a2:
+                medico_sel = st.selectbox("Médico", ["Todos"] + AGENDA_MEDICOS, key="agenda_medico")
+
+            filtro_medico = None if medico_sel == "Todos" else medico_sel
+            agendamentos = db.listar_agendamentos(data=data_sel.strftime("%Y-%m-%d"), medico=filtro_medico)
+
+            if not agendamentos:
+                empty_state("🗓️", "Agenda vazia", "Não há agendamentos para esta data. Adicione um novo abaixo.")
+            else:
+                horarios = []
+                for ag in sorted(agendamentos, key=lambda x: str(x["hora"])):
+                    status = ag["status"]
+                    cor = {"Agendado": "#E8F4FD", "Check-in": "#FFF4E6", "Em Atendimento": "#E6F9E6",
+                           "Concluído": "#F0F0F0", "Cancelado": "#FDECEA", "Reagendado": "#FFF8E1"}.get(status, "#FFFFFF")
+                    horario = str(ag["hora"])[:5]
+                    nome = ag["paciente_nome"] or f"Paciente #{ag['paciente_id']}"
+                    medico = ag["medico"]
+                    empresa = ag["empresa"] or ""
+                    horarios.append(f"""
+                    <div style='display:flex;align-items:center;gap:12px;background:{cor};
+                         border-radius:8px;padding:10px 14px;margin:4px 0;border-left:4px solid #4A90D9'>
+                        <span style='font-weight:700;font-size:1.1rem;min-width:52px;color:#1a1a1a'>{horario}</span>
+                        <span style='font-weight:600;color:#1a1a1a'>{nome}</span>
+                        <span style='color:#555;font-size:0.85rem'>• {medico} • {empresa}</span>
+                        <span style='margin-left:auto;'>{status_badge(status)}</span>
+                    </div>""")
+                st.markdown("".join(horarios), unsafe_allow_html=True)
+
+                st.markdown("### ⚙️ Ações do Agendamento")
+                opcoes_ag = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({str(a['hora'])[:5]}) {a['status']}": a["id"] for a in agendamentos}
+                sel_ag = st.selectbox("Selecione o agendamento", list(opcoes_ag.keys()), key="agenda_sel_acao")
+                ag_id = opcoes_ag[sel_ag]
+                ac1, ac2, ac3, ac4, ac5 = st.columns(5)
+                with ac1:
+                    if st.button("✅ Check-in", key=f"ag_chk_{ag_id}"):
+                        db.marcar_checkin(ag_id)
+                        st.rerun()
+                with ac2:
+                    if st.button("🩺 Em Atend.", key=f"ag_atd_{ag_id}"):
+                        db.atualizar_agendamento(ag_id, {"status": "Em Atendimento"})
+                        st.rerun()
+                with ac3:
+                    if st.button("✅ Concluir", key=f"ag_conc_{ag_id}"):
+                        db.atualizar_agendamento(ag_id, {"status": "Concluído"})
+                        st.rerun()
+                with ac4:
+                    if st.button("📅 Reagendar", key=f"ag_rea_{ag_id}"):
+                        st.session_state["reagendar_ag_id"] = ag_id
+                        st.session_state["aba_agenda"] = "Agendar"
+                        st.rerun()
+                with ac5:
+                    if st.button("✖ Cancelar", key=f"ag_canc_{ag_id}"):
+                        db.cancelar_agendamento(ag_id)
+                        st.rerun()
+
+                # Totais do dia
+                totais = {}
+                for a in agendamentos:
+                    totais[a["status"]] = totais.get(a["status"], 0) + 1
+                st.caption(" | ".join(f"{k}: {v}" for k, v in totais.items()))
+
+        with tab2:
+            st.markdown("### ➕ Novo Agendamento")
+            r_ag_id = st.session_state.get("reagendar_ag_id")
+            reagendando = db.obter_agendamento(r_ag_id) if r_ag_id else None
+            if reagendando:
+                st.info(f"Reagendando: #{reagendando['id']} — {reagendando['paciente_nome']} em {reagendando['data']} às {str(reagendando['hora'])[:5]}")
+            else:
+                st.session_state.pop("reagendar_ag_id", None)
+
+            n1, n2 = st.columns(2)
+            with n1:
+                nomes = {p["nome"]: p["id"] for p in pacientes}
+                if nomes:
+                    sel_nome = st.selectbox("Paciente *", list(nomes.keys()), key="ag_paciente")
+                    pac_id = nomes[sel_nome]
+                    pac = db.obter_paciente(pac_id)
+                    empresa_sugerida = pac.get("empresa") if pac else None
+                else:
+                    sel_nome = None
+                    pac_id = None
+                    empresa_sugerida = None
+                ag_empresa = st.text_input("Empresa", value=empresa_sugerida or "", key="ag_empresa")
+                ag_medico = st.selectbox("Médico *", AGENDA_MEDICOS, key="ag_medico")
+            with n2:
+                ag_data = st.date_input("Data *", value=date.today(), key="ag_data")
+                ag_hora = st.time_input("Horário *", value=time(9, 0), key="ag_hora")
+                ag_tipo = st.selectbox("Tipo", ["Consulta", "Retorno", "Triagem", "Teleconsulta", "Procedimento"], key="ag_tipo")
+                ag_duracao = st.selectbox("Duração", [30, 50, 60, 90, 120], index=1, format_func=lambda x: f"{x} min", key="ag_duracao")
+
+            ag_especialidade = st.text_input("Especialidade", key="ag_especialidade", placeholder="Ex: Psicologia Clínica")
+            ag_obs = st.text_area("Observações", key="ag_obs")
+
+            if st.button("💾 Salvar Agendamento", type="primary", key="ag_salvar", use_container_width=True):
+                if not sel_nome:
+                    st.error("Cadastre um paciente antes de agendar.")
+                else:
+                    hora_str = ag_hora.strftime("%H:%M")
+                    conflito = db.verificar_conflito(ag_medico, ag_data.strftime("%Y-%m-%d"), hora_str, int(ag_duracao), excluir_id=r_ag_id)
+                    if conflito:
+                        st.error(f"⚠️ Conflito de horário: {ag_medico} já possui atendimento nesse horário. Escolha outro horário.")
+                    else:
+                        dados = {
+                            "paciente_id": pac_id,
+                            "paciente_nome": sel_nome,
+                            "empresa": ag_empresa.strip() or None,
+                            "medico": ag_medico,
+                            "especialidade": ag_especialidade.strip() or None,
+                            "data": ag_data.strftime("%Y-%m-%d"),
+                            "hora": hora_str,
+                            "hora_fim": db._somar_minutos_hora(hora_str, int(ag_duracao)),
+                            "duracao_min": int(ag_duracao),
+                            "tipo": ag_tipo,
+                            "observacoes": ag_obs.strip() or None,
+                        }
+                        if reagendando:
+                            dados["status"] = "Agendado"
+                            ok = db.atualizar_agendamento(r_ag_id, dados)
+                            msg = "Agendamento reagendado com sucesso!"
+                            if ok:
+                                db.criar_lembretes_agendamento(r_ag_id)
+                        else:
+                            novo_id = db.inserir_agendamento(dados)
+                            ok = novo_id is not None
+                            msg = "Agendamento criado com sucesso!"
+                            if ok:
+                                db.criar_lembretes_agendamento(novo_id)
+                        if ok:
+                            st.toast(msg, icon="✅")
+                            security.log_access("ADD_AGENDAMENTO", f"{sel_nome} - {ag_data} {hora_str}")
+                            st.session_state.pop("reagendar_ag_id", None)
+                            st.rerun()
+                        else:
+                            st.error("Erro ao salvar agendamento.")
+
+        with tab3:
+            st.markdown("### 🩺 Triagem Pré-Atendimento")
+            agendamentos_triagem = db.listar_agendamentos(data=date.today().strftime("%Y-%m-%d"))
+            if agendamentos_triagem:
+                opcoes_t = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({str(a['hora'])[:5]})": a["id"] for a in agendamentos_triagem}
+                sel_t = st.selectbox("Agendamento", list(opcoes_t.keys()), key="tri_sel")
+                t_id = opcoes_t[sel_t]
+                ag_t = db.obter_agendamento(t_id)
+            else:
+                t_id = None
+                ag_t = None
+                empty_state("🗓️", "Sem agendamentos hoje", "Preencha os dados abaixo manualmente para registrar um agendamento.")
+
+            t1, t2, t3 = st.columns(3)
+            with t1:
+                t_peso = st.number_input("Peso (kg)", min_value=0.0, step=0.1, key="tri_peso")
+                t_pressao = st.text_input("Pressão arterial", placeholder="120/80", key="tri_pressao")
+                t_saturacao = st.number_input("Saturação (%)", min_value=0.0, step=0.1, key="tri_sat")
+            with t2:
+                t_altura = st.number_input("Altura (m)", min_value=0.0, step=0.01, key="tri_altura")
+                t_temp = st.number_input("Temperatura (°C)", min_value=0.0, step=0.1, key="tri_temp")
+                t_glicemia = st.number_input("Glicemia (mg/dL)", min_value=0, step=1, key="tri_glic")
+            with t3:
+                t_fc = st.number_input("Freq. cardíaca (bpm)", min_value=0, step=1, key="tri_fc")
+                t_grav = st.selectbox("Gravidade", ["Normal", "Prioritário", "Urgente"], key="tri_grav")
+            t_queixa = st.text_area("Queixa principal", key="tri_queixa")
+            t_hist = st.text_area("Histórico resumido", key="tri_hist")
+            t_obs = st.text_area("Observações", key="tri_obs")
+
+            if st.button("💾 Salvar Triagem", type="primary", key="tri_salvar", use_container_width=True):
+                dados_t = {
+                    "agendamento_id": t_id,
+                    "paciente_id": ag_t["paciente_id"] if ag_t else None,
+                    "data": date.today().strftime("%Y-%m-%d"),
+                    "peso": t_peso or None, "altura": t_altura or None,
+                    "pressao": t_pressao.strip() or None, "temperatura": t_temp or None,
+                    "freq_cardiaca": t_fc or None, "saturacao": t_saturacao or None,
+                    "glicemia": t_glicemia or None, "queixa_principal": t_queixa.strip() or None,
+                    "historico_resumido": t_hist.strip() or None, "observacoes": t_obs.strip() or None,
+                    "gravidade": t_grav, "avaliado_por": st.session_state.get("user_name", ""),
+                }
+                ok = db.salvar_triagem(dados_t)
+                if ok:
+                    st.toast("Triagem salva!", icon="✅")
+                    st.rerun()
+                else:
+                    st.error("Erro ao salvar triagem.")
+
+            triagens_hoje = db.listar_triagens(data=date.today().strftime("%Y-%m-%d"))
+            if triagens_hoje:
+                st.markdown("#### Triagens de hoje")
+                df_tri = pd.DataFrame([{
+                    "Hora": str(t["hora"])[:5] if t["hora"] else "",
+                    "Médico": t["medico"] or "",
+                    "Peso": t["peso"] or "", "PA": t["pressao"] or "",
+                    "FC": t["freq_cardiaca"] or "", "Sat": t["saturacao"] or "",
+                    "Gravidade": t["gravidade"] or "",
+                } for t in triagens_hoje])
+                st.dataframe(df_tri, use_container_width=True, hide_index=True)
+
+        with tab4:
+            st.markdown("### ⏳ Fila de Espera")
+            fc1, fc2 = st.columns(2)
+            with fc1:
+                fe_nome = st.text_input("Nome do paciente *", key="fe_nome")
+                fe_empresa = st.text_input("Empresa", key="fe_empresa")
+            with fc2:
+                fe_prior = st.selectbox("Prioridade", ["Normal", "Prioritário", "Urgente"], key="fe_prior")
+                fe_obs = st.text_input("Observações", key="fe_obs")
+            if st.button("➕ Entrar na Fila", type="primary", key="fe_add"):
+                if not fe_nome.strip():
+                    st.error("Informe o nome do paciente.")
+                else:
+                    ok = db.entrar_fila_espera(fe_nome.strip(), fe_empresa.strip() or None,
+                                               date.today().strftime("%Y-%m-%d"),
+                                               datetime.datetime.now().strftime("%H:%M"), fe_prior, fe_obs.strip() or None)
+                    if ok:
+                        st.toast("Paciente na fila!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao entrar na fila.")
+
+            fila = db.listar_fila_espera()
+            if not fila:
+                st.info("Fila de espera vazia hoje.")
+            else:
+                st.markdown("#### Fila atual")
+                for i, f in enumerate(fila, start=1):
+                    cor = {"Urgente": "#FDECEA", "Prioritário": "#FFF4E6", "Normal": "#E8F4FD"}.get(f["prioridade"], "#FFFFFF")
+                    st.markdown(f"""
+                    <div style='display:flex;align-items:center;gap:10px;background:{cor};
+                         border-radius:8px;padding:8px 12px;margin:3px 0;border-left:4px solid #4A90D9'>
+                        <span style='font-weight:700;color:#4A90D9'>{i}.</span>
+                        <span style='font-weight:600;color:#1a1a1a'>{f['paciente_nome']}</span>
+                        <span style='color:#555;font-size:0.85rem'>• {f['hora_chegada']} • {f['prioridade']}</span>
+                        <span style='margin-left:auto;color:#888'>{f['status']}</span>
+                    </div>""", unsafe_allow_html=True)
+                st.markdown("#### Ações")
+                opcoes_f = {f"{f['id']} — {f['paciente_nome']} ({f['prioridade']})": f["id"] for f in fila}
+                sel_f = st.selectbox("Selecione", list(opcoes_f.keys()), key="fila_sel")
+                fid = opcoes_f[sel_f]
+                fa1, fa2, fa3 = st.columns(3)
+                with fa1:
+                    if st.button("🩺 Chamar / Em Atend.", key=f"fila_atd_{fid}"):
+                        db.atualizar_fila_espera(fid, "Em Atendimento")
+                        st.rerun()
+                with fa2:
+                    if st.button("✅ Finalizar", key=f"fila_fin_{fid}"):
+                        db.atualizar_fila_espera(fid, "Finalizado")
+                        st.rerun()
+                with fa3:
+                    if st.button("🗑️ Remover", key=f"fila_rm_{fid}"):
+                        db.remover_fila_espera(fid)
+                        st.rerun()
+
+        with tab5:
+            st.markdown("### 🎥 Teleconsulta")
+            tc1, tc2 = st.columns(2)
+            with tc1:
+                nomes_tc = {p["nome"]: p["id"] for p in pacientes}
+                sel_tc = st.selectbox("Paciente *", list(nomes_tc.keys()) if nomes_tc else [""], key="tc_paciente") if nomes_tc else None
+                pac_tc_id = nomes_tc.get(sel_tc) if nomes_tc else None
+                tc_medico = st.selectbox("Médico *", AGENDA_MEDICOS, key="tc_medico")
+                tc_data = st.date_input("Data *", value=date.today(), key="tc_data")
+                tc_hora = st.time_input("Horário *", value=time(14, 0), key="tc_hora")
+            with tc2:
+                tc_plataforma = st.selectbox("Plataforma", ["Google Meet", "Zoom", "Microsoft Teams", "WhatsApp"], key="tc_plat")
+                tc_link = st.text_input("Link da videochamada", key="tc_link", placeholder="https://meet.google.com/...")
+                tc_duracao = st.selectbox("Duração", [30, 50, 60], index=1, format_func=lambda x: f"{x} min", key="tc_duracao")
+                tc_obs = st.text_input("Observações", key="tc_obs")
+            if st.button("💾 Criar Teleconsulta", type="primary", key="tc_salvar", use_container_width=True):
+                if not sel_tc:
+                    st.error("Cadastre um paciente antes de criar teleconsulta.")
+                else:
+                    hora_str = tc_hora.strftime("%H:%M")
+                    ok = db.criar_teleconsulta({
+                        "paciente_id": pac_tc_id, "medico": tc_medico,
+                        "data": tc_data.strftime("%Y-%m-%d"), "hora": hora_str,
+                        "plataforma": tc_plataforma, "link": tc_link.strip() or None,
+                        "duracao_min": int(tc_duracao), "observacoes": tc_obs.strip() or None,
+                    })
+                    if ok:
+                        st.toast("Teleconsulta agendada!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao criar teleconsulta.")
+
+            teleconsultas = db.listar_teleconsulta(medico="Todos" if False else None)
+            if teleconsultas:
+                st.markdown("#### Teleconsultas agendadas")
+                df_tc = pd.DataFrame([{
+                    "Data": t["data"], "Hora": str(t["hora"])[:5], "Médico": t["medico"],
+                    "Paciente": t.get("paciente_nome") or f"#{t['paciente_id']}",
+                    "Plataforma": t["plataforma"], "Status": t["status"],
+                } for t in teleconsultas])
+                st.dataframe(df_tc, use_container_width=True, hide_index=True)
+
+class ClinicalDocsPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("📋 Documentos Clínicos", "Prescrições, atestados e encaminhamentos")
+
+        tab1, tab2, tab3 = st.tabs(["💊 Prescrições", "📄 Atestados", "➡️ Encaminhamentos"])
+
+        pacientes = db.listar_pacientes()
+        nomes_pac = {p["nome"]: p["id"] for p in pacientes}
+        medico_padrao = "Dr(a). Cláudia"
+
+        # ── Prescrições ──
+        with tab1:
+            st.markdown("### ➕ Nova Prescrição")
+            p1, p2 = st.columns(2)
+            with p1:
+                sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="presc_pac")
+                presc_medico = st.selectbox("Médico *", AGENDA_MEDICOS, index=0, key="presc_medico")
+                presc_data = st.date_input("Data *", value=date.today(), key="presc_data")
+            with p2:
+                presc_validade = st.number_input("Validade (dias)", min_value=1, max_value=90, value=10, key="presc_val")
+                presc_ass = st.checkbox("Assinatura digital", value=False, key="presc_ass")
+            presc_medic = st.text_area("💊 Medicamentos * (um por linha)", key="presc_medic",
+                                       placeholder="Sertralina 50mg — 1 comprimido pela manhã\nClonazepam 2mg — 1 comprimido à noite")
+            presc_orient = st.text_area("Orientações", key="presc_orient", placeholder="Tomar após o almoço. Não interromper sem orientação médica.")
+
+            if st.button("💾 Salvar Prescrição", type="primary", key="presc_salvar", use_container_width=True):
+                if not sel_nome or not presc_medic.strip():
+                    st.error("Informe o paciente e ao menos um medicamento.")
+                else:
+                    ok = db.inserir_prescricao({
+                        "paciente_id": nomes_pac.get(sel_nome),
+                        "paciente_nome": sel_nome,
+                        "medico": presc_medico,
+                        "data": presc_data.strftime("%Y-%m-%d"),
+                        "medicamentos": presc_medic.strip(),
+                        "orientacoes": presc_orient.strip() or None,
+                        "validade_dias": int(presc_validade),
+                        "assinatura_digital": presc_ass,
+                    })
+                    if ok:
+                        st.toast("Prescrição salva!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar prescrição.")
+
+            st.markdown("---")
+            st.markdown("### 🔎 Prescrições registradas")
+            filtro_presc = st.text_input("Filtrar por paciente/médico", key="presc_filtro")
+            prescricoes = db.listar_prescricoes(filtro=filtro_presc or None)
+            if not prescricoes:
+                st.info("Nenhuma prescrição encontrada.")
+            else:
+                df_presc = pd.DataFrame([{
+                    "ID": p["id"], "Paciente": p["paciente_nome"] or "",
+                    "Data": p["data"], "Médico": p["medico"],
+                    "Status": p["status"], "Assinatura": "✓" if p["assinatura_digital"] else "",
+                } for p in prescricoes])
+                st.dataframe(df_presc, use_container_width=True, hide_index=True)
+
+                with st.expander("📖 Ver detalhes de uma prescrição"):
+                    opcoes = {f"#{p['id']} — {p['paciente_nome'] or '?'} ({p['data']})": p["id"] for p in prescricoes}
+                    sel_p = st.selectbox("Prescrição", list(opcoes.keys()), key="presc_sel_det")
+                    det = db.obter_prescricao(opcoes[sel_p])
+                    if det:
+                        st.markdown(f"**Médico:** {det['medico']}  |  **Data:** {det['data']}  |  **Validade:** {det['validade_dias']} dias")
+                        st.markdown("**Medicamentos:**")
+                        st.code(det["medicamentos"], language=None)
+                        if det.get("orientacoes"):
+                            st.markdown(f"**Orientações:** {det['orientacoes']}")
+                    if st.button("🖨️ Gerar PDF da Prescrição", key=f"presc_pdf_{opcoes[sel_p]}"):
+                        _gerar_prescricao_pdf(det)
+                c_del1, c_del2 = st.columns(2)
+                with c_del1:
+                    opcoes_del = {f"#{p['id']} — {p['paciente_nome'] or '?'}": p["id"] for p in prescricoes}
+                    sel_del = st.selectbox("Excluir prescrição", list(opcoes_del.keys()), key="presc_sel_del")
+                    if st.button("🗑️ Excluir", key="presc_del_btn"):
+                        db.excluir_prescricao(opcoes_del[sel_del])
+                        st.rerun()
+
+        # ── Atestados ──
+        with tab2:
+            st.markdown("### ➕ Novo Atestado")
+            a1, a2 = st.columns(2)
+            with a1:
+                sel_nome_a = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="atest_pac")
+                atest_medico = st.selectbox("Médico *", AGENDA_MEDICOS, index=0, key="atest_medico")
+                atest_data = st.date_input("Data *", value=date.today(), key="atest_data")
+            with a2:
+                atest_tipo = st.selectbox("Tipo", ["Atestado médico", "Atestado de comparecimento", "Atestado de aptidão", "Atestado de afastamento"], key="atest_tipo")
+                atest_dias = st.number_input("Dias de afastamento", min_value=0, max_value=180, value=0, key="atest_dias")
+                atest_cid = st.text_input("CID", key="atest_cid", max_chars=20, placeholder="Ex: F41.2")
+            atest_diag = st.text_area("Diagnóstico / Justificativa", key="atest_diag")
+            atest_orient = st.text_area("Orientações", key="atest_orient")
+            atest_ass = st.checkbox("Assinatura digital", value=False, key="atest_ass")
+
+            if st.button("💾 Emitir Atestado", type="primary", key="atest_salvar", use_container_width=True):
+                if not sel_nome_a:
+                    st.error("Informe o paciente.")
+                else:
+                    ok = db.inserir_atestado({
+                        "paciente_id": nomes_pac.get(sel_nome_a),
+                        "paciente_nome": sel_nome_a,
+                        "medico": atest_medico,
+                        "data": atest_data.strftime("%Y-%m-%d"),
+                        "diagnostico": atest_diag.strip() or None,
+                        "cid": atest_cid.strip() or None,
+                        "dias_afastamento": int(atest_dias),
+                        "tipo": atest_tipo,
+                        "orientacoes": atest_orient.strip() or None,
+                        "assinatura_digital": atest_ass,
+                    })
+                    if ok:
+                        st.toast("Atestado emitido!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao emitir atestado.")
+
+            st.markdown("---")
+            st.markdown("### 🔎 Atestados registrados")
+            filtro_atest = st.text_input("Filtrar por paciente/CID", key="atest_filtro")
+            atestados = db.listar_atestados(filtro=filtro_atest or None)
+            if not atestados:
+                st.info("Nenhum atestado encontrado.")
+            else:
+                df_atest = pd.DataFrame([{
+                    "ID": a["id"], "Paciente": a["paciente_nome"] or "",
+                    "Data": a["data"], "Tipo": a["tipo"], "CID": a["cid"] or "",
+                    "Dias": a["dias_afastamento"] or 0, "Médico": a["medico"],
+                } for a in atestados])
+                st.dataframe(df_atest, use_container_width=True, hide_index=True)
+                with st.expander("📖 Ver detalhes de um atestado"):
+                    opcoes_a = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({a['data']})": a["id"] for a in atestados}
+                    sel_a = st.selectbox("Atestado", list(opcoes_a.keys()), key="atest_sel_det")
+                    det_a = db.obter_atestado(opcoes_a[sel_a])
+                    if det_a:
+                        st.markdown(f"**Paciente:** {det_a['paciente_nome']}  |  **Médico:** {det_a['medico']}  |  **Data:** {det_a['data']}")
+                        st.markdown(f"**Tipo:** {det_a['tipo']}  |  **CID:** {det_a['cid'] or '—'}  |  **Afastamento:** {det_a['dias_afastamento'] or 0} dias")
+                        if det_a.get("diagnostico"):
+                            st.markdown(f"**Diagnóstico:** {det_a['diagnostico']}")
+                    if st.button("🖨️ Gerar PDF do Atestado", key=f"atest_pdf_{opcoes_a[sel_a]}"):
+                        _gerar_atestado_pdf(det_a)
+                opcoes_del_a = {f"#{a['id']} — {a['paciente_nome'] or '?'}": a["id"] for a in atestados}
+                sel_del_a = st.selectbox("Excluir atestado", list(opcoes_del_a.keys()), key="atest_sel_del")
+                if st.button("🗑️ Excluir Atestado", key="atest_del_btn"):
+                    db.excluir_atestado(opcoes_del_a[sel_del_a])
+                    st.rerun()
+
+        # ── Encaminhamentos ──
+        with tab3:
+            st.markdown("### ➕ Novo Encaminhamento")
+            e1, e2 = st.columns(2)
+            with e1:
+                sel_nome_e = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="enc_pac")
+                enc_medico = st.selectbox("Médico *", AGENDA_MEDICOS, index=0, key="enc_medico")
+                enc_data = st.date_input("Data *", value=date.today(), key="enc_data")
+            with e2:
+                enc_esp = st.text_input("Especialidade *", key="enc_esp", placeholder="Ex: Psiquiatria")
+                enc_dest = st.text_input("Profissional de destino", key="enc_dest", placeholder="Ex: Dr. João Psiquiatra")
+                enc_urg = st.checkbox("⚠️ Urgente", value=False, key="enc_urg")
+                enc_ret = st.checkbox("Solicitar relatório de retorno", value=False, key="enc_ret")
+            enc_motivo = st.text_area("Motivo do encaminhamento", key="enc_motivo")
+
+            if st.button("💾 Emitir Encaminhamento", type="primary", key="enc_salvar", use_container_width=True):
+                if not sel_nome_e or not enc_esp.strip():
+                    st.error("Informe o paciente e a especialidade.")
+                else:
+                    ok = db.inserir_encaminhamento({
+                        "paciente_id": nomes_pac.get(sel_nome_e),
+                        "paciente_nome": sel_nome_e,
+                        "medico": enc_medico,
+                        "data": enc_data.strftime("%Y-%m-%d"),
+                        "especialidade": enc_esp.strip(),
+                        "profissional_destino": enc_dest.strip() or None,
+                        "motivo": enc_motivo.strip() or None,
+                        "urgente": enc_urg,
+                        "retorno_relatorio": enc_ret,
+                    })
+                    if ok:
+                        st.toast("Encaminhamento emitido!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao emitir encaminhamento.")
+
+            st.markdown("---")
+            st.markdown("### 🔎 Encaminhamentos registrados")
+            filtro_enc = st.text_input("Filtrar por paciente/especialidade", key="enc_filtro")
+            encaminhamentos = db.listar_encaminhamentos(filtro=filtro_enc or None)
+            if not encaminhamentos:
+                st.info("Nenhum encaminhamento encontrado.")
+            else:
+                df_enc = pd.DataFrame([{
+                    "ID": e["id"], "Paciente": e["paciente_nome"] or "",
+                    "Data": e["data"], "Especialidade": e["especialidade"],
+                    "Destino": e["profissional_destino"] or "", "Urgente": "⚠️" if e["urgente"] else "",
+                    "Status": e["status"],
+                } for e in encaminhamentos])
+                st.dataframe(df_enc, use_container_width=True, hide_index=True)
+                with st.expander("📖 Ver detalhes de um encaminhamento"):
+                    opcoes_e = {f"#{e['id']} — {e['paciente_nome'] or '?'} ({e['data']})": e["id"] for e in encaminhamentos}
+                    sel_e = st.selectbox("Encaminhamento", list(opcoes_e.keys()), key="enc_sel_det")
+                    det_e = db.obter_encaminhamento(opcoes_e[sel_e])
+                    if det_e:
+                        st.markdown(f"**Paciente:** {det_e['paciente_nome']}  |  **Médico:** {det_e['medico']}  |  **Data:** {det_e['data']}")
+                        st.markdown(f"**Especialidade:** {det_e['especialidade']}  |  **Destino:** {det_e['profissional_destino'] or '—'}")
+                        if det_e.get("motivo"):
+                            st.markdown(f"**Motivo:** {det_e['motivo']}")
+                    if st.button("🖨️ Gerar PDF do Encaminhamento", key=f"enc_pdf_{opcoes_e[sel_e]}"):
+                        _gerar_encaminhamento_pdf(det_e)
+                opcoes_del_e = {f"#{e['id']} — {e['paciente_nome'] or '?'}": e["id"] for e in encaminhamentos}
+                sel_del_e = st.selectbox("Excluir encaminhamento", list(opcoes_del_e.keys()), key="enc_sel_del")
+                if st.button("🗑️ Excluir Encaminhamento", key="enc_del_btn"):
+                    db.excluir_encaminhamento(opcoes_del_e[sel_del_e])
+                    st.rerun()
+
+
+def _gerar_prescricao_pdf(presc: dict) -> None:
+    """Gera PDF de prescrição usando fpdf2."""
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "PRESCRIÇÃO MÉDICA", ln=True, align="C")
+        pdf.ln(4)
+        pdf.set_draw_color(77, 167, 104)
+        pdf.set_line_width(0.8)
+        pdf.line(10, 26, 200, 26)
+        pdf.ln(6)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"Paciente: {presc.get('paciente_nome') or 'N/A'}", ln=True)
+        pdf.cell(0, 7, f"Médico: {presc.get('medico') or ''}", ln=True)
+        pdf.cell(0, 7, f"Data: {presc.get('data')}", ln=True)
+        pdf.cell(0, 7, f"Validade: {presc.get('validade_dias')} dias", ln=True)
+        if presc.get("assinatura_digital"):
+            pdf.cell(0, 7, "Assinatura digital: SIM", ln=True)
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 7, "Medicamentos:", ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 6, presc.get("medicamentos") or "")
+        if presc.get("orientacoes"):
+            pdf.ln(3)
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(0, 7, "Orientações:", ln=True)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 6, presc.get("orientacoes"))
+        pdf.ln(12)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"___________________________", ln=True, align="C")
+        pdf.cell(0, 7, presc.get("medico") or "", ln=True, align="C")
+        pdf.cell(0, 7, "Assinatura", ln=True, align="C")
+        _baixar_pdf_streamlit(pdf, f"prescricao_{presc.get('id', '')}.pdf")
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
+
+
+def _gerar_atestado_pdf(atest: dict) -> None:
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "ATESTADO MÉDICO", ln=True, align="C")
+        pdf.ln(4)
+        pdf.set_draw_color(77, 167, 104)
+        pdf.set_line_width(0.8)
+        pdf.line(10, 26, 200, 26)
+        pdf.ln(6)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"Paciente: {atest.get('paciente_nome') or 'N/A'}", ln=True)
+        pdf.cell(0, 7, f"Médico: {atest.get('medico') or ''}", ln=True)
+        pdf.cell(0, 7, f"Data: {atest.get('data')}", ln=True)
+        pdf.cell(0, 7, f"Tipo: {atest.get('tipo') or 'Atestado médico'}", ln=True)
+        pdf.cell(0, 7, f"CID: {atest.get('cid') or '—'}  |  Afastamento: {atest.get('dias_afastamento') or 0} dias", ln=True)
+        if atest.get("assinatura_digital"):
+            pdf.cell(0, 7, "Assinatura digital: SIM", ln=True)
+        pdf.ln(4)
+        if atest.get("diagnostico"):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(0, 7, "Diagnóstico / Justificativa:", ln=True)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 6, atest["diagnostico"])
+        if atest.get("orientacoes"):
+            pdf.ln(3)
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(0, 7, "Orientações:", ln=True)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 6, atest["orientacoes"])
+        pdf.ln(12)
+        pdf.cell(0, 7, "___________________________", ln=True, align="C")
+        pdf.cell(0, 7, atest.get("medico") or "", ln=True, align="C")
+        pdf.cell(0, 7, "Assinatura", ln=True, align="C")
+        _baixar_pdf_streamlit(pdf, f"atestado_{atest.get('id', '')}.pdf")
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
+
+
+def _gerar_encaminhamento_pdf(enc: dict) -> None:
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "ENCAMINHAMENTO MÉDICO", ln=True, align="C")
+        pdf.ln(4)
+        pdf.set_draw_color(77, 167, 104)
+        pdf.set_line_width(0.8)
+        pdf.line(10, 26, 200, 26)
+        pdf.ln(6)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"Paciente: {enc.get('paciente_nome') or 'N/A'}", ln=True)
+        pdf.cell(0, 7, f"Médico: {enc.get('medico') or ''}", ln=True)
+        pdf.cell(0, 7, f"Data: {enc.get('data')}", ln=True)
+        pdf.cell(0, 7, f"Especialidade: {enc.get('especialidade') or ''}", ln=True)
+        pdf.cell(0, 7, f"Profissional de destino: {enc.get('profissional_destino') or '—'}", ln=True)
+        if enc.get("urgente"):
+            pdf.cell(0, 7, "URGENTE", ln=True)
+        pdf.ln(4)
+        if enc.get("motivo"):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(0, 7, "Motivo:", ln=True)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 6, enc["motivo"])
+        pdf.ln(12)
+        pdf.cell(0, 7, "___________________________", ln=True, align="C")
+        pdf.cell(0, 7, enc.get("medico") or "", ln=True, align="C")
+        pdf.cell(0, 7, "Assinatura", ln=True, align="C")
+        _baixar_pdf_streamlit(pdf, f"encaminhamento_{enc.get('id', '')}.pdf")
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
+
+
+def _baixar_pdf_streamlit(pdf: FPDF, nome_arquivo: str) -> None:
+    """Dispara download do PDF gerado (buffer em memória)."""
+    import io as _io
+    buffer = _io.BytesIO()
+    pdf.output(buffer)
+    st.download_button(
+        label=f"⬇️ Baixar {nome_arquivo}",
+        data=buffer.getvalue(),
+        file_name=nome_arquivo,
+        mime="application/pdf",
+    )
+
+class CompaniesPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("🏢 Empresas", "Cadastro, convênios, contratos e faturamento")
+
+        # ── Alertas de contrato vencendo ──
+        try:
+            vencendo = db.listar_empresas_com_contrato_vencendo(30)
+            if vencendo:
+                for v in vencendo:
+                    venc = v.get("validade_contrato")
+                    st.warning(f"⚠️ Contrato de {v['nome']} {'venceu' if venc and venc < date.today() else 'vence em'} {venc}")
+        except Exception:
+            pass
+
+        tab1, tab2, tab3, tab4 = st.tabs(["🔍 Empresas", "➕ Nova Empresa", "📋 Convênios", "💰 Faturamento"])
+
+        with tab1:
+            st.markdown("### 🔎 Buscar Empresas")
+            col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
+            with col_f1:
+                busca = st.text_input("Buscar por Nome, CNPJ, Razão Social ou E-mail", key="emp_busca")
+            with col_f2:
+                so_ativas = st.checkbox("Somente ativas", value=False, key="emp_ativas")
+            with col_f3:
+                st.markdown("&nbsp;")
+                if st.button("🔍 Buscar", key="emp_buscar_btn", use_container_width=True):
+                    pass
+
+            empresas = db.listar_empresas(busca or None, ativas_apenas=so_ativas)
+            if not empresas:
+                st.info("Nenhuma empresa encontrada.")
+            else:
+                df_emp = pd.DataFrame([{
+                    "ID": e["id"],
+                    "Nome": e["nome"],
+                    "CNPJ": e["cnpj"] or "",
+                    "Responsável": e["responsavel"] or "",
+                    "Telefone": e["telefone"] or "",
+                    "Funcionários": e["quantidade_funcionarios"] or 0,
+                    "Plano": e["plano"] or "",
+                    "Contrato": e["validade_contrato"] or "",
+                    "Status": "Ativa" if e["ativo"] else "Inativa",
+                } for e in empresas])
+                st.dataframe(df_emp, use_container_width=True, hide_index=True, height=320)
+                st.caption(f"{len(empresas)} empresa(s) encontrada(s). Gerencie convênios e faturamento nas abas ao lado.")
+
+        with tab2:
+            st.markdown("### ➕ Cadastrar Nova Empresa")
+            c1, c2 = st.columns(2)
+            with c1:
+                e_nome = st.text_input("Nome da empresa *", key="ne_nome", max_chars=255)
+                e_cnpj = st.text_input("CNPJ", key="ne_cnpj", max_chars=30)
+                e_razao = st.text_input("Razão social", key="ne_razao", max_chars=255)
+                e_resp = st.text_input("Responsável legal", key="ne_resp", max_chars=255)
+            with c2:
+                e_tel = st.text_input("Telefone", key="ne_tel", max_chars=30)
+                e_email = st.text_input("E-mail", key="ne_email", max_chars=255)
+                e_end = st.text_input("Endereço", key="ne_end", max_chars=255)
+                e_qtd = st.number_input("Quantidade de funcionários", min_value=0, step=1, value=0, key="ne_qtd")
+            c3, c4 = st.columns(2)
+            with c3:
+                e_plano = st.text_input("Plano", key="ne_plano", max_chars=100, placeholder="Ex: Básico, Completo")
+                e_dt_contrato = st.date_input("Data do contrato", value=None, key="ne_dt_contrato")
+            with c4:
+                e_vl_contrato = st.date_input("Validade do contrato", value=None, key="ne_vl_contrato")
+            e_obs = st.text_area("Observações", key="ne_obs", max_chars=2000)
+
+            if st.button("💾 Salvar Empresa", type="primary", key="ne_salvar", use_container_width=True):
+                if not e_nome.strip():
+                    st.error("Preencha o campo Nome da empresa (obrigatório).")
+                else:
+                    duplicados = db.buscar_empresas_duplicadas(e_nome, e_cnpj)
+                    if duplicados:
+                        st.warning("⚠️ Possível duplicidade de cadastro encontrada:")
+                        for d in duplicados:
+                            st.warning(f"  • #{d['id']} — {d['nome']} ({d.get('cnpj') or 'sem CNPJ'})")
+                        st.error("Cadastro não realizado. Verifique se a empresa já existe.")
+                    else:
+                        dados = {
+                            "nome": e_nome.strip(),
+                            "cnpj": e_cnpj.strip() or None,
+                            "razao_social": e_razao.strip() or None,
+                            "endereco": e_end.strip() or None,
+                            "telefone": e_tel.strip() or None,
+                            "email": e_email.strip() or None,
+                            "responsavel": e_resp.strip() or None,
+                            "quantidade_funcionarios": int(e_qtd),
+                            "plano": e_plano.strip() or None,
+                            "data_contrato": e_dt_contrato,
+                            "validade_contrato": e_vl_contrato,
+                            "observacoes": e_obs.strip() or None,
+                            "ativo": True,
+                        }
+                        novo_id = db.inserir_empresa(dados)
+                        if novo_id:
+                            st.toast("Empresa cadastrada com sucesso!", icon="✅")
+                            security.log_access("ADD_EMPRESA", e_nome.strip())
+                            st.rerun()
+                        else:
+                            st.error("Erro ao cadastrar empresa.")
+
+        with tab3:
+            st.markdown("### 📋 Convênios por Empresa")
+            empresas_todas = db.listar_empresas()
+            if not empresas_todas:
+                st.info("Cadastre empresas na aba ➕ Nova Empresa.")
+            else:
+                opcoes = {f"#{e['id']} — {e['nome']}": e["id"] for e in empresas_todas}
+                sel = st.selectbox("Selecione a empresa", list(opcoes.keys()), key="conv_sel_emp")
+                eid = opcoes[sel]
+
+                st.markdown("#### ➕ Adicionar Convênio")
+                cc1, cc2 = st.columns(2)
+                with cc1:
+                    c_op = st.text_input("Operadora", key=f"conv_op_{eid}", max_chars=255, placeholder="Ex: Unimed")
+                    c_num = st.text_input("Número da carteira", key=f"conv_num_{eid}", max_chars=100)
+                with cc2:
+                    c_val = st.date_input("Validade", value=None, key=f"conv_val_{eid}")
+                c_obs = st.text_input("Observações", key=f"conv_obs_{eid}")
+                if st.button("➕ Salvar Convênio", type="primary", key=f"conv_add_{eid}"):
+                    if not c_op.strip():
+                        st.error("Informe a operadora.")
+                    else:
+                        ok = db.inserir_convenio(eid, {
+                            "operadora": c_op.strip(), "numero_carteira": c_num.strip() or None,
+                            "validade": c_val, "observacoes": c_obs.strip() or None,
+                        })
+                        if ok:
+                            st.toast("Convênio adicionado!", icon="✅")
+                            st.rerun()
+                        else:
+                            st.error("Erro ao salvar convênio.")
+
+                convenios = db.listar_convenios(eid)
+                if not convenios:
+                    st.info("Nenhum convênio cadastrado para esta empresa.")
+                else:
+                    df_conv = pd.DataFrame([{
+                        "Operadora": c["operadora"],
+                        "Nº Carteira": c["numero_carteira"] or "",
+                        "Validade": c["validade"] or "",
+                        "Obs": c["observacoes"] or "",
+                    } for c in convenios])
+                    st.dataframe(df_conv, use_container_width=True, hide_index=True)
+                    for c in convenios:
+                        if st.button(f"🗑️ Excluir {c['operadora']}", key=f"conv_del_{c['id']}"):
+                            db.excluir_convenio(c["id"])
+                            st.rerun()
+
+        with tab4:
+            st.markdown("### 💰 Faturamento por Empresa")
+            empresas_todas = db.listar_empresas()
+            if not empresas_todas:
+                st.info("Cadastre empresas na aba ➕ Nova Empresa.")
+            else:
+                opcoes = {f"#{e['id']} — {e['nome']}": e["id"] for e in empresas_todas}
+                sel = st.selectbox("Selecione a empresa", list(opcoes.keys()), key="fat_sel_emp")
+                eid = opcoes[sel]
+                emp = db.obter_empresa(eid)
+
+                total_atts = db.contar_atendimentos_empresa(emp["nome"]) if emp else 0
+                st.info(f"📊 **{emp['nome']}** — Total de atendimentos registrados: **{total_atts}**")
+
+                st.markdown("#### ➕ Lançar Faturamento")
+                fc1, fc2, fc3 = st.columns(3)
+                with fc1:
+                    f_ano = st.selectbox("Ano", list(range(date.today().year, date.today().year - 3, -1)), key=f"fat_ano_{eid}")
+                with fc2:
+                    f_mes = st.selectbox("Mês", list(range(1, 13)), format_func=lambda m: f"{m:02d}", key=f"fat_mes_{eid}")
+                with fc3:
+                    f_valor = st.number_input("Valor total (R$)", min_value=0.0, step=100.0, value=0.0, key=f"fat_valor_{eid}")
+                f_qtd = st.number_input("Quantidade de atendimentos", min_value=0, step=1, value=total_atts, key=f"fat_qtd_{eid}")
+                f_obs = st.text_input("Observações", key=f"fat_obs_{eid}")
+                if st.button("💾 Salvar Faturamento", type="primary", key=f"fat_save_{eid}"):
+                    ok = db.salvar_faturamento_empresa(eid, f_mes, f_ano, f_valor, int(f_qtd), f_obs.strip() or None)
+                    if ok:
+                        st.toast("Faturamento salvo!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar faturamento.")
+
+                faturas = db.listar_faturamento_empresa(eid, f_ano)
+                if faturas:
+                    df_fat = pd.DataFrame([{
+                        "Mês": f"{f['mes']:02d}/{f['ano']}",
+                        "Valor (R$)": float(f["valor_total"] or 0),
+                        "Atendimentos": f["quantidade_atendimentos"] or 0,
+                        "Obs": f["observacoes"] or "",
+                    } for f in faturas])
+                    st.dataframe(df_fat, use_container_width=True, hide_index=True)
+                    total_fat = sum(float(f["valor_total"] or 0) for f in faturas)
+                    st.success(f"💰 Total lançado no ano {f_ano}: **R$ {total_fat:,.2f}**")
+
+class PatientsPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("👥 Pacientes", "Prontuário eletrônico, anamnese e evolução clínica")
+
+        # ── Alertas de aniversário ──
+        try:
+            aniversariantes = db.listar_aniversariantes(date.today().day, date.today().month)
+            if aniversariantes:
+                nomes = ", ".join([a["nome"] for a in aniversariantes])
+                st.success(f"🎂 Aniversariantes de hoje: {nomes}")
+        except Exception:
+            pass
+
+        tab1, tab2, tab3 = st.tabs(["🔍 Consultar", "➕ Novo Paciente", "📂 Prontuário"])
+
+        with tab1:
+            st.markdown("### 🔎 Buscar Pacientes")
+            col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
+            with col_f1:
+                busca = st.text_input("Buscar por Nome, CPF, Telefone ou E-mail", key="pac_busca")
+            with col_f2:
+                so_ativos = st.checkbox("Somente ativos", value=False, key="pac_ativos")
+            with col_f3:
+                st.markdown("&nbsp;")
+                if st.button("🔍 Buscar", key="pac_buscar_btn", use_container_width=True):
+                    pass
+
+            pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
+            if not pacientes:
+                st.info("Nenhum paciente encontrado.")
+            else:
+                df_pac = pd.DataFrame([{
+                    "ID": p["id"],
+                    "Nome": p["nome"],
+                    "CPF": p["cpf"] or "",
+                    "Telefone": p["telefone"] or "",
+                    "E-mail": p["email"] or "",
+                    "Status": "Ativo" if p["ativo"] else "Inativo",
+                } for p in pacientes])
+                st.dataframe(df_pac, use_container_width=True, hide_index=True, height=320)
+                st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Selecione na aba Prontuário para ver o prontuário completo.")
+
+        with tab2:
+            st.markdown("### ➕ Cadastrar Novo Paciente")
+            c1, c2 = st.columns(2)
+            with c1:
+                p_nome = st.text_input("Nome completo *", key="np_nome", max_chars=255)
+                p_cpf = st.text_input("CPF", key="np_cpf", max_chars=20)
+                p_rg = st.text_input("RG", key="np_rg", max_chars=30)
+                p_data_nasc = st.date_input("Data de nascimento", value=None, key="np_dt_nasc", min_value=date(1900, 1, 1), max_value=date.today())
+            with c2:
+                p_tel = st.text_input("Telefone", key="np_tel", max_chars=30)
+                p_email = st.text_input("E-mail", key="np_email", max_chars=255)
+                p_end = st.text_input("Endereço", key="np_end", max_chars=255)
+            p_obs = st.text_area("Observações", key="np_obs", max_chars=2000)
+
+            if st.button("💾 Salvar Paciente", type="primary", key="np_salvar", use_container_width=True):
+                if not p_nome.strip():
+                    st.error("Preencha o campo Nome completo (obrigatório).")
+                else:
+                    duplicados = db.buscar_pacientes_duplicados(p_nome, p_cpf)
+                    if duplicados:
+                        st.warning("⚠️ Possível duplicidade de cadastro encontrada:")
+                        for d in duplicados:
+                            st.warning(f"  • #{d['id']} — {d['nome']} ({d.get('telefone') or 'sem telefone'})")
+                        st.error("Cadastro não realizado. Verifique se o paciente já existe.")
+                    else:
+                        dados = {
+                            "nome": p_nome.strip(),
+                            "cpf": p_cpf.strip() or None,
+                            "rg": p_rg.strip() or None,
+                            "data_nascimento": p_data_nasc,
+                            "telefone": p_tel.strip() or None,
+                            "email": p_email.strip() or None,
+                            "endereco": p_end.strip() or None,
+                            "observacoes": p_obs.strip() or None,
+                            "ativo": True,
+                        }
+                        novo_id = db.inserir_paciente(dados)
+                        if novo_id:
+                            st.toast("Paciente cadastrado com sucesso!", icon="✅")
+                            security.log_access("ADD_PACIENTE", p_nome.strip())
+                            st.rerun()
+                        else:
+                            st.error("Erro ao cadastrar paciente. Verifique os dados e tente novamente.")
+
+        with tab3:
+            st.markdown("### 📂 Prontuário do Paciente")
+            pacientes_todos = db.listar_pacientes()
+            if not pacientes_todos:
+                st.info("Cadastre pacientes na aba ➕ Novo Paciente.")
+                return
+
+            opcoes = {f"#{p['id']} — {p['nome']}": p["id"] for p in pacientes_todos}
+            sel = st.selectbox("Selecione o paciente", list(opcoes.keys()), key="pac_sel_pront")
+            pid = opcoes[sel]
+            pac = db.obter_paciente(pid)
+            if not pac:
+                st.error("Paciente não encontrado.")
+                return
+
+            col_p1, col_p2 = st.columns([1, 3])
+            with col_p1:
+                if pac.get("foto_b64"):
+                    st.markdown(
+                        f"<img src='data:{pac.get('foto_mime') or 'image/jpeg'};base64,{pac['foto_b64']}' style='width:140px;height:140px;border-radius:50%;object-fit:cover;'/>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown("<div style='width:140px;height:140px;border-radius:50%;background:#1E5631;display:flex;align-items:center;justify-content:center;font-size:60px;'>👤</div>", unsafe_allow_html=True)
+                up_foto = st.file_uploader("Foto", type=["jpg", "jpeg", "png", "webp"], key=f"pac_foto_{pid}")
+                if up_foto:
+                    fb = up_foto.getvalue()
+                    if len(fb) > 2 * 1024 * 1024:
+                        st.error("❌ Máx 2MB")
+                    else:
+                        b64 = base64.b64encode(fb).decode("utf-8")
+                        db.salvar_foto_paciente(pid, b64, up_foto.type or "image/jpeg")
+                        st.toast("Foto atualizada!", icon="✅")
+                        st.rerun()
+            with col_p2:
+                st.markdown(f"### {pac['nome']}")
+                dt_nasc = pac.get("data_nascimento")
+                idade = ""
+                if dt_nasc:
+                    try:
+                        n = pd.to_datetime(str(dt_nasc)).date()
+                        idade = f"{int((date.today() - n).days / 365.25)} anos"
+                    except Exception:
+                        idade = ""
+                st.markdown(
+                    f"**CPF:** {pac.get('cpf') or '—'} | **RG:** {pac.get('rg') or '—'} | **Nasc.:** {dt_nasc or '—'} ({idade})\n\n"
+                    f"**Telefone:** {pac.get('telefone') or '—'} | **E-mail:** {pac.get('email') or '—'}\n\n"
+                    f"**Endereço:** {pac.get('endereco') or '—'}\n\n"
+                    f"**Status:** {'🟢 Ativo' if pac.get('ativo') else '🔴 Inativo'}"
+                )
+
+            st.divider()
+            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 Anamnese", "🩺 Evolução Clínica", "📅 Histórico de Atendimentos"])
+
+            with sub_tab1:
+                anam = db.obter_anamnese(pid)
+                st.markdown("### 📋 Anamnese Digital")
+                aq = st.text_area("Queixa principal", value=(anam or {}).get("queixa_principal") or "", key=f"ana_q_{pid}")
+                ahd = st.text_area("Histórico da doença atual", value=(anam or {}).get("historico_doenca") or "", key=f"ana_hd_{pid}")
+                ahf = st.text_area("Histórico familiar", value=(anam or {}).get("historico_familiar") or "", key=f"ana_hf_{pid}")
+                amd = st.text_area("Medicamentos em uso", value=(anam or {}).get("medicamentos") or "", key=f"ana_md_{pid}")
+                aal = st.text_area("Alergias", value=(anam or {}).get("alergias") or "", key=f"ana_al_{pid}")
+                ahab = st.text_area("Hábitos", value=(anam or {}).get("habitos") or "", key=f"ana_hb_{pid}")
+                aobs = st.text_area("Observações", value=(anam or {}).get("observacoes") or "", key=f"ana_obs_{pid}")
+                if st.button("💾 Salvar Anamnese", type="primary", key=f"ana_save_{pid}"):
+                    dados_anam = {
+                        "queixa_principal": aq, "historico_doenca": ahd, "historico_familiar": ahf,
+                        "medicamentos": amd, "alergias": aal, "habitos": ahab, "observacoes": aobs,
+                    }
+                    if db.salvar_ou_atualizar_anamnese(pid, dados_anam):
+                        st.toast("Anamnese salva!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar anamnese.")
+
+            with sub_tab2:
+                st.markdown("### 🩺 Evolução Clínica")
+                ev_data = st.date_input("Data", value=date.today(), key=f"ev_data_{pid}")
+                ev_texto = st.text_area("Registro da evolução", key=f"ev_texto_{pid}", height=150)
+                if st.button("➕ Adicionar Evolução", type="primary", key=f"ev_add_{pid}"):
+                    if not ev_texto.strip():
+                        st.warning("Escreva o texto da evolução.")
+                    elif db.inserir_evolucao(pid, ev_data, ev_texto.strip()):
+                        st.toast("Evolução registrada!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao registrar evolução.")
+
+                evolucoes = db.listar_evolucoes(pid)
+                if not evolucoes:
+                    st.info("Nenhuma evolução registrada ainda.")
+                else:
+                    for ev in evolucoes:
+                        with st.container(border=True):
+                            st.markdown(f"**{ev['data']}**")
+                            st.write(ev["texto"])
+                            if st.button("🗑️ Excluir", key=f"ev_del_{ev['id']}"):
+                                db.excluir_evolucao(ev["id"])
+                                st.rerun()
+
+            with sub_tab3:
+                st.markdown("### 📅 Histórico de Atendimentos")
+                atts = db.listar_atendimentos_do_paciente(pid)
+                if not atts:
+                    st.info("Nenhum atendimento vinculado a este paciente.")
+                else:
+                    df_atts = pd.DataFrame(atts, columns=[
+                        "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+                        "Laudo PDF", "Avaliação PDF", "Status", "Observações",
+                    ])
+                    st.dataframe(df_atts[["ID", "Empresa", "Modalidade", "Data", "Hora", "Status"]], use_container_width=True, hide_index=True)
+                    st.caption(f"Total: {len(atts)} atendimento(s).")
+
+            st.divider()
+            ac1, ac2, ac3 = st.columns(3)
+            with ac1:
+                if st.button("✏️ Editar Dados", key=f"pac_edit_{pid}", use_container_width=True):
+                    st.session_state[f"edit_pac_{pid}"] = True
+            with ac2:
+                novo_status = 0 if pac.get("ativo") else 1
+                if st.button("🔄 Ativar/Inativar", key=f"pac_status_{pid}", use_container_width=True):
+                    db.atualizar_paciente(pid, {"ativo": novo_status})
+                    st.rerun()
+            with ac3:
+                if st.button("🗑️ Excluir Paciente", key=f"pac_del_{pid}", use_container_width=True):
+                    if db.excluir_paciente(pid):
+                        st.toast("Paciente excluído!", icon="🗑️")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao excluir paciente.")
+
+            if st.session_state.get(f"edit_pac_{pid}"):
+                st.markdown("### ✏️ Editar Dados do Paciente")
+                ec1, ec2 = st.columns(2)
+                with ec1:
+                    e_nome = st.text_input("Nome completo", value=pac["nome"], key=f"ep_nome_{pid}")
+                    e_cpf = st.text_input("CPF", value=pac.get("cpf") or "", key=f"ep_cpf_{pid}")
+                    e_rg = st.text_input("RG", value=pac.get("rg") or "", key=f"ep_rg_{pid}")
+                with ec2:
+                    e_tel = st.text_input("Telefone", value=pac.get("telefone") or "", key=f"ep_tel_{pid}")
+                    e_email = st.text_input("E-mail", value=pac.get("email") or "", key=f"ep_email_{pid}")
+                    e_end = st.text_input("Endereço", value=pac.get("endereco") or "", key=f"ep_end_{pid}")
+                e_obs = st.text_area("Observações", value=pac.get("observacoes") or "", key=f"ep_obs_{pid}")
+                if st.button("💾 Salvar Alterações", type="primary", key=f"ep_save_{pid}"):
+                    dados_upd = {
+                        "nome": e_nome.strip(), "cpf": e_cpf.strip() or None,
+                        "rg": e_rg.strip() or None, "telefone": e_tel.strip() or None,
+                        "email": e_email.strip() or None, "endereco": e_end.strip() or None,
+                        "observacoes": e_obs.strip() or None,
+                    }
+                    if db.atualizar_paciente(pid, dados_upd):
+                        st.session_state[f"edit_pac_{pid}"] = False
+                        st.toast("Alterações salvas!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar alterações.")
+
 class SettingsPage:
     @staticmethod
     def render() -> None:
@@ -1509,6 +2770,32 @@ class SettingsPage:
         display_cards(cards)
 
         st.markdown("### 🎨 Personalização Visual")
+        st.markdown("#### ✨ Temas Premium (1 clique)")
+        st.caption("Escolha uma paleta pronta para mudar toda a identidade visual do sistema.")
+        theme_names = list(PREMIUM_THEMES.keys())
+        current_theme = st.session_state.get('premium_theme', '')
+        theme_sel = st.pills(
+            "Tema",
+            options=theme_names,
+            default=None,
+            key="theme_pills",
+            selection_mode="single",
+        )
+        if theme_sel and theme_sel != current_theme:
+            t = PREMIUM_THEMES[theme_sel]
+            st.session_state['premium_theme'] = theme_sel
+            st.session_state['accent_color'] = t['accent']
+            st.session_state['main_bg_color'] = t['bg']
+            st.session_state['card_bg_hex'] = t['card_bg']
+            st.session_state['card_text_color'] = t['card_text']
+            db.save_preference('premium_theme', theme_sel)
+            for k, v in [('accent_color', t['accent']), ('main_bg_color', t['bg']),
+                         ('card_bg_hex', t['card_bg']), ('card_text_color', t['card_text'])]:
+                db.save_preference(k, v)
+            st.rerun()
+        if current_theme:
+            st.success(f"🎨 Tema ativo: **{current_theme}**")
+
         ui_col1, ui_col2 = st.columns(2)
         with ui_col1:
             dm = st.toggle("Ativar Tema Dark Ultra-Premium 🌙", value=st.session_state.get('premium_dark_mode', False), key="dm_toggle")
@@ -1548,13 +2835,14 @@ class SettingsPage:
                 st.rerun()
         
         if st.button("🔄 Resetar Cores Padrão"):
+            st.session_state['premium_theme'] = ''
             st.session_state['accent_color'] = '#4DA768'
             st.session_state['card_text_color'] = '#ffffff'
             st.session_state['main_bg_color'] = '#73C883'
             st.session_state['card_bg_hex'] = '#ffffff'
             st.session_state['premium_dark_mode'] = False
             # Limpar do banco
-            for key in ['accent_color', 'card_text_color', 'main_bg_color', 'card_bg_hex', 'premium_dark_mode']:
+            for key in ['accent_color', 'card_text_color', 'main_bg_color', 'card_bg_hex', 'premium_dark_mode', 'premium_theme']:
                 db.delete_preference(key)
             st.rerun()
         
@@ -1694,59 +2982,944 @@ class SettingsPage:
 
         # Fim do container configurado via with na linha 1156
 
+class LaudosPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("📑 Laudos", "Modelos, emissão, versões e autenticação")
+
+        tab1, tab2, tab3 = st.tabs(["📝 Modelos", "🖨️ Emitir Laudo", "🔎 Laudos Emitidos"])
+
+        pacientes = db.listar_pacientes()
+        nomes_pac = {p["nome"]: p["id"] for p in pacientes}
+
+        # ── Modelos ──
+        with tab1:
+            st.markdown("### ➕ Novo Modelo de Laudo")
+            m1, m2 = st.columns(2)
+            with m1:
+                mo_nome = st.text_input("Nome do modelo *", key="modelo_nome", max_chars=255)
+                mo_categoria = st.selectbox("Categoria", ["Geral", "Psicológico", "Médico", "Pericial", "Admissional"], key="modelo_cat")
+                mo_titulo = st.text_input("Título", key="modelo_tit", max_chars=255, placeholder="Ex: Laudo Psicológico")
+            with m2:
+                mo_tipo_exame = st.text_input("Tipo de exame", key="modelo_tipo", max_chars=255)
+                mo_ass = st.checkbox("Exigir assinatura digital", value=False, key="modelo_ass")
+            mo_cabecalho = st.text_input("Cabeçalho", key="modelo_cab", max_chars=500,
+                                         placeholder="Ex: LABORATÓRIO DE PSICOLOGIA LTDA - CRP 00/00000")
+            mo_corpo = st.text_area("Corpo do modelo * (use {nome}, {empresa}, {medico}, {data})", key="modelo_corpo", height=220,
+                                    placeholder="A Sr(a). {nome}, referente à empresa {empresa}, foi submetido(a) a avaliação...")
+            mo_rodape = st.text_input("Rodapé", key="modelo_rod", max_chars=500,
+                                      placeholder="Ex: Documento válido com assinatura digital.")
+
+            if st.button("💾 Salvar Modelo", type="primary", key="modelo_salvar", use_container_width=True):
+                if not mo_nome.strip() or not mo_corpo.strip():
+                    st.error("Informe nome e corpo do modelo.")
+                else:
+                    ok = db.inserir_modelo_laudo({
+                        "nome": mo_nome.strip(), "categoria": mo_categoria,
+                        "titulo": mo_titulo.strip() or None, "cabecalho": mo_cabecalho.strip() or None,
+                        "corpo": mo_corpo.strip(), "rodape": mo_rodape.strip() or None,
+                        "tipo_exame": mo_tipo_exame.strip() or None,
+                        "assinatura_digital": mo_ass, "ativo": True,
+                    })
+                    if ok:
+                        st.toast("Modelo salvo!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar modelo.")
+
+            st.markdown("---")
+            st.markdown("### 📚 Modelos cadastrados")
+            cat_filtro = st.selectbox("Categoria", ["(Todas)"] + ["Geral", "Psicológico", "Médico", "Pericial", "Admissional"], key="modelo_filtro_cat")
+            modelos = db.listar_modelos_laudos(None if cat_filtro == "(Todas)" else cat_filtro)
+            if not modelos:
+                st.info("Nenhum modelo cadastrado.")
+            else:
+                df_mod = pd.DataFrame([{
+                    "ID": m["id"], "Nome": m["nome"], "Categoria": m["categoria"],
+                    "Tipo Exame": m["tipo_exame"] or "", "Assinatura": "✓" if m["assinatura_digital"] else "",
+                    "Ativo": "Sim" if m["ativo"] else "Não",
+                } for m in modelos])
+                st.dataframe(df_mod, use_container_width=True, hide_index=True)
+                with st.expander("✏️ Editar modelo"):
+                    opcoes_m = {f"#{m['id']} — {m['nome']}": m["id"] for m in modelos}
+                    sel_m = st.selectbox("Selecione o modelo", list(opcoes_m.keys()), key="modelo_sel_edit")
+                    det_m = db.obter_modelo_laudo(opcoes_m[sel_m])
+                    if det_m:
+                        ed_nome = st.text_input("Nome", value=det_m["nome"], key=f"mod_ed_nome_{det_m['id']}")
+                        ed_corpo = st.text_area("Corpo", value=det_m["corpo"], key=f"mod_ed_corpo_{det_m['id']}", height=160)
+                        ed_titulo = st.text_input("Título", value=det_m["titulo"] or "", key=f"mod_ed_tit_{det_m['id']}")
+                        if st.button("💾 Atualizar Modelo", key=f"mod_ed_save_{det_m['id']}"):
+                            db.atualizar_modelo_laudo(det_m["id"], {"nome": ed_nome, "corpo": ed_corpo, "titulo": ed_titulo or None})
+                            st.toast("Modelo atualizado!", icon="✅")
+                            st.rerun()
+                opcoes_del_m = {f"#{m['id']} — {m['nome']}": m["id"] for m in modelos}
+                sel_del_m = st.selectbox("Excluir modelo", list(opcoes_del_m.keys()), key="modelo_sel_del")
+                if st.button("🗑️ Excluir Modelo", key="modelo_del_btn"):
+                    db.excluir_modelo_laudo(opcoes_del_m[sel_del_m])
+                    st.rerun()
+
+        # ── Emitir Laudo ──
+        with tab2:
+            st.markdown("### 🖨️ Emitir Laudo a partir de Modelo")
+            modelos_ativos = db.listar_modelos_laudos()
+            if not modelos_ativos:
+                st.warning("Crie um modelo na aba 📝 Modelos antes de emitir laudos.")
+            else:
+                l1, l2 = st.columns(2)
+                with l1:
+                    sel_l_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="laudo_pac")
+                    opcoes_mod = {f"#{m['id']} — {m['nome']}": m["id"] for m in modelos_ativos}
+                    sel_l_mod = st.selectbox("Modelo *", list(opcoes_mod.keys()), key="laudo_mod")
+                with l2:
+                    laudo_medico = st.selectbox("Médico *", AGENDA_MEDICOS, index=0, key="laudo_medico")
+                    laudo_empresa = st.text_input("Empresa", key="laudo_empresa")
+
+                modelo = db.obter_modelo_laudo(opcoes_mod[sel_l_mod])
+                paciente_info = db.obter_paciente(nomes_pac[sel_l_nome]) if sel_l_nome else None
+                empresa_padrao = paciente_info.get("empresa") if paciente_info else None
+                if empresa_padrao:
+                    laudo_empresa = st.text_input("Empresa", value=empresa_padrao, key="laudo_empresa2")
+
+                if modelo:
+                    conteudo_pre = modelo["corpo"]
+                    substituicoes = {
+                        "{nome}": sel_l_nome or "",
+                        "{empresa}": empresa_padrao or laudo_empresa or "",
+                        "{medico}": laudo_medico,
+                        "{data}": date.today().strftime("%d/%m/%Y"),
+                    }
+                    for k, v in substituicoes.items():
+                        conteudo_pre = conteudo_pre.replace(k, v)
+                    st.markdown("**Pré-visualização / Edição do conteúdo:**")
+                    laudo_conteudo = st.text_area("Conteúdo do laudo", value=conteudo_pre, height=260, key="laudo_conteudo")
+                    if st.button("📜 Gerar PDF do Laudo", key="laudo_gerar_pdf"):
+                        _gerar_laudo_completo_pdf(modelo, {
+                            "paciente_nome": sel_l_nome, "empresa": empresa_padrao or laudo_empresa,
+                            "medico": laudo_medico, "conteudo": laudo_conteudo,
+                        })
+                    if st.button("💾 Salvar e Emitir Laudo", type="primary", key="laudo_emitir", use_container_width=True):
+                        if not sel_l_nome:
+                            st.error("Informe o paciente.")
+                        else:
+                            laudo_id = db.inserir_laudo_emitido({
+                                "modelo_id": modelo["id"],
+                                "paciente_id": nomes_pac.get(sel_l_nome),
+                                "paciente_nome": sel_l_nome,
+                                "empresa": empresa_padrao or laudo_empresa or None,
+                                "medico": laudo_medico,
+                                "tipo_exame": modelo["tipo_exame"] or None,
+                                "conteudo": laudo_conteudo,
+                                "assinatura_digital": modelo["assinatura_digital"],
+                            })
+                            if laudo_id:
+                                st.toast("Laudo emitido com código de autenticação!", icon="✅")
+                                security.log_access("EMITIR_LAUDO", f"{sel_l_nome}")
+                                st.rerun()
+                            else:
+                                st.error("Erro ao emitir laudo.")
+
+        # ── Laudos Emitidos ──
+        with tab3:
+            st.markdown("### 🔎 Laudos Emitidos")
+            filtro_l = st.text_input("Filtrar por paciente/exame/código", key="laudo_filtro")
+            laudos = db.listar_laudos_emitidos(filtro=filtro_l or None)
+            if not laudos:
+                st.info("Nenhum laudo emitido.")
+            else:
+                df_l = pd.DataFrame([{
+                    "ID": l["id"], "Paciente": l["paciente_nome"] or "",
+                    "Exame": l["tipo_exame"] or "", "Médico": l["medico"] or "",
+                    "Versão": l["versao"], "Código": l["codigo_autenticacao"] or "",
+                    "Status": l["status"], "Data": l["criado_em"],
+                } for l in laudos])
+                st.dataframe(df_l, use_container_width=True, hide_index=True)
+
+                st.markdown("#### 📖 Detalhes / Versões")
+                opcoes_l = {f"#{l['id']} — {l['paciente_nome'] or '?'} (v{l['versao']})": l["id"] for l in laudos}
+                sel_l = st.selectbox("Laudo", list(opcoes_l.keys()), key="laudo_sel_det")
+                det_l = db.obter_laudo_emitido(opcoes_l[sel_l])
+                if det_l:
+                    st.info(f"Código de autenticação: **{det_l['codigo_autenticacao']}**  |  Versão: {det_l['versao']}  |  Status: {det_l['status']}")
+                    novo_conteudo = st.text_area("Conteúdo (editar para nova versão)", value=det_l["conteudo"], height=180, key=f"laudo_ed_{det_l['id']}")
+                    if st.button("➕ Gerar Nova Versão", key=f"laudo_nv_{det_l['id']}"):
+                        if db.adicionar_versao_laudo(det_l["id"], novo_conteudo, st.session_state.get("user_name", "")):
+                            st.toast("Nova versão registrada!", icon="✅")
+                            st.rerun()
+                    versoes = db.listar_versoes_laudo(det_l["id"])
+                    if versoes:
+                        st.markdown("**Histórico de versões:**")
+                        for v in versoes:
+                            st.caption(f"v{v['versao']} — {v['criado_em']} — {v['editado_por'] or '—'}")
+                    if st.button("🖨️ Gerar PDF", key=f"laudo_pdf_{det_l['id']}"):
+                        _gerar_laudo_completo_pdf({"cabecalho": "", "rodape": "", "titulo": "LAUDO", "assinatura_digital": det_l["assinatura_digital"]}, {
+                            "paciente_nome": det_l["paciente_nome"], "empresa": det_l["empresa"],
+                            "medico": det_l["medico"], "conteudo": det_l["conteudo"],
+                        })
+                opcoes_del_l = {f"#{l['id']} — {l['paciente_nome'] or '?'}": l["id"] for l in laudos}
+                sel_del_l = st.selectbox("Excluir laudo", list(opcoes_del_l.keys()), key="laudo_sel_del")
+                if st.button("🗑️ Excluir Laudo", key="laudo_del_btn"):
+                    db.excluir_laudo_emitido(opcoes_del_l[sel_del_l])
+                    st.rerun()
+
+            st.markdown("#### ✅ Verificar autenticidade")
+            cod_verif = st.text_input("Digite o código de autenticação", key="laudo_cod_verif")
+            if cod_verif and st.button("🔍 Verificar", key="laudo_verif_btn"):
+                res = db.verificar_autenticidade_laudo(cod_verif)
+                if res:
+                    st.success(f"✅ Laudo autêntico! Paciente: {res['paciente_nome']} — Exame: {res['tipo_exame'] or '—'} — Versão: {res['versao']} — Emitido em: {res['criado_em']}")
+                else:
+                    st.error("❌ Código não encontrado. O laudo pode ser falso ou adulterado.")
+
+
+def _gerar_laudo_completo_pdf(modelo: dict, dados: dict) -> None:
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_draw_color(77, 167, 104)
+        pdf.set_line_width(0.8)
+        cabecalho = modelo.get("cabecalho") or ""
+        if cabecalho:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(0, 6, cabecalho, align="C")
+            pdf.ln(1)
+        pdf.line(10, 24, 200, 24)
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, (modelo.get("titulo") or "LAUDO").upper(), ln=True, align="C")
+        pdf.ln(3)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(6)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, f"Paciente: {dados.get('paciente_nome') or 'N/A'}", ln=True)
+        pdf.cell(0, 7, f"Empresa: {dados.get('empresa') or '—'}", ln=True)
+        pdf.cell(0, 7, f"Médico: {dados.get('medico') or ''}", ln=True)
+        pdf.cell(0, 7, f"Data: {date.today().strftime('%d/%m/%Y')}", ln=True)
+        if dados.get("codigo_autenticacao"):
+            pdf.cell(0, 7, f"Código de autenticação: {dados['codigo_autenticacao']}", ln=True)
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "", 11)
+        pdf.multi_cell(0, 7, dados.get("conteudo") or "")
+        rodape = modelo.get("rodape") or ""
+        if rodape:
+            pdf.ln(6)
+            pdf.set_font("Helvetica", "I", 9)
+            pdf.multi_cell(0, 5, rodape, align="C")
+        pdf.ln(10)
+        pdf.cell(0, 7, "___________________________", ln=True, align="C")
+        pdf.cell(0, 7, dados.get("medico") or "", ln=True, align="C")
+        if modelo.get("assinatura_digital"):
+            pdf.cell(0, 7, "Documento com assinatura digital", ln=True, align="C")
+        _baixar_pdf_streamlit(pdf, f"laudo_{dados.get('paciente_nome', 'paciente')}.pdf")
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
+
+class AIPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("🤖 Inteligência Artificial", "Resumos, previsões, OCR e rascunhos clínicos")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["📝 Resumo de Paciente", "📉 Previsão de Faltas", "🔍 OCR de Documento", "💊 Rascunho de Receita"])
+
+        from ai_manager import AIManager
+
+        with tab1:
+            st.markdown("### 📝 Resumo Clínico de Paciente (IA)")
+            pacientes = db.listar_pacientes()
+            if not pacientes:
+                st.info("Cadastre pacientes para usar o resumo.")
+            else:
+                opcoes = {p["nome"]: p["id"] for p in pacientes}
+                sel = st.selectbox("Paciente", list(opcoes.keys()), key="ia_resumo_pac")
+                if st.button("✨ Gerar Resumo com IA", type="primary", key="ia_resumo_btn"):
+                    pac = db.obter_paciente(opcoes[sel])
+                    anam = db.obter_anamnese(opcoes[sel])
+                    evols = db.listar_evolucoes(opcoes[sel])
+                    import json
+                    with st.spinner("IA gerando resumo clínico..."):
+                        resumo = AIManager.summarize_patient(
+                            json.dumps(pac, default=str),
+                            json.dumps(evols[:15], default=str),
+                            json.dumps(anam, default=str),
+                        )
+                    st.session_state["ia_resumo_res"] = resumo
+                resumo = st.session_state.get("ia_resumo_res", "")
+                if resumo:
+                    st.markdown("#### 📄 Resumo gerado")
+                    st.info(resumo)
+                    if st.button("🧹 Limpar resumo", key="ia_resumo_limpar"):
+                        st.session_state.pop("ia_resumo_res", None)
+                        st.rerun()
+
+        with tab2:
+            st.markdown("### 📉 Previsão de Faltas (no-show)")
+            st.caption("Análise estatística + IA dos agendamentos para estimar risco de faltas.")
+            ags = db.listar_agendamentos()
+            if not ags:
+                st.info("Sem agendamentos. Registre agendamentos na Agenda.")
+            else:
+                df_ia = pd.DataFrame([{
+                    "medico": a["medico"], "status": a["status"], "data": str(a["data"]),
+                    "dia_semana": _dia_semana(a["data"]), "empresa": a["empresa"] or "",
+                    "tipo": a["tipo"] or "",
+                } for a in ags])
+                status_counts = df_ia["status"].value_counts().to_dict()
+                por_medico = df_ia.groupby("medico")["status"].apply(lambda s: dict(s.value_counts())).to_dict()
+                stats = {"total": len(df_ia), "por_status": status_counts, "por_medico": por_medico}
+                st.markdown("#### 📊 Estatísticas atuais")
+                st.json(stats, expanded=False)
+                if st.button("🔮 Gerar Análise de Faltas", type="primary", key="ia_falta_btn"):
+                    import json
+                    with st.spinner("IA analisando padrões de faltas..."):
+                        analise = AIManager.predict_no_show(json.dumps(stats, default=str))
+                    st.session_state["ia_falta_res"] = analise
+                analise = st.session_state.get("ia_falta_res", "")
+                if analise:
+                    st.markdown("#### 📄 Análise gerada")
+                    st.info(analise)
+                    if st.button("🧹 Limpar análise", key="ia_falta_limpar"):
+                        st.session_state.pop("ia_falta_res", None)
+                        st.rerun()
+
+        with tab3:
+            st.markdown("### 🔍 Extrair Texto de Documento (OCR)")
+            st.caption("Envie um PDF ou imagem para extrair o texto com a IA.")
+            up_ocr = st.file_uploader("Arquivo (PDF ou imagem)", type=["pdf", "png", "jpg", "jpeg"], key="ia_ocr_up")
+            if up_ocr:
+                st.caption(f"{up_ocr.name} — {len(up_ocr.getvalue()) / 1024:.1f} KB")
+                if st.button("🔍 Extrair Texto", type="primary", key="ia_ocr_btn"):
+                    with st.spinner("IA extraindo texto..."):
+                        texto = AIManager.extract_text_ocr(up_ocr.getvalue(), up_ocr.name)
+                    st.session_state["ia_ocr_res"] = texto or "Nenhum texto identificado."
+            ocr_res = st.session_state.get("ia_ocr_res", "")
+            if ocr_res:
+                st.markdown("#### 📄 Texto extraído")
+                st.code(ocr_res, language=None)
+                if st.button("🧹 Limpar OCR", key="ia_ocr_limpar"):
+                    st.session_state.pop("ia_ocr_res", None)
+                    st.rerun()
+
+        with tab4:
+            st.markdown("### 💊 Rascunho de Receita com IA")
+            st.caption("A IA sugere um rascunho de prescrição. O médico deve revisar antes de assinar.")
+            r1, r2 = st.columns(2)
+            with r1:
+                esp = st.selectbox("Especialidade", ["Psiquiatria", "Psicologia", "Clínico Geral", "Neurologia", "Pediatria"], key="ia_rec_esp")
+            with r2:
+                queixa = st.text_input("Queixa / contexto", key="ia_rec_queixa", placeholder="Ex: ansiedade, insônia, dor...")
+            if st.button("✨ Gerar Rascunho", type="primary", key="ia_rec_btn"):
+                if not queixa.strip():
+                    st.error("Descreva a queixa.")
+                else:
+                    with st.spinner("IA gerando rascunho..."):
+                        rascunho = AIManager.clinical_draft_receipt(esp, queixa.strip())
+                    st.session_state["ia_rec_res"] = rascunho
+            rasc = st.session_state.get("ia_rec_res", "")
+            if rasc:
+                st.markdown("#### 📄 Rascunho")
+                st.info(rasc)
+                if st.button("🧹 Limpar rascunho", key="ia_rec_limpar"):
+                    st.session_state.pop("ia_rec_res", None)
+                    st.rerun()
+
+
+def _dia_semana(data):
+    try:
+        return ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][data.weekday()]
+    except Exception:
+        try:
+            return ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][pd.to_datetime(str(data)).weekday()]
+        except Exception:
+            return ""
+
+class FinancePage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("💰 Financeiro", "Lançamentos, fluxo de caixa, DRE e notas fiscais")
+
+        tab1, tab2, tab3 = st.tabs(["💸 Lançamentos", "📊 Fluxo de Caixa / DRE", "🧾 Notas Fiscais"])
+
+        with tab1:
+            st.markdown("### ➕ Novo Lançamento")
+            l1, l2, l3 = st.columns(3)
+            with l1:
+                fin_tipo = st.selectbox("Tipo *", ["Receita", "Despesa"], key="fin_tipo")
+                fin_categoria = st.selectbox("Categoria *", _fin_categorias(fin_tipo), key="fin_cat")
+                fin_descricao = st.text_input("Descrição", key="fin_desc", max_chars=255)
+            with l2:
+                fin_valor = st.number_input("Valor (R$) *", min_value=0.0, step=10.0, value=0.0, key="fin_valor")
+                fin_data = st.date_input("Data *", value=date.today(), key="fin_data")
+                fin_pagamento = st.selectbox("Forma de pagamento", ["", "Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"], key="fin_pag")
+            with l3:
+                empresas_fin = db.listar_empresas()
+                fin_empresa = st.selectbox("Empresa", [""] + [e["nome"] for e in empresas_fin], key="fin_empresa")
+                fin_convenio = st.text_input("Convênio", key="fin_convenio", max_chars=255)
+                fin_status = st.selectbox("Status", ["Pago", "Pendente", "Cancelado"], key="fin_status")
+            fin_obs = st.text_input("Observações", key="fin_obs", max_chars=500)
+
+            if st.button("💾 Salvar Lançamento", type="primary", key="fin_salvar", use_container_width=True):
+                if fin_valor <= 0:
+                    st.error("Informe um valor maior que zero.")
+                else:
+                    emp_id = None
+                    for e in empresas_fin:
+                        if e["nome"] == fin_empresa:
+                            emp_id = e["id"]
+                            break
+                    ok = db.inserir_lancamento({
+                        "tipo": fin_tipo, "categoria": fin_categoria,
+                        "descricao": fin_descricao.strip() or None,
+                        "valor": float(fin_valor), "data": fin_data.strftime("%Y-%m-%d"),
+                        "forma_pagamento": fin_pagamento or None,
+                        "status": fin_status, "empresa_id": emp_id,
+                        "empresa_nome": fin_empresa or None,
+                        "convenio": fin_convenio.strip() or None,
+                        "observacoes": fin_obs.strip() or None,
+                    })
+                    if ok:
+                        st.toast("Lançamento registrado!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar lançamento.")
+
+            st.markdown("---")
+            st.markdown("### 🔎 Lançamentos")
+            fl1, fl2, fl3 = st.columns(3)
+            with fl1:
+                fl_tipo = st.selectbox("Filtrar tipo", ["(Todos)", "Receita", "Despesa"], key="fin_filtro_tipo")
+            with fl2:
+                fl_dini = st.date_input("Data inicial", value=None, key="fin_filtro_dini")
+            with fl3:
+                fl_dfim = st.date_input("Data final", value=None, key="fin_filtro_dfim")
+            lancamentos = db.listar_lancamentos(
+                periodo_inicio=fl_dini.strftime("%Y-%m-%d") if fl_dini else None,
+                periodo_fim=fl_dfim.strftime("%Y-%m-%d") if fl_dfim else None,
+                tipo=None if fl_tipo == "(Todos)" else fl_tipo,
+            )
+            if not lancamentos:
+                st.info("Nenhum lançamento encontrado.")
+            else:
+                df_fin = pd.DataFrame([{
+                    "ID": l["id"], "Tipo": l["tipo"], "Categoria": l["categoria"],
+                    "Descrição": l["descricao"] or "", "Data": l["data"],
+                    "Valor (R$)": float(l["valor"]),
+                    "Pagamento": l["forma_pagamento"] or "",
+                    "Empresa": l["empresa_nome"] or "",
+                    "Status": l["status"],
+                } for l in lancamentos])
+                st.dataframe(df_fin, use_container_width=True, hide_index=True)
+                receitas = sum(float(l["valor"]) for l in lancamentos if l["tipo"] == "Receita")
+                despesas = sum(float(l["valor"]) for l in lancamentos if l["tipo"] == "Despesa")
+                st.success(f"Receitas: R$ {receitas:,.2f}  |  Despesas: R$ {despesas:,.2f}  |  **Resultado: R$ {receitas - despesas:,.2f}**")
+                opcoes_fin = {f"#{l['id']} — {l['descricao'] or l['categoria']}": l["id"] for l in lancamentos}
+                sel_fin = st.selectbox("Excluir lançamento", list(opcoes_fin.keys()), key="fin_sel_del")
+                if st.button("🗑️ Excluir", key="fin_del_btn"):
+                    db.excluir_lancamento(opcoes_fin[sel_fin])
+                    st.rerun()
+
+        with tab2:
+            st.markdown("### 📊 Fluxo de Caixa")
+            r1, r2 = st.columns(2)
+            with r1:
+                dre_dini = st.date_input("Período inicial", value=date(date.today().year, 1, 1), key="dre_dini")
+            with r2:
+                dre_dfim = st.date_input("Período final", value=date.today(), key="dre_dfim")
+            resumo = db.resumo_financeiro(
+                dre_dini.strftime("%Y-%m-%d"), dre_dfim.strftime("%Y-%m-%d"))
+            cards_dre = [
+                {"icon": "⬆️", "title": "Receitas", "value": f"R$ {resumo['receitas']:,.2f}"},
+                {"icon": "⬇️", "title": "Despesas", "value": f"R$ {resumo['despesas']:,.2f}"},
+                {"icon": "📊", "title": "Resultado", "value": f"R$ {resumo['resultado']:,.2f}"},
+            ]
+            display_cards(cards_dre)
+
+            if resumo["por_categoria"]:
+                df_cat = pd.DataFrame([{
+                    "Categoria": c["categoria"], "Tipo": c["tipo"],
+                    "Valor (R$)": float(c["total"]),
+                } for c in resumo["por_categoria"]])
+                st.markdown("#### Por categoria")
+                st.dataframe(df_cat, use_container_width=True, hide_index=True)
+                cat_receitas = df_cat[df_cat["Tipo"] == "Receita"]
+                cat_despesas = df_cat[df_cat["Tipo"] == "Despesa"]
+                if not cat_receitas.empty:
+                    fig_d1 = px.bar(cat_receitas, x="Categoria", y="Valor (R$)", title="Receitas por categoria",
+                                    color_discrete_sequence=['#4CAF50'])
+                    fig_d1.update_layout(height=320, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_d1, use_container_width=True)
+                if not cat_despesas.empty:
+                    fig_d2 = px.bar(cat_despesas, x="Categoria", y="Valor (R$)", title="Despesas por categoria",
+                                    color_discrete_sequence=['#D32F2F'])
+                    fig_d2.update_layout(height=320, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_d2, use_container_width=True)
+
+            if resumo["por_pagamento"]:
+                st.markdown("#### Por forma de pagamento")
+                df_pag = pd.DataFrame([{
+                    "Forma": p["forma_pagamento"] or "Não informado",
+                    "Valor (R$)": float(p["total"]),
+                } for p in resumo["por_pagamento"]])
+                st.dataframe(df_pag, use_container_width=True, hide_index=True)
+
+        with tab3:
+            st.markdown("### 🧾 Emitir Nota Fiscal")
+            n1, n2 = st.columns(2)
+            with n1:
+                empresas_nf = db.listar_empresas()
+                nf_empresa = st.selectbox("Empresa *", [e["nome"] for e in empresas_nf] if empresas_nf else [""], key="nf_empresa")
+                nf_numero = st.text_input("Número", key="nf_numero", max_chars=50)
+                nf_data = st.date_input("Data de emissão *", value=date.today(), key="nf_data")
+            with n2:
+                nf_tipo = st.selectbox("Tipo", ["NFSe", "Nota Fiscal Eletrônica", "Recibo"], key="nf_tipo")
+                nf_serie = st.text_input("Série", key="nf_serie", max_chars=10)
+                nf_valor = st.number_input("Valor (R$) *", min_value=0.0, step=10.0, value=0.0, key="nf_valor")
+            nf_descricao = st.text_input("Descrição", key="nf_desc", max_chars=255)
+            nf_obs = st.text_input("Observações", key="nf_obs", max_chars=500)
+            if st.button("💾 Salvar Nota Fiscal", type="primary", key="nf_salvar", use_container_width=True):
+                if not nf_empresa or nf_valor <= 0:
+                    st.error("Informe a empresa e um valor maior que zero.")
+                else:
+                    emp_id = None
+                    for e in empresas_nf:
+                        if e["nome"] == nf_empresa:
+                            emp_id = e["id"]
+                            break
+                    ok = db.inserir_nota_fiscal({
+                        "empresa_id": emp_id, "empresa_nome": nf_empresa,
+                        "numero": nf_numero.strip() or None, "serie": nf_serie.strip() or None,
+                        "tipo": nf_tipo, "data_emissao": nf_data.strftime("%Y-%m-%d"),
+                        "valor": float(nf_valor), "descricao": nf_descricao.strip() or None,
+                        "observacoes": nf_obs.strip() or None,
+                    })
+                    if ok:
+                        st.toast("Nota fiscal registrada!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar nota fiscal.")
+
+            st.markdown("---")
+            st.markdown("### 🔎 Notas Fiscais")
+            nf_filtro = st.text_input("Filtrar por empresa/número", key="nf_filtro")
+            notas = db.listar_notas_fiscais(filtro=nf_filtro or None)
+            if not notas:
+                st.info("Nenhuma nota fiscal encontrada.")
+            else:
+                df_nf = pd.DataFrame([{
+                    "ID": n["id"], "Empresa": n["empresa_nome"] or "",
+                    "Número": n["numero"] or "", "Tipo": n["tipo"],
+                    "Data": n["data_emissao"], "Valor (R$)": float(n["valor"]),
+                    "Status": n["status"],
+                } for n in notas])
+                st.dataframe(df_nf, use_container_width=True, hide_index=True)
+                opcoes_nf = {f"#{n['id']} — {n['empresa_nome'] or '?'} ({n['numero'] or 'sem número'})": n["id"] for n in notas}
+                sel_nf = st.selectbox("Excluir nota fiscal", list(opcoes_nf.keys()), key="nf_sel_del")
+                if st.button("🗑️ Excluir", key="nf_del_btn"):
+                    db.excluir_nota_fiscal(opcoes_nf[sel_nf])
+                    st.rerun()
+
+
+def _fin_categorias(tipo: str) -> list:
+    if tipo == "Receita":
+        return ["Consulta", "Exame", "Plano de saúde", "Particular", "Empresa", "Outros"]
+    return ["Salário", "Aluguel", "Fornecedores", "Impostos", "Equipamentos", "Marketing", "Transporte", "Outros"]
+
+class SecurityPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("🔐 Segurança & LGPD", "Consentimentos, auditoria, backup e portabilidade")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["📜 Consentimentos", "🔍 Auditoria", "💾 Backup", "🗂️ Dados do Paciente (LGPD)"])
+
+        with tab1:
+            st.markdown("### ➕ Registrar Consentimento")
+            pacientes = db.listar_pacientes()
+            nomes_pac = {p["nome"]: p["id"] for p in pacientes}
+            if not pacientes:
+                st.info("Cadastre pacientes primeiro.")
+            else:
+                c1, c2 = st.columns(2)
+                with c1:
+                    sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()), key="cons_pac")
+                    cons_tipo = st.selectbox("Tipo de consentimento *", [
+                        "Coleta e uso de dados pessoais",
+                        "Compartilhamento com empresas",
+                        "Divulgação de imagem",
+                        "Comunicação por WhatsApp/e-mail",
+                        "Compartilhamento com profissionais",
+                    ], key="cons_tipo")
+                    cons_ass = st.checkbox("Paciente assentiu (aceitou)", value=True, key="cons_ass")
+                with c2:
+                    cons_data = st.date_input("Data de assinatura *", value=date.today(), key="cons_data")
+                    cons_val = st.date_input("Validade", value=None, key="cons_val")
+                    cons_ver = st.text_input("Versão do documento", key="cons_ver", max_chars=20, placeholder="Ex: v1.0")
+                cons_desc = st.text_area("Descrição", key="cons_desc", max_chars=1000)
+                if st.button("💾 Registrar Consentimento", type="primary", key="cons_salvar", use_container_width=True):
+                    ok = db.registrar_consentimento({
+                        "paciente_id": nomes_pac.get(sel_nome),
+                        "paciente_nome": sel_nome,
+                        "tipo": cons_tipo,
+                        "descricao": cons_desc.strip() or None,
+                        "assinado_em": cons_data.strftime("%Y-%m-%d"),
+                        "validade": cons_val,
+                        "assentimento": cons_ass,
+                        "documento_versao": cons_ver.strip() or None,
+                        "registrado_por": st.session_state.get("user_name", ""),
+                    })
+                    if ok:
+                        st.toast("Consentimento registrado!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao registrar consentimento.")
+
+                st.markdown("---")
+                st.markdown("### 📜 Consentimentos registrados")
+                cons = db.listar_consentimentos()
+                if not cons:
+                    st.info("Nenhum consentimento registrado.")
+                else:
+                    df_cons = pd.DataFrame([{
+                        "ID": c["id"], "Paciente": c["paciente_nome"] or "",
+                        "Tipo": c["tipo"], "Data": c["assinado_em"] or "",
+                        "Validade": c["validade"] or "", "Assentiu": "✅" if c["assentimento"] else "❌",
+                        "Versão": c["documento_versao"] or "",
+                    } for c in cons])
+                    st.dataframe(df_cons, use_container_width=True, hide_index=True)
+                    opcoes_cons = {f"#{c['id']} — {c['paciente_nome'] or '?'} ({c['tipo'][:40]})": c["id"] for c in cons}
+                    sel_cons = st.selectbox("Revogar consentimento", list(opcoes_cons.keys()), key="cons_sel_rev")
+                    if st.button("🚫 Revogar", key="cons_rev_btn"):
+                        db.revogar_consentimento(opcoes_cons[sel_cons])
+                        st.rerun()
+
+        with tab2:
+            st.markdown("### 🔍 Registro de Auditoria")
+            st.caption("Trilha de auditoria das ações realizadas no sistema (LGPD Art. 37).")
+            lim = st.slider("Quantidade de registros", 20, 500, 100, step=20, key="audit_lim")
+            auditoria = db.listar_auditoria(limit=lim)
+            if not auditoria:
+                st.info("Nenhum registro de auditoria.")
+            else:
+                df_aud = pd.DataFrame([{
+                    "ID": a["id"], "Ação": a["acao"], "Entidade": a["entidade"],
+                    "Detalhes": a["detalhes"] or "", "Usuário": a["usuario"] or "",
+                    "Data": a["criado_em"],
+                } for a in auditoria])
+                st.dataframe(df_aud, use_container_width=True, hide_index=True, height=400)
+
+        with tab3:
+            st.markdown("### 💾 Backup do Sistema")
+            st.caption("Gere um backup completo em JSON com todas as tabelas do sistema.")
+            if st.button("🔄 Gerar Backup Completo", type="primary", key="backup_gerar"):
+                with st.spinner("Gerando backup..."):
+                    dados = db.backup_completo()
+                st.download_button(
+                    "⬇️ Baixar Backup (JSON)",
+                    data=dados,
+                    file_name=f"backup_mvpdepsicologia_{date.today().strftime('%Y%m%d')}.json",
+                    mime="application/json",
+                )
+            st.markdown("---")
+            st.markdown("### ⚠️ Área de Risco")
+            st.warning("A exclusão de dados é permanente e não pode ser desfeita. Use com cautela conforme a LGPD.")
+            em = st.text_input("Digite 'EXCLUIR' para habilitar", key="seg_risco_input")
+            if em == "EXCLUIR":
+                st.error("🔴 Modo de risco ativado. Nenhuma ação destrutiva é executada automaticamente por segurança.")
+
+        with tab4:
+            st.markdown("### 🗂️ Portabilidade de Dados (LGPD Art. 18)")
+            st.caption("Exporte todos os dados de um paciente em JSON para portabilidade.")
+            pacientes2 = db.listar_pacientes()
+            if not pacientes2:
+                st.info("Cadastre pacientes primeiro.")
+            else:
+                opcoes = {p["nome"]: p["id"] for p in pacientes2}
+                sel_lgpd = st.selectbox("Paciente", list(opcoes.keys()), key="lgpd_pac")
+                if st.button("⬇️ Exportar Dados do Paciente (JSON)", type="primary", key="lgpd_exportar"):
+                    with st.spinner("Exportando dados..."):
+                        dados = db.exportar_dados_paciente_lgpd(opcoes[sel_lgpd])
+                    st.download_button(
+                        "⬇️ Baixar Dados do Paciente",
+                        data=dados,
+                        file_name=f"dados_lgpd_{sel_lgpd.replace(' ', '_')}.json",
+                        mime="application/json",
+                    )
+
+class ExtrasPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("🛠️ Extras & Recursos", "Importação, WhatsApp, lembretes e guia rápido")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["📥 Importação CSV", "💬 WhatsApp", "⏰ Lembretes", "📖 Guia Rápido"])
+
+        with tab1:
+            st.markdown("### 📥 Importação de Pacientes (CSV)")
+            st.caption("Formato: nome, cpf, nascimento (DD/MM/AAAA), telefone, email, empresa")
+            up_csv = st.file_uploader("Arquivo CSV", type=["csv"], key="imp_csv")
+            if up_csv:
+                try:
+                    import io as _io
+                    content = up_csv.getvalue().decode("utf-8-sig")
+                    linhas = [l.strip() for l in content.splitlines() if l.strip()]
+                    import csv as _csv
+                    reader = list(_csv.reader(_io.StringIO(content)))
+                    st.info(f"{len(reader)} linha(s) detectada(s).")
+                    st.dataframe(pd.DataFrame(reader[:10]), use_container_width=True, hide_index=True)
+                    if st.button("🚀 Importar Pacientes", type="primary", key="imp_btn"):
+                        import csv as _csv2
+                        ok = 0
+                        erros = 0
+                        for row in _csv2.reader(_io.StringIO(content)):
+                            row = [c.strip() for c in row]
+                            if not row or not row[0]:
+                                continue
+                            if row[0].lower() in ("nome", "name", "paciente"):
+                                continue
+                            dados_p = {"nome": row[0], "cpf": row[1] if len(row) > 1 else None,
+                                       "nascimento": row[2] if len(row) > 2 else None,
+                                       "telefone": row[3] if len(row) > 3 else None,
+                                       "email": row[4] if len(row) > 4 else None,
+                                       "empresa": row[5] if len(row) > 5 else None, "ativo": True}
+                            if db.inserir_paciente(dados_p):
+                                ok += 1
+                            else:
+                                erros += 1
+                        st.toast(f"Importação concluída: {ok} importados, {erros} com erro.", icon="✅")
+                        st.rerun()
+                except Exception as ex:
+                    st.error(f"Erro ao ler CSV: {ex}")
+            st.download_button(
+                "⬇️ Baixar modelo CSV",
+                data="nome;cpf;nascimento;telefone;email;empresa\nMaria Silva;123.456.789-00;01/01/1990;(11)99999-9999;maria@email.com;Empresa X",
+                file_name="modelo_pacientes.csv",
+                mime="text/csv",
+            )
+
+        with tab2:
+            st.markdown("### 💬 Envio de WhatsApp")
+            st.caption("Gera link do WhatsApp com mensagem pronta (abre no navegador).")
+            pacientes_w = db.listar_pacientes()
+            if not pacientes_w:
+                st.info("Cadastre pacientes primeiro.")
+            else:
+                opcoes = {p["nome"]: p["id"] for p in pacientes_w}
+                sel = st.selectbox("Paciente", list(opcoes.keys()), key="wpp_pac")
+                pac = db.obter_paciente(opcoes[sel])
+                telefone = pac.get("telefone") if pac else None
+                if telefone:
+                    st.info(f"Telefone do paciente: {telefone}")
+                    msg = st.text_area("Mensagem", key="wpp_msg", value=f"Olá {sel}! Aqui é da clínica. Gostaríamos de confirmar sua consulta. 😊")
+                    numero_limpo = "".join(ch for ch in str(telefone) if ch.isdigit())
+                    if numero_limpo.startswith("55"):
+                        numero_wpp = numero_limpo
+                    else:
+                        numero_wpp = "55" + numero_limpo
+                    import urllib.parse as _up
+                    url = f"https://wa.me/{numero_wpp}?text={_up.quote(msg)}"
+                    st.markdown(f"🔗 **Link:** `{url}`")
+                    st.link_button("📲 Abrir WhatsApp", url, use_container_width=True)
+                else:
+                    st.warning("Este paciente não possui telefone cadastrado.")
+
+        with tab3:
+            st.markdown("### ⏰ Lembretes de Consultas")
+            st.caption("Lembretes criados automaticamente ao agendar (24h antes via SMS e 2h antes via WhatsApp).")
+            pendentes = db.listar_lembretes_pendentes()
+            if not pendentes:
+                st.info("Nenhum lembrete pendente de envio no momento.")
+            else:
+                df_lem = pd.DataFrame([{
+                    "Paciente": l["paciente_nome"] or l.get("agendamento_data") or "",
+                    "Canal": l["canal"], "Enviar em": l["data_hora_envio"],
+                    "Agendamento": f"{l.get('agendamento_data')} {str(l.get('agendamento_hora'))[:5] if l.get('agendamento_hora') else ''}",
+                    "Mensagem": (l["mensagem"] or "")[:60],
+                } for l in pendentes])
+                st.dataframe(df_lem, use_container_width=True, hide_index=True)
+                st.caption("Obs: o envio real por SMS/WhatsApp requer integração com provedores (Twilio, etc.). No momento os lembretes ficam registrados e prontos para envio.")
+
+        with tab4:
+            st.markdown("### 📖 Guia Rápido do Sistema")
+            guia = [
+                ("👥 Pacientes", "Cadastro, prontuário, anamnese, evolução clínica, busca e aniversariantes."),
+                ("🏢 Empresas", "Cadastro de empresas, convênios, contratos e faturamento por empresa."),
+                ("📅 Agenda", "Agendamentos com conflito de horário, fila de espera, triagem e teleconsulta."),
+                ("📋 Docs Clínicos", "Prescrições, atestados e encaminhamentos com geração de PDF."),
+                ("📑 Laudos", "Modelos de laudos, emissão com código de autenticação e histórico de versões."),
+                ("🤖 IA", "Resumo de paciente, previsão de faltas, OCR de documentos e rascunho de receita."),
+                ("💰 Financeiro", "Lançamentos de receitas/despesas, fluxo de caixa, DRE e notas fiscais."),
+                ("🔐 Segurança", "Consentimentos LGPD, auditoria, backup e portabilidade de dados."),
+                ("☰ Relatórios", "Relatórios gerais, por empresa, tendências e taxa de faltas."),
+            ]
+            for titulo, desc in guia:
+                st.markdown(f"**{titulo}** — {desc}")
+            st.markdown("---")
+            st.markdown("### 🎯 Dica")
+            st.info("Use a IA Assistente na barra lateral para perguntar sobre seus dados (ex: 'Quantos atendimentos houve este mês?').")
+
 class ReportsPage:
     @staticmethod
     def render() -> None:
         render_page_header("📊 Relatórios", "Análises e Exportações")
-        col1, col2 = st.columns(2)
-        with col1:
-            periodo = st.selectbox("Período", ["Últimos 7 dias", "Últimos 30 dias", "Ano atual", "Tudo"])
-        with col2:
-            formato = st.selectbox("Formato", ["CSV", "Excel"])
+
+        tabR1, tabR2, tabR3, tabR4 = st.tabs(["📊 Geral", "🏢 Por Empresa", "📈 Tendências", "❌ Taxa de Faltas"])
+
         appointments = DatabaseManager.get_all_appointments()
-        if not appointments:
-            st.info("Sem dados para relatório.")
-            return
-        df = pd.DataFrame(appointments, columns=[
-            "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
-            "Laudo PDF", "Avaliação PDF", "Status", "Observações"
-        ])
-        df.insert(0, "Nº", range(1, len(df) + 1))
-        st.markdown("### 🧾 Resumo")
-        total_atendimentos = len(df)
-        total_empresas = df["Empresa"].nunique()
-        total_modalidades = df["Modalidade"].nunique()
-        cards = [
-            {"icon": "📋", "title": "Total Atendimentos", "value": total_atendimentos},
-            {"icon": "🏢", "title": "Empresas", "value": total_empresas},
-            {"icon": "🧾", "title": "Modalidades", "value": total_modalidades},
-        ]
-        display_cards(cards)
-        if not df.empty:
-            modal_counts = df["Modalidade"].value_counts()
-            fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade",
-                         color_discrete_sequence=['#1E5631'])
-            fig.update_traces(marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=1)))
-            fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400, font=dict(color="white"),
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
-        st.markdown("### ⬇️ Exportar Relatório")
-        if formato == "CSV":
-            csv_data = df.to_csv(index=False, sep=";").encode("utf-8-sig")
-            st.download_button("⬇️ Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
-        elif formato == "Excel":
-            try:
-                import io
-                buf = io.BytesIO()
-                df.to_excel(buf, index=False, engine="openpyxl")
-                st.download_button(
-                    "⬇️ Baixar Excel",
-                    data=buf.getvalue(),
-                    file_name="relatorio_atendimentos.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            except ImportError:
-                st.warning("Para exportar Excel, instale a biblioteca openpyxl: `pip install openpyxl`")
+
+        with tabR1:
+            col1, col2 = st.columns(2)
+            with col1:
+                periodo = st.selectbox("Período", ["Últimos 7 dias", "Últimos 30 dias", "Ano atual", "Tudo"], key="rep_periodo")
+            with col2:
+                formato = st.selectbox("Formato", ["CSV", "Excel"], key="rep_formato")
+            if not appointments:
+                st.info("Sem dados para relatório.")
+            else:
+                df = pd.DataFrame(appointments, columns=[
+                    "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+                    "Laudo PDF", "Avaliação PDF", "Status", "Observações"
+                ])
+                if periodo == "Últimos 7 dias":
+                    limite = date.today() - timedelta(days=7)
+                    df = df[df["Data"].apply(lambda x: _parse_data(x) >= limite)]
+                elif periodo == "Últimos 30 dias":
+                    limite = date.today() - timedelta(days=30)
+                    df = df[df["Data"].apply(lambda x: _parse_data(x) >= limite)]
+                elif periodo == "Ano atual":
+                    df = df[df["Data"].apply(lambda x: _parse_data(x).year == date.today().year)]
+
+                df.insert(0, "Nº", range(1, len(df) + 1))
+                st.markdown("### 🧾 Resumo")
+                total_atendimentos = len(df)
+                total_empresas = df["Empresa"].nunique() if not df.empty else 0
+                total_modalidades = df["Modalidade"].nunique() if not df.empty else 0
+                cards = [
+                    {"icon": "📋", "title": "Total Atendimentos", "value": total_atendimentos},
+                    {"icon": "🏢", "title": "Empresas", "value": total_empresas},
+                    {"icon": "🧾", "title": "Modalidades", "value": total_modalidades},
+                ]
+                display_cards(cards)
+                st.markdown("### 📋 Tabela de Atendimentos")
+                try:
+                    st.dataframe(df, use_container_width=True, height=420)
+                except Exception:
+                    st.table(df)
+                if not df.empty:
+                    modal_counts = df["Modalidade"].value_counts()
+                    fig = px.bar(x=modal_counts.index, y=modal_counts.values, title="Atendimentos por Modalidade",
+                                 color_discrete_sequence=['#1E5631'])
+                    fig.update_traces(marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=1)))
+                    fig.update_layout(xaxis_title="Modalidade", yaxis_title="Quantidade", height=400, font=dict(color="white"),
+                                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig, use_container_width=True)
+                st.markdown("### ⬇️ Exportar Relatório")
+                if formato == "CSV":
+                    csv_data = df.to_csv(index=False, sep=";").encode("utf-8-sig")
+                    st.download_button("⬇️ Baixar CSV", data=csv_data, file_name="relatorio_atendimentos.csv", mime="text/csv")
+                elif formato == "Excel":
+                    try:
+                        import io
+                        buf = io.BytesIO()
+                        df.to_excel(buf, index=False, engine="openpyxl")
+                        st.download_button(
+                            "⬇️ Baixar Excel",
+                            data=buf.getvalue(),
+                            file_name="relatorio_atendimentos.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    except ImportError:
+                        st.warning("Para exportar Excel, instale a biblioteca openpyxl: `pip install openpyxl`")
+
+        with tabR2:
+            st.markdown("### 🏢 Relatório por Empresa")
+            if not appointments:
+                st.info("Sem dados de atendimentos.")
+            else:
+                df_e = pd.DataFrame(appointments, columns=[
+                    "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+                    "Laudo PDF", "Avaliação PDF", "Status", "Observações"
+                ])
+                df_e["Data"] = df_e["Data"].apply(lambda x: _parse_data(x))
+                grupo = df_e.groupby("Empresa").agg(
+                    Atendimentos=("ID", "count"),
+                    Pacientes=("Nome", "nunique"),
+                    Modalidades=("Modalidade", "nunique"),
+                ).reset_index().sort_values("Atendimentos", ascending=False)
+                st.dataframe(grupo, use_container_width=True, hide_index=True)
+                if not grupo.empty:
+                    fig_e = px.bar(grupo, x="Empresa", y="Atendimentos", title="Atendimentos por Empresa",
+                                   color="Atendimentos", color_continuous_scale="greens")
+                    fig_e.update_layout(height=420, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_e, use_container_width=True)
+                st.markdown("#### 💰 Faturamento por Empresa")
+                empresas_fat = db.listar_empresas()
+                linhas_fat = []
+                for e in empresas_fat:
+                    fat = db.listar_faturamento_empresa(e["id"])
+                    for f in fat:
+                        linhas_fat.append({"Empresa": e["nome"], "Período": f"{f['mes']:02d}/{f['ano']}",
+                                           "Valor (R$)": float(f["valor_total"] or 0), "Atendimentos": f["quantidade_atendimentos"] or 0})
+                if linhas_fat:
+                    df_fat = pd.DataFrame(linhas_fat)
+                    st.dataframe(df_fat, use_container_width=True, hide_index=True)
+                    total_geral = df_fat["Valor (R$)"].sum()
+                    st.success(f"💰 **Faturamento total lançado: R$ {total_geral:,.2f}**")
+                else:
+                    st.caption("Nenhum faturamento lançado. Use Empresas → Faturamento.")
+
+        with tabR3:
+            st.markdown("### 📈 Tendências de Atendimentos")
+            if not appointments:
+                st.info("Sem dados de atendimentos.")
+            else:
+                df_t = pd.DataFrame(appointments, columns=[
+                    "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+                    "Laudo PDF", "Avaliação PDF", "Status", "Observações"
+                ])
+                df_t["Data"] = pd.to_datetime(df_t["Data"], dayfirst=True, errors="coerce")
+                df_t = df_t.dropna(subset=["Data"])
+                serie = df_t.groupby(df_t["Data"].dt.date).size().reset_index(name="Atendimentos")
+                serie.columns = ["Data", "Atendimentos"]
+                fig_t = px.line(serie, x="Data", y="Atendimentos", title="Atendimentos por dia",
+                                markers=True, color_discrete_sequence=['#4CAF50'])
+                fig_t.update_layout(height=400, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_t, use_container_width=True)
+                if not serie.empty:
+                    media = serie["Atendimentos"].mean()
+                    st.metric("Média de atendimentos/dia", f"{media:.1f}")
+                st.markdown("#### 📅 Atendimentos por mês")
+                df_t["Mês"] = df_t["Data"].dt.to_period("M").astype(str)
+                mensal = df_t.groupby("Mês").size().reset_index(name="Atendimentos")
+                fig_m = px.bar(mensal, x="Mês", y="Atendimentos", color_discrete_sequence=['#2D7D32'])
+                fig_m.update_layout(height=350, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_m, use_container_width=True)
+
+        with tabR4:
+            st.markdown("### ❌ Taxa de Faltas (por agendamentos)")
+            ags = db.listar_agendamentos()
+            if not ags:
+                st.info("Sem agendamentos registrados. Use a Agenda para criar agendamentos.")
+            else:
+                df_f = pd.DataFrame(ags)
+                total_ag = len(df_f)
+                cancelados = len(df_f[df_f["status"] == "Cancelado"])
+                concluidos = len(df_f[df_f["status"].isin(["Concluído", "Em Atendimento", "Check-in"])])
+                faltas_estimadas = cancelados
+                taxa = (faltas_estimadas / total_ag * 100) if total_ag else 0
+                cards_f = [
+                    {"icon": "📅", "title": "Agendamentos", "value": total_ag},
+                    {"icon": "✅", "title": "Concluídos", "value": concluidos},
+                    {"icon": "✖", "title": "Cancelados/Faltas", "value": cancelados},
+                    {"icon": "📉", "title": "Taxa de Faltas", "value": f"{taxa:.1f}%"},
+                ]
+                display_cards(cards_f)
+                st.markdown("#### Faltas por médico")
+                por_medico = df_f[df_f["status"] == "Cancelado"].groupby("medico").size().reset_index(name="Cancelamentos")
+                if not por_medico.empty:
+                    fig_f = px.bar(por_medico, x="medico", y="Cancelamentos", title="Cancelamentos por médico",
+                                   color_discrete_sequence=['#D32F2F'])
+                    fig_f.update_layout(height=350, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_f, use_container_width=True)
+                st.markdown("#### Distribuição por status")
+                status_counts = df_f["status"].value_counts().reset_index()
+                status_counts.columns = ["Status", "Quantidade"]
+                st.dataframe(status_counts, use_container_width=True, hide_index=True)
 
 class UploadPage:
     @staticmethod
@@ -1948,6 +4121,23 @@ class AuthPage:
 
             st.caption(f"🔒 Acesso seguro  •  Tentativas: {attempts}/5")
 
+            st.markdown(
+                """
+                <div style="text-align:center;margin-top:1.6rem;">
+                    <div style="width:44px;height:44px;margin:0 auto 8px auto;
+                                background:linear-gradient(135deg,#4DA768,#2ecc71);
+                                border-radius:14px;display:flex;align-items:center;justify-content:center;
+                                box-shadow:0 8px 20px rgba(0,0,0,0.25);">
+                        <span style="font-size:1.4rem;">🩺</span>
+                    </div>
+                    <p style="color:rgba(255,255,255,0.45);font-size:0.72rem;margin:0;
+                              font-family:'Inter',sans-serif;letter-spacing:0.5px;">
+                        MVP de Psicologia • Portal Administrativo v1.0</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
 class ClinicalManagementApp:
     def __init__(self):
         pass
@@ -1980,6 +4170,11 @@ class ClinicalManagementApp:
         if 'premium_dark_mode' not in st.session_state:
             saved_dark = db.get_preference('premium_dark_mode', 'false')
             st.session_state['premium_dark_mode'] = (saved_dark == 'true')
+
+        # Carregar tema premium salvo (paleta pronta aplicada sobre as cores individuais)
+        if 'premium_theme' not in st.session_state:
+            saved_theme = db.get_preference('premium_theme', '')
+            st.session_state['premium_theme'] = saved_theme if saved_theme in PREMIUM_THEMES else ''
         
         # Carregar foto de perfil do banco (apenas uma vez por sessão)
         if 'profile_photo_b64' not in st.session_state:
@@ -2086,7 +4281,16 @@ class ClinicalManagementApp:
 
                 pages = {
                     "⌂ Dashboard": "dashboard",
+                    "👥 Pacientes": "patients",
+                    "🏢 Empresas": "companies",
+                    "📅 Agenda": "agenda",
                     "⦿ Atendimentos": "appointments",
+                    "📋 Docs Clínicos": "clinical_docs",
+                    "📑 Laudos": "laudos",
+                    "🤖 IA": "ia",
+                    "💰 Financeiro": "finance",
+                    "🔐 Segurança": "security",
+                    "🛠️ Extras": "extras",
                     "☰ Relatórios": "reports",
                     "📝 Editor Docs": "docs_editor",
                     "↑ Upload": "upload",
@@ -2123,6 +4327,51 @@ class ClinicalManagementApp:
                 AuthPage.render()
             else:
                 DashboardPage.render()
+        elif page_key == "patients":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                PatientsPage.render()
+        elif page_key == "companies":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                CompaniesPage.render()
+        elif page_key == "agenda":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                AgendaPage.render()
+        elif page_key == "clinical_docs":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                ClinicalDocsPage.render()
+        elif page_key == "laudos":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                LaudosPage.render()
+        elif page_key == "ia":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                AIPage.render()
+        elif page_key == "finance":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                FinancePage.render()
+        elif page_key == "security":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                SecurityPage.render()
+        elif page_key == "extras":
+            if require_auth and not st.session_state.get('user_authenticated', False):
+                AuthPage.render()
+            else:
+                ExtrasPage.render()
         elif page_key == "appointments":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
