@@ -851,66 +851,56 @@ class DashboardPage:
         else:
             empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
-        if stats.get("modalidades") and total_appointments > 0:
-            vals = list(stats["modalidades"].values())
-            labels = list(stats["modalidades"].keys())
-            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade", 
-                         color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
-            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-            fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
-            st.plotly_chart(fig, use_container_width=True)
+        if total_appointments > 0:
+            st.markdown("### 🏢 Atendimentos por Empresa")
+            st.caption("Use o calendário para escolher o período e ver quantos atendimentos cada empresa teve.")
 
-        st.markdown("---")
-        st.markdown("### 🏢 Atendimentos por Empresa")
-        st.caption("Filtre por período (mês, dia e ano) para ver quantos atendimentos cada empresa possui.")
-        dcol1, dcol2, dcol3, dcol4 = st.columns(4)
-        with dcol1:
-            d_ano = st.selectbox("Ano", sorted({pd.to_datetime(str(a[4]), dayfirst=True, errors='coerce').year for a in appointments if a[4]}, reverse=True) or [date.today().year], key="dash_pie_ano")
-        with dcol2:
-            d_mes = st.selectbox("Mês", list(range(1, 13)), index=date.today().month - 1, format_func=lambda m: f"{m:02d}", key="dash_pie_mes")
-        with dcol3:
-            d_dia = st.selectbox("Dia", list(range(1, 32)), index=date.today().day - 1, key="dash_pie_dia")
-        with dcol4:
-            opcao = st.selectbox("Período", ["Dia específico", "Mês inteiro", "Ano inteiro"], key="dash_pie_periodo")
-
-        def _dt_empresa(a):
-            try:
-                return pd.to_datetime(str(a[4]), dayfirst=True, errors='coerce')
-            except Exception:
-                return pd.NaT
-
-        dados_filtrados = []
-        for a in appointments:
-            if len(a) < 2 or not a[1]:
-                continue
-            dt = _dt_empresa(a)
-            if dt is pd.NaT or pd.isna(dt):
-                continue
-            if opcao == "Dia específico":
-                if dt.year == d_ano and dt.month == d_mes and dt.day == d_dia:
-                    dados_filtrados.append(a[1])
-            elif opcao == "Mês inteiro":
-                if dt.year == d_ano and dt.month == d_mes:
-                    dados_filtrados.append(a[1])
+            # ── Mini calendário (período) ──
+            datas_validas = []
+            for a in appointments:
+                dt = _parse_data(a[4]) if len(a) > 4 and a[4] else None
+                if dt and dt.year > 1900:
+                    datas_validas.append(dt)
+            data_min = min(datas_validas) if datas_validas else date.today()
+            data_max = max(datas_validas) if datas_validas else date.today()
+            if 'dash_periodo' not in st.session_state:
+                st.session_state['dash_periodo'] = (data_min, data_max)
+            calendario = st.date_input(
+                "Período",
+                value=st.session_state['dash_periodo'],
+                min_value=data_min,
+                max_value=data_max,
+                key="dash_calendario",
+            )
+            if isinstance(calendario, tuple) and len(calendario) == 2:
+                inicio, fim = calendario
             else:
-                if dt.year == d_ano:
-                    dados_filtrados.append(a[1])
+                inicio = fim = calendario
 
-        if dados_filtrados:
-            emp_counts = pd.Series(dados_filtrados).value_counts()
-            fig2 = px.pie(values=emp_counts.values, names=emp_counts.index, title=f"Atendimentos por Empresa ({opcao})",
-                          color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784'])
-            fig2.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-            fig2.update_layout(legend_title_text="Empresa", height=440, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
-            st.plotly_chart(fig2, use_container_width=True)
-            st.markdown("#### 📊 Resumo por Empresa")
-            resumo = pd.DataFrame({
-                "Empresa": emp_counts.index,
-                "Atendimentos": emp_counts.values
-            }).reset_index(drop=True)
-            st.dataframe(resumo, use_container_width=True, hide_index=True)
-        else:
-            empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o filtro acima.")
+            contagem_empresas = {}
+            for a in appointments:
+                if len(a) <= 1 or not a[1]:
+                    continue
+                dt = _parse_data(a[4]) if len(a) > 4 and a[4] else None
+                if dt and dt.year > 1900 and inicio <= dt <= fim:
+                    contagem_empresas[str(a[1])] = contagem_empresas.get(str(a[1]), 0) + 1
+
+            if contagem_empresas:
+                labels = list(contagem_empresas.keys())
+                vals = list(contagem_empresas.values())
+                fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
+                             color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
+                fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
+                fig.update_layout(legend_title_text="Empresa", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
+                st.plotly_chart(fig, use_container_width=True)
+                st.markdown("#### 📊 Resumo por Empresa")
+                resumo = pd.DataFrame({
+                    "Empresa": labels,
+                    "Atendimentos": vals,
+                }).sort_values("Atendimentos", ascending=False).reset_index(drop=True)
+                st.dataframe(resumo, use_container_width=True, hide_index=True)
+            else:
+                empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
 class AppointmentsPage:
     @staticmethod
