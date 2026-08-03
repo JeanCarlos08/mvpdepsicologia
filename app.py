@@ -851,6 +851,16 @@ class DashboardPage:
         else:
             empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
+        if stats.get("modalidades") and total_appointments > 0:
+            st.markdown("### 🏥 Distribuição por Modalidade")
+            vals = list(stats["modalidades"].values())
+            labels = list(stats["modalidades"].keys())
+            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade",
+                         color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
+            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
+            fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
+            st.plotly_chart(fig, use_container_width=True)
+
         if total_appointments > 0:
             st.markdown("### 🏢 Atendimentos por Empresa")
             st.caption("Use o calendário para escolher o período e ver quantos atendimentos cada empresa teve.")
@@ -891,7 +901,7 @@ class DashboardPage:
                 fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
                              color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
                 fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                fig.update_layout(legend_title_text="Empresa", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
+                fig.update_layout(legend_title_text="Empresa", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
                 st.plotly_chart(fig, use_container_width=True)
                 st.markdown("#### 📊 Resumo por Empresa")
                 resumo = pd.DataFrame({
