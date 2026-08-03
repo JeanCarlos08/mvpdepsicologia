@@ -450,9 +450,15 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             border: 1px solid rgba(255,255,255,0.05);
             box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             transition: box-shadow 0.3s ease;
+            position: relative;
+            z-index: 1;
         }}
         .stDataFrame:hover, [data-testid="stTable"]:hover {{
             box-shadow: 0 15px 50px rgba(0,0,0,0.12);
+        }}
+        .stPlotlyChart, div[data-testid="stPlotlyChart"] {{
+            position: relative;
+            z-index: 2;
         }}
 
         /* ── INPUTS E FORMULÁRIOS ── */
@@ -858,8 +864,9 @@ class DashboardPage:
             fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade",
                          color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
             fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-            fig.update_layout(legend_title_text="Modalidade", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
+            fig.update_layout(legend_title_text="Modalidade", height=520, margin=dict(l=20, r=20, t=80, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
             st.plotly_chart(fig, use_container_width=True)
+            st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
         if total_appointments > 0:
             st.markdown("### 🏢 Atendimentos por Empresa")
@@ -901,8 +908,9 @@ class DashboardPage:
                 fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
                              color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
                 fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                fig.update_layout(legend_title_text="Empresa", height=420, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
+                fig.update_layout(legend_title_text="Empresa", height=520, margin=dict(l=20, r=20, t=80, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
                 st.plotly_chart(fig, use_container_width=True)
+                st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
                 st.markdown("#### 📊 Resumo por Empresa")
                 resumo = pd.DataFrame({
                     "Empresa": labels,
