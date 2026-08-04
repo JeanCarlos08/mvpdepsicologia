@@ -450,15 +450,12 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             border: 1px solid rgba(255,255,255,0.05);
             box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             transition: box-shadow 0.3s ease;
-            position: relative;
-            z-index: 1;
         }}
         .stDataFrame:hover, [data-testid="stTable"]:hover {{
             box-shadow: 0 15px 50px rgba(0,0,0,0.12);
         }}
-        .stPlotlyChart, div[data-testid="stPlotlyChart"] {{
-            position: relative;
-            z-index: 2;
+        [data-testid="stSidebar"] {{
+            z-index: 100 !important;
         }}
 
         /* ── INPUTS E FORMULÁRIOS ── */
@@ -857,19 +854,8 @@ class DashboardPage:
         else:
             empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
-        if stats.get("modalidades") and total_appointments > 0:
-            st.markdown("### 🏥 Distribuição por Modalidade")
-            vals = list(stats["modalidades"].values())
-            labels = list(stats["modalidades"].keys())
-            fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade",
-                         color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
-            fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-            fig.update_layout(legend_title_text="Modalidade", height=520, margin=dict(l=20, r=20, t=80, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
-            st.plotly_chart(fig, use_container_width=True)
-            st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-
         if total_appointments > 0:
-            st.markdown("### 🏢 Atendimentos por Empresa")
+            st.markdown("### 📊 Distribuição por Modalidade & Empresa")
             st.caption("Use o calendário para escolher o período e ver quantos atendimentos cada empresa teve.")
 
             # ── Mini calendário (período) ──
@@ -902,19 +888,33 @@ class DashboardPage:
                 if dt and dt.year > 1900 and inicio <= dt <= fim:
                     contagem_empresas[str(a[1])] = contagem_empresas.get(str(a[1]), 0) + 1
 
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                if stats.get("modalidades"):
+                    st.markdown("#### 🏥 Distribuição por Modalidade")
+                    vals = list(stats["modalidades"].values())
+                    labels = list(stats["modalidades"].keys())
+                    fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade",
+                                 color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
+                    fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
+                    fig.update_layout(legend_title_text="Modalidade", height=400, margin=dict(l=10, r=10, t=60, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
+                    st.plotly_chart(fig, use_container_width=True)
+            with col_p2:
+                if contagem_empresas:
+                    st.markdown("#### 🏢 Atendimentos por Empresa")
+                    labels = list(contagem_empresas.keys())
+                    vals = list(contagem_empresas.values())
+                    fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
+                                 color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
+                    fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
+                    fig.update_layout(legend_title_text="Empresa", height=400, margin=dict(l=10, r=10, t=60, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
+                    st.plotly_chart(fig, use_container_width=True)
+
             if contagem_empresas:
-                labels = list(contagem_empresas.keys())
-                vals = list(contagem_empresas.values())
-                fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
-                             color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
-                fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                fig.update_layout(legend_title_text="Empresa", height=520, margin=dict(l=20, r=20, t=80, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
-                st.plotly_chart(fig, use_container_width=True)
-                st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
                 st.markdown("#### 📊 Resumo por Empresa")
                 resumo = pd.DataFrame({
-                    "Empresa": labels,
-                    "Atendimentos": vals,
+                    "Empresa": list(contagem_empresas.keys()),
+                    "Atendimentos": list(contagem_empresas.values()),
                 }).sort_values("Atendimentos", ascending=False).reset_index(drop=True)
                 st.dataframe(resumo, use_container_width=True, hide_index=True)
             else:
