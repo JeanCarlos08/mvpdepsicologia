@@ -6,6 +6,7 @@ import base64
 import pathlib
 import urllib.parse
 from datetime import datetime, date, time, timedelta
+from zoneinfo import ZoneInfo
 from enum import Enum
 import pandas as pd
 import plotly.express as px
@@ -161,10 +162,10 @@ security = Security()
 
 class DatabaseManager:
     @staticmethod
-    def initialize_database():
+    def initialize_database(force=False):
         try:
             # Cria tabelas no Postgres conforme metadata do db.py
-            db.create_tables_if_needed()
+            db.ensure_schema(force=force)
             return True
         except Exception as e:
             Security.log_error("DB_INIT", e)
@@ -760,53 +761,80 @@ class DashboardPage:
         conn_ok = verificar_conexao()
         accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
         is_dark = st.session_state.get('premium_dark_mode', False)
-        hora = datetime.now().hour
+        hora = datetime.now(ZoneInfo("America/Manaus")).hour
         saudacao = "Bom dia" if hora < 12 else ("Boa tarde" if hora < 18 else "Boa noite")
         usuario = st.session_state.get('user_name', 'Admin')
         nome_exibido = str(usuario).split('@')[0].replace('.', ' ').title() if usuario not in ('Admin', 'admin', 'guest') else "Profissional"
-        data_pt = datetime.now().strftime("%A, %d de %B de %Y")
+        agora_manaus = datetime.now(ZoneInfo("America/Manaus"))
         dia_semana = {"Monday": "Segunda-feira", "Tuesday": "Terça-feira", "Wednesday": "Quarta-feira",
-                      "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"}.get(datetime.now().strftime("%A"), "")
+                      "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"}.get(agora_manaus.strftime("%A"), "")
         mes_pt = {"January": "janeiro", "February": "fevereiro", "March": "março", "April": "abril",
                   "May": "maio", "June": "junho", "July": "julho", "August": "agosto",
-                  "September": "setembro", "October": "outubro", "November": "novembro", "December": "dezembro"}.get(datetime.now().strftime("%B"), "")
-        data_pt = f"{dia_semana}, {datetime.now().day} de {mes_pt} de {datetime.now().year}"
-        hora_pt = datetime.now().strftime("%H:%M")
+                  "September": "setembro", "October": "outubro", "November": "novembro", "December": "dezembro"}.get(agora_manaus.strftime("%B"), "")
+        data_pt = f"{dia_semana}, {agora_manaus.day} de {mes_pt} de {agora_manaus.year}"
+        hora_pt = agora_manaus.strftime("%H:%M")
         status_html = status_badge("Online" if conn_ok else "Offline")
         status_label = "Postgres conectado" if conn_ok else "Banco indisponível"
         overlay = "rgba(0,0,0,0.28)" if is_dark else "rgba(255,255,255,0.10)"
-        st.markdown(
+        components.html(
             f"""
-            <div style="
-                background: linear-gradient(120deg, {accent} 0%, {accent}CC 55%, {accent}88 100%);
-                border: 1px solid rgba(255,255,255,0.18);
-                border-radius: 24px;
-                padding: 2rem 2.2rem;
-                margin-bottom: 1.4rem;
-                box-shadow: 0 12px 40px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.25);
-                position: relative;
-                overflow: hidden;
-            ">
-                <div style="position:absolute;top:-40px;right:-30px;font-size:8rem;opacity:0.10;transform:rotate(-12deg);">🩺</div>
-                <div style="position:relative;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
-                        <div>
-                            <p style="font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;
-                                      color:rgba(255,255,255,0.75);margin:0 0 6px 0;">Dashboard Executivo</p>
-                            <h1 style="margin:0;font-size:2.1rem;font-weight:800;color:#fff;
-                                       letter-spacing:-1px;">{saudacao}, {nome_exibido} 👋</h1>
-                            <p style="font-size:0.9rem;color:rgba(255,255,255,0.85);margin:6px 0 0 0;font-weight:500;">
-                                📅 {data_pt} &nbsp;•&nbsp; 🕐 {hora_pt}</p>
-                        </div>
-                        <div style="text-align:right;">
-                            <div>{status_html}</div>
-                            <p style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin:6px 0 0 0;">{status_label}</p>
-                        </div>
-                    </div>
+            <html>
+            <head>
+            <style>
+              html, body {{ margin:0; padding:0; height:100%; overflow:hidden; background:transparent; }}
+              .box {{
+                  height:100%; box-sizing:border-box;
+                  background: linear-gradient(120deg, {accent} 0%, {accent}CC 55%, {accent}88 100%);
+                  border: 1px solid rgba(255,255,255,0.18);
+                  border-radius: 24px;
+                  padding: 1.3rem 2.2rem;
+                  box-shadow: 0 12px 40px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.25);
+                  position: relative; overflow: hidden;
+                  display:flex; align-items:center;
+              }}
+              .steth {{ position:absolute; top:-40px; right:-30px; font-size:8rem; opacity:0.10; transform:rotate(-12deg); }}
+              .content {{ position:relative; width:100%; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; }}
+              .kicker {{ font-size:0.72rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.75); margin:0 0 6px 0; }}
+              h1 {{ margin:0; font-size:2.1rem; font-weight:800; color:#fff; letter-spacing:-1px; }}
+              .data {{ font-size:0.9rem; color:rgba(255,255,255,0.85); margin:6px 0 0 0; font-weight:500; }}
+              .direita {{ text-align:right; }}
+              .status-txt {{ font-size:0.75rem; color:rgba(255,255,255,0.75); margin:6px 0 0 0; }}
+            </style>
+            </head>
+            <body>
+              <div class="box">
+                <div class="steth">🩺</div>
+                <div class="content">
+                  <div>
+                    <p class="kicker">Dashboard Executivo</p>
+                    <h1>{saudacao}, {nome_exibido} 👋</h1>
+                    <p class="data">📅 {data_pt} &nbsp;•&nbsp; 🕐 <span id="relogio-manaus" style="font-variant-numeric:tabular-nums;">{hora_pt}</span></p>
+                  </div>
+                  <div class="direita">
+                    <div>{status_html}</div>
+                    <p class="status-txt">{status_label}</p>
+                  </div>
                 </div>
-            </div>
+              </div>
+              <script>
+              (function() {{
+                function formatar(tz) {{
+                  try {{
+                    return new Intl.DateTimeFormat('pt-BR', {{ timeZone: tz, hour: '2-digit', minute: '2-digit' }}).format(new Date());
+                  }} catch (e) {{ return ''; }}
+                }}
+                function atualizar() {{
+                  var el = document.getElementById('relogio-manaus');
+                  if (el) el.textContent = formatar('America/Manaus');
+                }}
+                atualizar();
+                setInterval(atualizar, 1000);
+              }})();
+              </script>
+            </body>
+            </html>
             """,
-            unsafe_allow_html=True,
+            height=190,
         )
         st.caption("PostgreSQL | IA Assistente | Gestão Clínica")
         try:
@@ -2931,7 +2959,7 @@ class SettingsPage:
 
         with col3:
             if st.button("♻️ Reinicializar DB"):
-                if DatabaseManager.initialize_database():
+                if DatabaseManager.initialize_database(force=True):
                     st.success("Banco reinicializado!")
                 else:
                     st.error("Erro ao reinicializar banco.")
@@ -3220,6 +3248,145 @@ def _gerar_laudo_completo_pdf(modelo: dict, dados: dict) -> None:
         _baixar_pdf_streamlit(pdf, f"laudo_{dados.get('paciente_nome', 'paciente')}.pdf")
     except Exception as e:
         st.error(f"Erro ao gerar PDF: {e}")
+
+
+class DocsEditorPage:
+    @staticmethod
+    def render() -> None:
+        render_page_header("📝 Editor de Laudos", "Preenchimento de laudos via Google Docs")
+        try:
+            import gdocs
+        except Exception as e:
+            st.error(f"Falha ao carregar módulo Google Docs: {e}")
+            return
+
+        if not gdocs.configurado():
+            st.warning(
+                "Configure **GOOGLE_CLIENT_ID**, **GOOGLE_CLIENT_SECRET** e **GOOGLE_REDIRECT_URI** "
+                "no arquivo `.streamlit/secrets.toml` para usar o Google Docs. "
+                "Crie as credenciais em console.cloud.google.com → APIs & Services → Credentials → OAuth 2.0 Client ID."
+            )
+            DocsEditorPage._manual_link()
+            return
+
+        # ── Callback OAuth (retorno do Google com ?code=...) ──
+        params = st.query_params
+        if "code" in params:
+            st.session_state["google_pending_code"] = params["code"]
+            st.session_state["google_pending_state"] = params.get("state", "")
+            st.query_params.clear()
+        if st.session_state.get("google_pending_code"):
+            with st.spinner("Conectando ao Google..."):
+                try:
+                    gdocs.exchange_code(
+                        st.session_state.pop("google_pending_code", ""),
+                        expected_state=st.session_state.pop("google_pending_state", ""),
+                    )
+                    st.success("Conta Google conectada!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Falha ao conectar com o Google: {e}")
+                    st.session_state.pop("google_pending_code", None)
+                    st.session_state.pop("google_pending_state", None)
+
+        creds = gdocs.get_credentials()
+        if not creds:
+            st.info("Conecte sua conta Google para preencher modelos de laudo automaticamente.")
+            url = gdocs.authorization_url()
+            st.markdown(
+                f'<a href="{url}" target="_blank" style="text-decoration:none;">'
+                '<div style="background:linear-gradient(135deg,#4285F4 0%,#356AC3 100%);color:#fff;'
+                'padding:16px;border-radius:12px;text-align:center;font-size:1.05rem;font-weight:700;'
+                'box-shadow:0 8px 24px rgba(66,133,244,.35);">'
+                '🔗 Conectar com Google Docs'
+                '<div style="font-size:.8rem;font-weight:500;opacity:.85;">Abre o login do Google em nova aba</div>'
+                '</div></a>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Após autorizar, você voltará ao app já conectado.")
+            return
+
+        # ── Conectado ──
+        st.success(f"✅ Conectado: {gdocs.account_info() or 'Google Docs'}")
+        if st.button("🔌 Desconectar", key="gdocs_disconnect"):
+            gdocs.disconnect()
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 🚀 Preencher modelo de laudo no Google Docs")
+        pacientes = db.listar_pacientes()
+        nomes_pac = {p["nome"]: p["id"] for p in pacientes}
+        sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="gdocs_pac")
+
+        l1, l2 = st.columns(2)
+        with l1:
+            template_url = st.text_input(
+                "URL do Documento Modelo *",
+                key="gdocs_tpl",
+                placeholder="https://docs.google.com/document/d/.../edit",
+                help="O documento deve conter os campos {nome}, {empresa}, {medico} e {data} no corpo.",
+            )
+        with l2:
+            medico = st.selectbox("Médico", AGENDA_MEDICOS, index=0, key="gdocs_med")
+
+        if sel_nome and template_url.strip():
+            if st.button("📄 Preencher e Criar Cópia no Google Docs", type="primary", key="gdocs_go", use_container_width=True):
+                paciente_info = db.obter_paciente(nomes_pac[sel_nome]) if sel_nome else None
+                placeholders = {
+                    "{nome}": sel_nome,
+                    "{empresa}": (paciente_info or {}).get("empresa") or "",
+                    "{medico}": medico,
+                    "{data}": date.today().strftime("%d/%m/%Y"),
+                }
+                doc_name = f"Laudo - {sel_nome} - {date.today().strftime('%d/%m/%Y')}"
+                with st.spinner("Copiando e preenchendo o documento no Google Docs..."):
+                    try:
+                        new_url = gdocs.fill_template(template_url.strip(), placeholders, doc_name)
+                    except Exception as e:
+                        st.error(f"Erro ao preencher o documento: {e}")
+                        new_url = None
+                if new_url:
+                    st.session_state["last_docs_url"] = new_url
+                    st.success("Documento criado com sucesso!")
+                    st.markdown(
+                        f'<a href="{new_url}" target="_blank" style="text-decoration:none;">'
+                        '<div style="background:linear-gradient(135deg,#4DA768 0%,#3e8a54 100%);color:#fff;'
+                        'padding:16px;border-radius:12px;text-align:center;font-size:1.1rem;font-weight:700;'
+                        'box-shadow:0 8px 24px rgba(77,167,104,.35);">'
+                        '🚀 Abrir Laudo no Google Docs'
+                        '<div style="font-size:.8rem;font-weight:500;opacity:.85;">Abre em nova aba</div>'
+                        '</div></a>',
+                        unsafe_allow_html=True,
+                    )
+        else:
+            st.info("👆 Selecione o paciente e cole a URL do documento modelo para habilitar a geração.")
+
+        DocsEditorPage._manual_link()
+
+    @staticmethod
+    def _manual_link() -> None:
+        st.markdown("---")
+        st.markdown("### 🔗 Abertura manual de documento")
+        docs_url = st.text_input(
+            "URL do Google Docs",
+            value=st.session_state.get("last_docs_url", "https://docs.google.com/document/d/1FDYCKMZaEMWAiOO1ovq9R0bQ0L4vTpEZr6DGohcppJY/edit"),
+            placeholder="Ex: https://docs.google.com/document/d/.../edit",
+            key="gdocs_manual_url",
+        )
+        if docs_url:
+            st.session_state["last_docs_url"] = docs_url
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown(
+                    f'<a href="{docs_url}" target="_blank" style="text-decoration:none;">'
+                    '<div style="background:linear-gradient(135deg,#4DA768 0%,#3e8a54 100%);color:#fff;'
+                    'padding:20px;border-radius:16px;text-align:center;font-size:1.2rem;font-weight:800;'
+                    'box-shadow:0 10px 30px rgba(77,167,104,.4);">'
+                    '🚀 Abrir Editor de Laudos (Google Docs)'
+                    '<div style="font-size:.8rem;font-weight:500;opacity:.8;margin-top:5px;">Abre em nova aba segura</div>'
+                    '</div></a>',
+                    unsafe_allow_html=True,
+                )
 
 class AIPage:
     @staticmethod
@@ -4396,45 +4563,7 @@ class ClinicalManagementApp:
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
-                render_page_header("📝 Editor de Laudos", "Edição segura no Google Docs")
-                st.markdown("Para evitar bloqueios de segurança do Google (que pedem confirmação de e-mail repetidamente), os laudos agora abrem em uma nova aba com 100% das funcionalidades do Google Docs liberadas.")
-                
-                docs_url = st.text_input("URL do Google Docs", value=st.session_state.get('last_docs_url', 'https://docs.google.com/document/d/1FDYCKMZaEMWAiOO1ovq9R0bQ0L4vTpEZr6DGohcppJY/edit'), placeholder="Ex: https://docs.google.com/document/d/.../edit")
-                
-                if docs_url:
-                    st.session_state['last_docs_url'] = docs_url
-                    
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    col1, col2, col3 = st.columns([1,2,1])
-                    with col2:
-                        # Criando um botão de link gigante e premium
-                        st.markdown(f"""
-                            <a href="{docs_url}" target="_blank" style="text-decoration: none;">
-                                <div style="
-                                    background: linear-gradient(135deg, #4DA768 0%, #3e8a54 100%);
-                                    color: white;
-                                    padding: 20px;
-                                    border-radius: 16px;
-                                    text-align: center;
-                                    font-size: 1.2rem;
-                                    font-weight: 800;
-                                    box-shadow: 0 10px 30px rgba(77,167,104,0.4);
-                                    transition: transform 0.2s, box-shadow 0.2s;
-                                    border: 2px solid rgba(255,255,255,0.2);
-                                ">
-                                    🚀 Abrir Editor de Laudos (Google Docs)
-                                    <div style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; margin-top: 5px;">Abre em nova aba segura</div>
-                                </div>
-                            </a>
-                            <style>
-                                a > div:hover {{
-                                    transform: translateY(-4px);
-                                    box-shadow: 0 15px 40px rgba(77,167,104,0.6) !important;
-                                }}
-                            </style>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.info("👆 Cole o link do documento acima para habilitar o botão.")
+                DocsEditorPage.render()
         elif page_key == "upload":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()

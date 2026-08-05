@@ -46,24 +46,28 @@ class AIManager:
             
         genai.configure(api_key=api_key)
         
-        # Lista de modelos disponíveis para esta API Key (versões 2.5, 3 e 3.5)
+        # Lista de modelos disponíveis para esta API Key (validados por chamada real)
         candidates = [
-            'gemini-3.5-flash',
             'gemini-flash-latest',
             'gemini-3-flash-preview',
-            'gemini-2.5-flash',
-            'gemini-2.5-pro'
+            'gemini-3.5-flash',
+            'gemini-2.5-pro',
+            'gemini-2.5-flash'
         ]
         
         last_error = None
         for model_name in candidates:
             try:
-                # Teste rápido: instanciar o modelo
+                # Instanciar e TESTAR com uma chamada mínima real para validar
+                # que o modelo existe e não está com quota bloqueada para esta API Key
                 m = genai.GenerativeModel(model_name)
-                # Tentar uma chamada mínima para validar se o modelo existe para esta API Key
-                # (Opcional, mas garante que o 404 não aconteça depois)
-                cls._model = m
-                return True
+                test = m.generate_content(
+                    "Responda apenas: OK",
+                    request_options={'timeout': 20},
+                )
+                if test and getattr(test, 'text', None):
+                    cls._model = m
+                    return True
             except Exception as e:
                 last_error = e
                 continue
@@ -156,6 +160,7 @@ class AIManager:
             response = cls._model.generate_content(prompt)
             return response.text if response else "Cadastre mais atendimentos para obter insights."
         except Exception as e:
+            _log_error("AI_INSIGHTS", e)
             return "Não foi possível gerar os insights agora."
 
     @classmethod

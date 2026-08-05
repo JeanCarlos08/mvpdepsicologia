@@ -679,6 +679,13 @@ SCHEMA_STATEMENTS_POSTGRES: Tuple[str, ...] = (
 	"""
 	CREATE INDEX IF NOT EXISTS idx_faturamento_empresa ON faturamento_empresa (empresa_id);
 	""",
+	"""
+	CREATE TABLE IF NOT EXISTS google_oauth (
+		id INTEGER PRIMARY KEY DEFAULT 1,
+		token_json TEXT NOT NULL,
+		updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	);
+	""",
 )
 
 
@@ -722,8 +729,18 @@ def _migrate_modalidade_periodico() -> None:
 	except Exception:
 		pass
 
-def ensure_schema() -> None:
-	"""Garante que a estrutura do banco esteja correta e migrada."""
+_SCHEMA_OK: bool = False
+
+
+def ensure_schema(force: bool = False) -> None:
+	"""Garante que a estrutura do banco esteja correta e migrada.
+
+	Idempotente por processo: só executa de fato na primeira chamada,
+	exceto quando force=True (ex.: botão "Reinicializar DB").
+	"""
+	global _SCHEMA_OK
+	if _SCHEMA_OK and not force:
+		return
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
 		for statement in SCHEMA_STATEMENTS_POSTGRES:
@@ -739,6 +756,8 @@ def ensure_schema() -> None:
 
 	# Garantir índices atualizados
 	ensure_indexes()
+
+	_SCHEMA_OK = True
 
 
 def ensure_indexes() -> None:
@@ -2606,6 +2625,49 @@ def delete_preference(key: str) -> bool:
 			return cur.rowcount > 0
 	except Exception:
 		return False
+
+
+def salvar_google_tokens(token_json: str) -> bool:
+	"""Persiste o JSON de tokens OAuth do Google (refresh token)."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute(
+				"""
+				INSERT INTO google_oauth (id, token_json) VALUES (1, %s)
+				ON CONFLICT (id) DO UPDATE SET
+					token_json = EXCLUDED.token_json,
+					updated_at = CURRENT_TIMESTAMP
+				""",
+				(token_json,),
+			)
+		return True
+	except Exception:
+		return False
+
+
+def obter_google_tokens() -> Optional[str]:
+	"""Recupera o JSON de tokens OAuth do Google, ou None."""
+	try:
+		with _connection_scope(commit=False) as conn:
+			cur = _get_cursor(conn)
+			cur.execute("SELECT token_json FROM google_oauth WHERE id = 1")
+			row = cur.fetchone()
+			return row["token_json"] if row else None
+	except Exception:
+		return None
+
+
+def limpar_google_tokens() -> bool:
+	"""Remove os tokens OAuth do Google do banco."""
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			cur.execute("DELETE FROM google_oauth WHERE id = 1")
+			return cur.rowcount > 0
+	except Exception:
+		return False
+
 
 
 def verificar_conexao() -> bool:
