@@ -927,7 +927,7 @@ class DashboardPage:
                     fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
                     fig.update_layout(legend_title_text="Modalidade", height=380, margin=dict(l=10, r=10, t=60, b=10),
                                       legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                                      paper_bgcolor="#FFFFFF" if not is_dark else "#262730",
+                                      paper_bgcolor="#DCF2E4" if not is_dark else "#262730",
                                       plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
                     st.plotly_chart(fig, use_container_width=True)
             with col_p2:
@@ -940,7 +940,7 @@ class DashboardPage:
                     fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
                     fig.update_layout(legend_title_text="Empresa", height=380, margin=dict(l=10, r=10, t=60, b=10),
                                       legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                                      paper_bgcolor="#FFFFFF" if not is_dark else "#262730",
+                                      paper_bgcolor="#DCF2E4" if not is_dark else "#262730",
                                       plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF" if is_dark else "#1E293B"))
                     st.plotly_chart(fig, use_container_width=True)
 
