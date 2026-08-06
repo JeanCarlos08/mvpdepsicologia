@@ -939,12 +939,12 @@ class DashboardPage:
                     st.plotly_chart(fig, use_container_width=True)
 
             if contagem_empresas:
-                st.markdown("#### 📊 Resumo por Empresa")
-                resumo = pd.DataFrame({
-                    "Empresa": list(contagem_empresas.keys()),
-                    "Atendimentos": list(contagem_empresas.values()),
-                }).sort_values("Atendimentos", ascending=False).reset_index(drop=True)
-                st.dataframe(resumo, use_container_width=True, hide_index=True)
+                with st.expander("📊 Resumo por Empresa", expanded=False):
+                    resumo = pd.DataFrame({
+                        "Empresa": list(contagem_empresas.keys()),
+                        "Atendimentos": list(contagem_empresas.values()),
+                    }).sort_values("Atendimentos", ascending=False).reset_index(drop=True)
+                    st.dataframe(resumo, use_container_width=True, hide_index=True)
             else:
                 empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
