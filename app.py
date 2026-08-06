@@ -640,6 +640,46 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             display: none !important;
         }}
 
+        /* ── REMOVER CARA DE FERRAMENTA/PLANILHA (CHROME PADRÃO) ── */
+        #MainMenu, footer, [data-testid="stDecoration"] {{
+            visibility: hidden;
+            height: 0;
+        }}
+        [data-testid="stToolbar"], [data-testid="stMainMenu"], [data-testid="stDeployButton"],
+        [data-testid="stMainMenu"] button, [data-testid="stToolbar"] button {{
+            display: none !important;
+        }}
+        header[data-testid="stHeader"] {{
+            background: transparent !important;
+            height: 2.5rem !important;
+        }}
+        [data-testid="stStatusWidget"] {{
+            visibility: hidden;
+            height: 0;
+        }}
+        .block-container {{
+            padding-top: 1.2rem !important;
+        }}
+        /* Tabelas com cara de cards, não de planilha */
+        [data-testid="stDataFrame"] {{
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.08) !important;
+        }}
+        [data-testid="stDataFrame"] thead tr th {{
+            background: rgba(255,255,255,0.06) !important;
+            font-weight: 700 !important;
+            font-size: 0.78rem !important;
+            letter-spacing: 0.5px !important;
+            text-transform: uppercase !important;
+        }}
+        [data-testid="stDataFrame"] tbody tr {{
+            transition: background 0.15s ease !important;
+        }}
+        [data-testid="stDataFrame"] tbody tr:hover {{
+            background: rgba(255,255,255,0.05) !important;
+        }}
+
         </style>''', unsafe_allow_html=True)
 
 def apply_plotly_theme(dark_mode=False):
