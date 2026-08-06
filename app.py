@@ -3304,62 +3304,61 @@ class DocsEditorPage:
                 unsafe_allow_html=True,
             )
             st.caption("Após autorizar, você voltará ao app já conectado.")
-            return
-
-        # ── Conectado ──
-        st.success(f"✅ Conectado: {gdocs.account_info() or 'Google Docs'}")
-        if st.button("🔌 Desconectar", key="gdocs_disconnect"):
-            gdocs.disconnect()
-            st.rerun()
-
-        st.markdown("---")
-        st.markdown("### 🚀 Preencher modelo de laudo no Google Docs")
-        pacientes = db.listar_pacientes()
-        nomes_pac = {p["nome"]: p["id"] for p in pacientes}
-        sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="gdocs_pac")
-
-        l1, l2 = st.columns(2)
-        with l1:
-            template_url = st.text_input(
-                "URL do Documento Modelo *",
-                key="gdocs_tpl",
-                placeholder="https://docs.google.com/document/d/.../edit",
-                help="O documento deve conter os campos {nome}, {empresa}, {medico} e {data} no corpo.",
-            )
-        with l2:
-            medico = st.selectbox("Médico", AGENDA_MEDICOS, index=0, key="gdocs_med")
-
-        if sel_nome and template_url.strip():
-            if st.button("📄 Preencher e Criar Cópia no Google Docs", type="primary", key="gdocs_go", use_container_width=True):
-                paciente_info = db.obter_paciente(nomes_pac[sel_nome]) if sel_nome else None
-                placeholders = {
-                    "{nome}": sel_nome,
-                    "{empresa}": (paciente_info or {}).get("empresa") or "",
-                    "{medico}": medico,
-                    "{data}": date.today().strftime("%d/%m/%Y"),
-                }
-                doc_name = f"Laudo - {sel_nome} - {date.today().strftime('%d/%m/%Y')}"
-                with st.spinner("Copiando e preenchendo o documento no Google Docs..."):
-                    try:
-                        new_url = gdocs.fill_template(template_url.strip(), placeholders, doc_name)
-                    except Exception as e:
-                        st.error(f"Erro ao preencher o documento: {e}")
-                        new_url = None
-                if new_url:
-                    st.session_state["last_docs_url"] = new_url
-                    st.success("Documento criado com sucesso!")
-                    st.markdown(
-                        f'<a href="{new_url}" target="_blank" style="text-decoration:none;">'
-                        '<div style="background:linear-gradient(135deg,#4DA768 0%,#3e8a54 100%);color:#fff;'
-                        'padding:16px;border-radius:12px;text-align:center;font-size:1.1rem;font-weight:700;'
-                        'box-shadow:0 8px 24px rgba(77,167,104,.35);">'
-                        '🚀 Abrir Laudo no Google Docs'
-                        '<div style="font-size:.8rem;font-weight:500;opacity:.85;">Abre em nova aba</div>'
-                        '</div></a>',
-                        unsafe_allow_html=True,
-                    )
         else:
-            st.info("👆 Selecione o paciente e cole a URL do documento modelo para habilitar a geração.")
+            # ── Conectado ──
+            st.success(f"✅ Conectado: {gdocs.account_info() or 'Google Docs'}")
+            if st.button("🔌 Desconectar", key="gdocs_disconnect"):
+                gdocs.disconnect()
+                st.rerun()
+
+            st.markdown("---")
+            st.markdown("### 🚀 Preencher modelo de laudo no Google Docs")
+            pacientes = db.listar_pacientes()
+            nomes_pac = {p["nome"]: p["id"] for p in pacientes}
+            sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="gdocs_pac")
+
+            l1, l2 = st.columns(2)
+            with l1:
+                template_url = st.text_input(
+                    "URL do Documento Modelo *",
+                    key="gdocs_tpl",
+                    placeholder="https://docs.google.com/document/d/.../edit",
+                    help="O documento deve conter os campos {nome}, {empresa}, {medico} e {data} no corpo.",
+                )
+            with l2:
+                medico = st.selectbox("Médico", AGENDA_MEDICOS, index=0, key="gdocs_med")
+
+            if sel_nome and template_url.strip():
+                if st.button("📄 Preencher e Criar Cópia no Google Docs", type="primary", key="gdocs_go", use_container_width=True):
+                    paciente_info = db.obter_paciente(nomes_pac[sel_nome]) if sel_nome else None
+                    placeholders = {
+                        "{nome}": sel_nome,
+                        "{empresa}": (paciente_info or {}).get("empresa") or "",
+                        "{medico}": medico,
+                        "{data}": date.today().strftime("%d/%m/%Y"),
+                    }
+                    doc_name = f"Laudo - {sel_nome} - {date.today().strftime('%d/%m/%Y')}"
+                    with st.spinner("Copiando e preenchendo o documento no Google Docs..."):
+                        try:
+                            new_url = gdocs.fill_template(template_url.strip(), placeholders, doc_name)
+                        except Exception as e:
+                            st.error(f"Erro ao preencher o documento: {e}")
+                            new_url = None
+                    if new_url:
+                        st.session_state["last_docs_url"] = new_url
+                        st.success("Documento criado com sucesso!")
+                        st.markdown(
+                            f'<a href="{new_url}" target="_blank" style="text-decoration:none;">'
+                            '<div style="background:linear-gradient(135deg,#4DA768 0%,#3e8a54 100%);color:#fff;'
+                            'padding:16px;border-radius:12px;text-align:center;font-size:1.1rem;font-weight:700;'
+                            'box-shadow:0 8px 24px rgba(77,167,104,.35);">'
+                            '🚀 Abrir Laudo no Google Docs'
+                            '<div style="font-size:.8rem;font-weight:500;opacity:.85;">Abre em nova aba</div>'
+                            '</div></a>',
+                            unsafe_allow_html=True,
+                        )
+            else:
+                st.info("👆 Selecione o paciente e cole a URL do documento modelo para habilitar a geração.")
 
         DocsEditorPage._manual_link()
 
