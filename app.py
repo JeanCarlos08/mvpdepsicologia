@@ -5,6 +5,7 @@ import os
 import base64
 import pathlib
 import urllib.parse
+import html
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 from enum import Enum
@@ -16,6 +17,7 @@ from fpdf import FPDF
 # Configurar página do Streamlit
 st.set_page_config(
     page_title="Sistema de Gestão Clínica",
+    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -678,6 +680,77 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
         [data-testid="stDataFrame"] tbody tr:hover {{
             background: rgba(255,255,255,0.05) !important;
+        }}
+
+        /* ── MENU LATERAL PREMIUM (st.radio → itens tipo sidebar) ── */
+        [data-testid="stSidebar"] div[role="radiogroup"] {{
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 0 2px;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px !important;
+            margin: 0 !important;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.22s ease, transform 0.15s ease !important;
+            background: transparent !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child,
+        [data-testid="stSidebar"] div[role="radiogroup"] > label > input {{
+            display: none !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label p {{
+            margin-bottom: 0 !important;
+            font-size: 0.88rem !important;
+            font-weight: 500 !important;
+            letter-spacing: 0.2px !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
+            background: rgba(255,255,255,0.10) !important;
+            transform: translateX(2px);
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked),
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(div[aria-checked="true"]) {{
+            background: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.10)) !important;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35), 0 4px 14px rgba(0,0,0,0.18) !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p,
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(div[aria-checked="true"]) p {{
+            font-weight: 800 !important;
+        }}
+        /* Títulos de seção do menu */
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before,
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6)::before,
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10)::before {{
+            width: 100%;
+            font-size: 0.62rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 2px !important;
+            text-transform: uppercase !important;
+            color: rgba(255,255,255,0.55) !important;
+            padding: 10px 2px 4px;
+            pointer-events: none;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before {{ content: "Principal"; }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6)::before {{ content: "Gestão"; }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10)::before {{ content: "Sistema"; }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6),
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10) {{
+            margin-top: 10px !important;
+        }}
+
+        /* ── ANIMAÇÃO DE ENTRADA ── */
+        @keyframes appFadeIn {{
+            from {{ opacity: 0; transform: translateY(8px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        [data-testid="stMainViewContainer"] .block-container {{
+            animation: appFadeIn 0.45s ease;
         }}
 
         </style>''', unsafe_allow_html=True)
@@ -2560,6 +2633,15 @@ class CompaniesPage:
                     total_fat = sum(float(f["valor_total"] or 0) for f in faturas)
                     st.success(f"💰 Total lançado no ano {f_ano}: **R$ {total_fat:,.2f}**")
 
+def _pac_initials(nome: str) -> str:
+    partes = [p for p in str(nome or "").strip().split() if p]
+    if not partes:
+        return "?"
+    if len(partes) == 1:
+        return partes[0][:2].upper()
+    return (partes[0][0] + partes[-1][0]).upper()
+
+
 class PatientsPage:
     @staticmethod
     def render() -> None:
@@ -2588,20 +2670,68 @@ class PatientsPage:
                 if st.button("🔍 Buscar", key="pac_buscar_btn", use_container_width=True):
                     pass
 
-            pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
-            if not pacientes:
-                st.info("Nenhum paciente encontrado.")
-            else:
-                df_pac = pd.DataFrame([{
-                    "ID": p["id"],
-                    "Nome": p["nome"],
-                    "CPF": p["cpf"] or "",
-                    "Telefone": p["telefone"] or "",
-                    "E-mail": p["email"] or "",
-                    "Status": "Ativo" if p["ativo"] else "Inativo",
-                } for p in pacientes])
-                st.dataframe(df_pac, use_container_width=True, hide_index=True, height=320)
-                st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Selecione na aba Prontuário para ver o prontuário completo.")
+                pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
+                if not pacientes:
+                    st.info("Nenhum paciente encontrado.")
+                else:
+                    card_cores = [
+                        ("#1E7A46", "#4DA768"),
+                        ("#1D5FA8", "#5FA8D3"),
+                        ("#6C3FA8", "#9B7BD6"),
+                        ("#8A1F3D", "#C24A6B"),
+                    ]
+                    cards_html = ['<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;">']
+                    for i, p in enumerate(pacientes):
+                        nome = html.escape(p["nome"] or "")
+                        ini = html.escape(_pac_initials(p["nome"]))
+                        c1, c2 = card_cores[i % len(card_cores)]
+                        ativo = bool(p["ativo"])
+                        status = "Ativo" if ativo else "Inativo"
+                        st_cor = "#22C55E" if ativo else "#EF4444"
+                        st_fundo = "rgba(34,197,94,0.14)" if ativo else "rgba(239,68,68,0.14)"
+                        contatos = []
+                        if p.get("telefone"):
+                            contatos.append(f"📞&nbsp;&nbsp;{html.escape(str(p['telefone']))}")
+                        if p.get("email"):
+                            contatos.append(f"✉️&nbsp;&nbsp;{html.escape(str(p['email']))}")
+                        if p.get("cpf"):
+                            contatos.append(f"🪪&nbsp;&nbsp;{html.escape(str(p['cpf']))}")
+                        contatos_html = "".join(
+                            f"<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{c}</div>"
+                            for c in contatos
+                        ) or "<div style='color:rgba(255,255,255,0.35);font-style:italic;'>Sem contato cadastrado</div>"
+                        cards_html.append(f"""
+                        <div style='flex:0 1 282px;min-width:250px;background:rgba(255,255,255,0.06);
+                            border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 18px;
+                            transition:transform 0.2s ease, box-shadow 0.2s ease;
+                            box-shadow:0 4px 14px rgba(0,0,0,0.10);'>
+                            <div style='display:flex;align-items:center;gap:12px;'>
+                                <div style='width:46px;height:46px;border-radius:50%;flex-shrink:0;
+                                    background:linear-gradient(135deg,{c1},{c2});
+                                    display:flex;align-items:center;justify-content:center;
+                                    color:#fff;font-weight:800;font-size:0.95rem;
+                                    box-shadow:0 3px 10px rgba(0,0,0,0.2);'>{ini}</div>
+                                <div style='min-width:0;'>
+                                    <div style='font-weight:700;font-size:0.94rem;color:#fff;
+                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{nome}</div>
+                                    <div style='font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;
+                                        letter-spacing:0.4px;'>PACIENTE #{p['id']}</div>
+                                </div>
+                            </div>
+                            <div style='margin-top:12px;font-size:0.78rem;color:rgba(255,255,255,0.78);
+                                display:flex;flex-direction:column;gap:5px;'>
+                                {contatos_html}
+                            </div>
+                            <div style='margin-top:14px;display:flex;align-items:center;justify-content:space-between;'>
+                                <span style='background:{st_fundo};color:{st_cor};
+                                    border:1px solid {st_cor}55;border-radius:999px;
+                                    padding:4px 12px;font-size:0.72rem;font-weight:700;'>{status}</span>
+                                <span style='font-size:0.7rem;color:rgba(255,255,255,0.45);'>📂 Prontuário</span>
+                            </div>
+                        </div>""")
+                    cards_html.append('</div>')
+                    st.markdown("".join(cards_html), unsafe_allow_html=True)
+                    st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Abra a aba 📂 Prontuário para ver o prontuário completo.")
 
         with tab2:
             st.markdown("### ➕ Cadastrar Novo Paciente")
@@ -4421,6 +4551,22 @@ class ClinicalManagementApp:
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
                 u_name = st.session_state.get('user_name', 'Admin')
+                # Marca / logo da clínica
+                st.markdown(
+                    """<div style='display:flex;align-items:center;gap:12px;padding:2px 6px 16px;'>
+                        <div style='width:44px;height:44px;border-radius:14px;flex-shrink:0;
+                            background:linear-gradient(135deg,#ffffff40,#ffffff18);
+                            border:1px solid rgba(255,255,255,0.35);
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,0.18);'>🩺</div>
+                        <div>
+                            <div style='font-weight:800;font-size:1.04rem;color:#fff;line-height:1.15;letter-spacing:0.2px;'>Gestão Clínica</div>
+                            <div style='font-size:0.62rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;
+                                color:rgba(255,255,255,0.6);margin-top:2px;'>MVP Psicologia</div>
+                        </div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
                 # Card de perfil premium
                 photo_b64 = st.session_state.get('profile_photo_b64', '')
                 photo_mime = st.session_state.get('profile_photo_mime', 'image/jpeg')
@@ -4493,9 +4639,9 @@ class ClinicalManagementApp:
                         st.rerun()
 
                 st.markdown(
-                    """<div style='font-size:0.7rem;font-weight:700;letter-spacing:2px;
-                    text-transform:uppercase;color:rgba(255,255,255,0.5);
-                    margin:4px 0 6px 4px;'>Menu</div>""",
+                    """<div style='display:flex;align-items:center;gap:12px;margin:8px 0 2px 4px;'>
+                        <div style='flex:1;height:1px;background:rgba(255,255,255,0.14);'></div>
+                    </div>""",
                     unsafe_allow_html=True
                 )
 
