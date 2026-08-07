@@ -245,6 +245,7 @@ def display_cards(cards):
             title = card.get('title', '')
             value = card.get('value', 0)
             delta = card.get('delta', None)
+            acc   = card.get('acc', accent)
 
             delta_html = ""
             if delta is not None:
@@ -260,24 +261,27 @@ def display_cards(cards):
                     -webkit-backdrop-filter: blur(20px);
                     border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 20px;
-                    padding: 22px 20px 18px 20px;
+                    padding: 20px;
                     box-shadow: 0 4px 24px rgba(0,0,0,0.07),
                                 inset 0 1px 0 rgba(255,255,255,0.18);
                     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
                     cursor: default;
                     margin-bottom: 4px;
                 ">
-                    <div style="font-size:1.6rem;margin-bottom:8px;line-height:1;">{icon}</div>
-                    <div style="
-                        font-size:0.7rem;font-weight:700;
-                        text-transform:uppercase;letter-spacing:1.2px;
-                        color:{txt};opacity:0.75;margin-bottom:6px;
-                    ">{title}</div>
-                    <div style="
-                        font-size:2rem;font-weight:800;
-                        color:{txt};letter-spacing:-1px;line-height:1;
-                    ">{value}</div>
-                    {delta_html}
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div style="width:46px;height:46px;border-radius:15px;flex-shrink:0;
+                            background:linear-gradient(135deg,{acc},{acc}99);
+                            display:flex;align-items:center;justify-content:center;font-size:1.25rem;
+                            box-shadow:0 6px 18px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.35);">{icon}</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-size:0.68rem;font-weight:700;
+                                text-transform:uppercase;letter-spacing:1.4px;
+                                color:{txt};opacity:0.75;margin-bottom:3px;">{title}</div>
+                            <div style="font-size:1.9rem;font-weight:800;
+                                color:{txt};letter-spacing:-1px;line-height:1.1;">{value}</div>
+                            {delta_html}
+                        </div>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -299,6 +303,27 @@ def render_page_header(title, subtitle, inverse=False):
         unsafe_allow_html=True
     )
     st.divider()
+
+def section_title(emoji, text, sub=None, accent=None):
+    acc = accent or st.session_state.get('accent_color', PRIMARY_ACCENT)
+    sub_html = f"<div style='font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;margin-top:3px;'>{sub}</div>" if sub else ""
+    st.markdown(
+        f"""
+        <div style='display:flex;align-items:center;gap:12px;margin:26px 0 12px 0;'>
+            <div style='width:38px;height:38px;border-radius:12px;flex-shrink:0;
+                background:linear-gradient(135deg,{acc},{acc}99);
+                display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+                box-shadow:0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.35);'>{emoji}</div>
+            <div style='min-width:0;flex:1;'>
+                <div style='font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:0.2px;'>{text}</div>
+                <div style='height:3px;width:64px;border-radius:99px;margin-top:5px;
+                    background:linear-gradient(90deg,{acc},{acc}00);'></div>
+                {sub_html}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color="#ffffff", main_bg_color="#73C883", card_bg_color="rgba(255, 255, 255, 0.15)"):
     # Paleta Dinâmica
@@ -900,8 +925,7 @@ class DashboardPage:
         display_cards(cards)
         
         if total_appointments > 0:
-            st.markdown("---")
-            st.markdown("### 🧠 Dicas da IA Assistente")
+            section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
             with st.spinner("Gerando insights de negócio..."):
                 import json
                 stats_resumo = {
@@ -912,13 +936,27 @@ class DashboardPage:
                 }
                 from ai_manager import AIManager
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
-                st.info(dicas)
+                st.markdown(
+                    f"""
+                    <div style="background:linear-gradient(135deg,{accent}26,rgba(255,255,255,0.05));
+                        border:1px solid {accent}55;border-radius:18px;padding:18px 22px;
+                        display:flex;gap:14px;align-items:flex-start;
+                        box-shadow:0 6px 24px rgba(0,0,0,0.08);">
+                        <div style="font-size:1.5rem;line-height:1;">🤖</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-size:0.72rem;font-weight:800;letter-spacing:1.5px;
+                                text-transform:uppercase;color:{accent};margin-bottom:6px;">IA Assistente</div>
+                            <div style="color:rgba(255,255,255,0.92);line-height:1.6;font-size:0.95rem;">{dicas}</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
         else:
             empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
         if total_appointments > 0:
-            st.markdown("### 📊 Distribuição por Modalidade & Empresa")
-            st.caption("Use o calendário para escolher o período e ver quantos atendimentos cada empresa teve.")
+            section_title("📊", "Distribuição por Modalidade & Empresa", "Use o calendário para escolher o período e ver quantos atendimentos cada empresa teve.", accent=accent)
 
             # ── Mini calendário (período) ──
             datas_validas = []
@@ -979,12 +1017,33 @@ class DashboardPage:
                     st.plotly_chart(fig, use_container_width=True)
 
             if contagem_empresas:
-                with st.expander("📊 Resumo por Empresa", expanded=False):
-                    resumo = pd.DataFrame({
-                        "Empresa": list(contagem_empresas.keys()),
-                        "Atendimentos": list(contagem_empresas.values()),
-                    }).sort_values("Atendimentos", ascending=False).reset_index(drop=True)
-                    st.dataframe(resumo, use_container_width=True, hide_index=True)
+                with st.expander("🏆 Ranking por Empresa", expanded=False):
+                    ranking = sorted(contagem_empresas.items(), key=lambda x: -x[1])
+                    max_v = max(v for _, v in ranking)
+                    total_v = sum(v for _, v in ranking)
+                    bars_html = ['<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">']
+                    bars = bars_html
+                    for pos, (emp, qtde) in enumerate(ranking[:8], start=1):
+                        pct = int(qtde / max_v * 100)
+                        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(pos, f"<span style='font-size:.9rem;font-weight:800;color:rgba(255,255,255,0.5);'>{pos}</span>")
+                        bars.append(f"""
+                        <div style='display:flex;align-items:center;gap:12px;'>
+                            <div style='width:30px;text-align:center;flex-shrink:0;font-size:1rem;'>{medal}</div>
+                            <div style='flex:1;min-width:0;'>
+                                <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;'>
+                                    <span style='font-weight:700;font-size:0.88rem;color:rgba(255,255,255,0.92);
+                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{html.escape(str(emp))}</span>
+                                    <span style='font-weight:800;font-size:0.8rem;color:{accent};'>{qtde} atend.</span>
+                                </div>
+                                <div style='height:8px;border-radius:99px;background:rgba(255,255,255,0.12);overflow:hidden;'>
+                                    <div style='height:100%;width:{pct}%;border-radius:99px;
+                                        background:linear-gradient(90deg,{accent},{accent}77);'></div>
+                                </div>
+                            </div>
+                        </div>""")
+                    bars.append('</div>')
+                    st.markdown("".join(bars), unsafe_allow_html=True)
+                    st.caption(f"🏢 {len(ranking)} empresa(s) — {total_v} atendimento(s) no período.")
             else:
                 empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
