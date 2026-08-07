@@ -724,9 +724,7 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             font-weight: 800 !important;
         }}
         /* Títulos de seção do menu */
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before,
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6)::before,
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10)::before {{
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before {{
             width: 100%;
             font-size: 0.62rem !important;
             font-weight: 800 !important;
@@ -737,12 +735,6 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             pointer-events: none;
         }}
         [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before {{ content: "Principal"; }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6)::before {{ content: "Gestão"; }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10)::before {{ content: "Sistema"; }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6),
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10) {{
-            margin-top: 10px !important;
-        }}
 
         /* ── ANIMAÇÃO DE ENTRADA ── */
         @keyframes appFadeIn {{
