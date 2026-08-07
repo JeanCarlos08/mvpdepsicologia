@@ -284,9 +284,11 @@ def display_cards(cards):
                         <div style="min-width:0;flex:1;">
                             <div style="font-size:0.68rem;font-weight:700;
                                 text-transform:uppercase;letter-spacing:1.4px;
-                                color:{txt};opacity:0.75;margin-bottom:3px;">{title}</div>
+                                color:{txt};opacity:0.75;margin-bottom:3px;
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{title}</div>
                             <div style="font-size:1.9rem;font-weight:800;
-                                color:{txt};letter-spacing:-1px;line-height:1.1;">{value}</div>
+                                color:{txt};letter-spacing:-1px;line-height:1.1;
+                                white-space:nowrap;">{value}</div>
                             {delta_html}
                         </div>
                     </div>
@@ -388,6 +390,9 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             box-shadow: 8px 0 32px rgba(0,0,0,0.18);
             border-right: 1px solid rgba(255,255,255,0.08);
             backdrop-filter: blur(20px);
+            width: 318px !important;
+            min-width: 318px !important;
+            max-width: 340px !important;
         }}
         [data-testid="stSidebar"] * {{ color: #ffffff !important; }}
         [data-testid="stSidebar"] .stRadio label {{
@@ -1139,10 +1144,11 @@ class DashboardPage:
                     fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade",
                                  color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
                     fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                    fig.update_layout(legend_title_text="Modalidade", height=380, margin=dict(l=10, r=10, t=60, b=10),
-                                      legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
+                    fig.update_layout(legend_title_text="Modalidade", height=300, margin=dict(l=8, r=8, t=52, b=8),
+                                      legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5,
+                                                  font=dict(size=11)),
                                       paper_bgcolor="#000000",
-                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF"))
+                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF", size=12))
                     st.plotly_chart(fig, use_container_width=True)
             with col_p2:
                 if contagem_empresas:
@@ -1152,10 +1158,11 @@ class DashboardPage:
                     fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa",
                                  color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
                     fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                    fig.update_layout(legend_title_text="Empresa", height=380, margin=dict(l=10, r=10, t=60, b=10),
-                                      legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
+                    fig.update_layout(legend_title_text="Empresa", height=300, margin=dict(l=8, r=8, t=52, b=8),
+                                      legend=dict(orientation="h", yanchor="bottom", y=-0.22, xanchor="center", x=0.5,
+                                                  font=dict(size=11)),
                                       paper_bgcolor="#000000",
-                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF"))
+                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF", size=12))
                     st.plotly_chart(fig, use_container_width=True)
 
             if contagem_empresas:
