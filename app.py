@@ -750,6 +750,101 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
         /* Títulos de seção do menu */
 
+        /* ── BOTÕES PREMIUM ── */
+        button[kind="primary"], [data-testid="stBaseButton-primary"] button {{
+            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}CC 100%) !important;
+            color: #fff !important;
+            border: 1px solid rgba(255,255,255,0.28) !important;
+            border-radius: 14px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.32) !important;
+            transition: all 0.3s cubic-bezier(0.25,0.8,0.25,1) !important;
+        }}
+        button[kind="primary"]:hover, [data-testid="stBaseButton-primary"] button:hover {{
+            transform: translateY(-2px) !important;
+            filter: brightness(1.08);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.22) !important;
+        }}
+        button[kind="secondary"] {{
+            border-radius: 14px !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            background: rgba(255,255,255,0.06) !important;
+            color: #fff !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }}
+        button[kind="secondary"]:hover {{ background: rgba(255,255,255,0.13) !important; }}
+
+        /* ── TABS PREMIUM ── */
+        [data-testid="stTabs"] [data-baseweb="tab-list"] {{
+            gap: 4px !important;
+            background: rgba(255,255,255,0.07) !important;
+            border: 1px solid rgba(255,255,255,0.10) !important;
+            border-radius: 16px !important;
+            padding: 5px !important;
+        }}
+        [data-testid="stTabs"] [data-baseweb="tab"] {{
+            border-radius: 11px !important;
+            padding: 9px 16px !important;
+            font-weight: 600 !important;
+            font-size: 0.88rem !important;
+            color: rgba(255,255,255,0.75) !important;
+            transition: all 0.25s ease !important;
+        }}
+        [data-testid="stTabs"] [data-baseweb="tab"]:hover {{ color: #fff !important; }}
+        [data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {{
+            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}CC 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.18) !important;
+        }}
+        [data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
+            background: transparent !important;
+        }}
+
+        /* ── TÍTULOS INTERNOS ── */
+        h3 {{
+            font-weight: 800 !important;
+            letter-spacing: 0.2px;
+        }}
+        h4 {{
+            font-weight: 700 !important;
+            color: rgba(255,255,255,0.92);
+        }}
+
+        /* ── DATAFRAME GLASS ── */
+        [data-testid="stDataFrame"] {{
+            border-radius: 18px !important;
+            border: 1px solid rgba(255,255,255,0.10) !important;
+            overflow: hidden;
+            box-shadow: 0 10px 36px rgba(0,0,0,0.08) !important;
+        }}
+
+        /* ── CHECKBOX ── */
+        [data-testid="stCheckbox"] {{
+            padding: 10px 6px;
+            border-radius: 10px;
+            transition: background 0.2s ease;
+        }}
+        [data-testid="stCheckbox"]:hover {{ background: rgba(255,255,255,0.06); }}
+
+        /* ── SCROLLBAR PREMIUM ── */
+        ::-webkit-scrollbar {{ width: 9px; height: 9px; }}
+        ::-webkit-scrollbar-track {{ background: transparent; }}
+        ::-webkit-scrollbar-thumb {{
+            background: rgba(255,255,255,0.18);
+            border-radius: 99px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }}
+        ::-webkit-scrollbar-thumb:hover {{ background: rgba(255,255,255,0.3); background-clip: padding-box; }}
+
+        /* ── SIDEBAR IA CHAT COMPACTO ── */
+        [data-testid="stSidebar"] [data-testid="stAlert"] {{
+            font-size: 0.8rem !important;
+            padding: 10px 14px !important;
+            margin-bottom: 6px !important;
+        }}
+
         /* ── ANIMAÇÃO DE ENTRADA ── */
         @keyframes appFadeIn {{
             from {{ opacity: 0; transform: translateY(8px); }}
