@@ -845,6 +845,16 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             margin-bottom: 6px !important;
         }}
 
+        /* ── CONTAINERS COM BORDA (PAINÉIS DE FORMULÁRIO) ── */
+        [data-testid="stVerticalBlockBorderWrapper"] {{
+            background: rgba(255,255,255,0.045) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            border-radius: 18px !important;
+            padding: 14px 18px !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.07),
+                        0 4px 18px rgba(0,0,0,0.05) !important;
+        }}
+
         /* ── ANIMAÇÃO DE ENTRADA ── */
         @keyframes appFadeIn {{
             from {{ opacity: 0; transform: translateY(8px); }}
@@ -1195,42 +1205,43 @@ class AppointmentsPage:
                 if _pac_info:
                     st.session_state["new_apt_nome"] = str(_pac_info.get("nome") or "")
 
-            # ─── Campos do formulário (widgets simples, sem st.form) ───
-            col1, col2 = st.columns(2)
-            with col1:
-                empresa = st.text_input("🏢 Empresa/Organização", max_chars=100, key="new_apt_empresa").strip()
-                modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento], key="new_apt_modal")
-                data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="new_apt_data")
-            with col2:
-                nome = st.text_input("👤 Nome do Paciente", max_chars=100, key="new_apt_nome").strip()
-                hora_sel = st.time_input("⏰ Horário", key="new_apt_hora")
-
-            # ─── Anexos PDF (fora de qualquer form para preservar o estado do arquivo) ───
-            st.markdown("#### 📎 Anexos (opcional)")
-            c1a, c2a = st.columns(2)
-            with c1a:
-                up_laudo = st.file_uploader("📄 Laudo PDF", type=["pdf"], key="up_laudo_new")
-                if up_laudo:
-                    size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
-                    st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
-                    if st.button("🪄 Analisar Laudo com IA", key="ai_btn_laudo"):
-                        with st.spinner("IA analisando laudo..."):
-                            from ai_manager import AIManager
-                            ai_res = AIManager.analyze_pdf_content(up_laudo.getvalue(), up_laudo.name)
-                            st.session_state['temp_ai_obs'] = ai_res
-            with c2a:
-                up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
-                if up_avaliacao:
-                    size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
-                    st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
-                    if st.button("🪄 Analisar Avaliação com IA", key="ai_btn_aval"):
-                        with st.spinner("IA analisando avaliação..."):
-                            from ai_manager import AIManager
-                            ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
-                            st.session_state['temp_ai_obs'] = ai_res
-
-            initial_obs = st.session_state.get('temp_ai_obs', '')
-            observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...", key="new_apt_obs")
+            with st.container(border=True):
+                # ─── Campos do formulário (widgets simples, sem st.form) ───
+                col1, col2 = st.columns(2)
+                with col1:
+                    empresa = st.text_input("🏢 Empresa/Organização", max_chars=100, key="new_apt_empresa").strip()
+                    modalidade = st.selectbox("🧾 Modalidade", [m.value for m in ModalidadeAtendimento], key="new_apt_modal")
+                    data_sel = st.date_input("📅 Data", value=date.today(), min_value=date(1900, 1, 1), max_value=date(2100, 12, 31), key="new_apt_data")
+                with col2:
+                    nome = st.text_input("👤 Nome do Paciente", max_chars=100, key="new_apt_nome").strip()
+                    hora_sel = st.time_input("⏰ Horário", key="new_apt_hora")
+            
+                # ─── Anexos PDF (fora de qualquer form para preservar o estado do arquivo) ───
+                st.markdown("#### 📎 Anexos (opcional)")
+                c1a, c2a = st.columns(2)
+                with c1a:
+                    up_laudo = st.file_uploader("📄 Laudo PDF", type=["pdf"], key="up_laudo_new")
+                    if up_laudo:
+                        size_mb = len(up_laudo.getvalue()) / (1024 * 1024)
+                        st.caption(f"Selecionado: {up_laudo.name} — {size_mb:.2f} MB")
+                        if st.button("🪄 Analisar Laudo com IA", key="ai_btn_laudo"):
+                            with st.spinner("IA analisando laudo..."):
+                                from ai_manager import AIManager
+                                ai_res = AIManager.analyze_pdf_content(up_laudo.getvalue(), up_laudo.name)
+                                st.session_state['temp_ai_obs'] = ai_res
+                with c2a:
+                    up_avaliacao = st.file_uploader("📝 Avaliação PDF", type=["pdf"], key="up_aval_new")
+                    if up_avaliacao:
+                        size_mb = len(up_avaliacao.getvalue()) / (1024 * 1024)
+                        st.caption(f"Selecionado: {up_avaliacao.name} — {size_mb:.2f} MB")
+                        if st.button("🪄 Analisar Avaliação com IA", key="ai_btn_aval"):
+                            with st.spinner("IA analisando avaliação..."):
+                                from ai_manager import AIManager
+                                ai_res = AIManager.analyze_pdf_content(up_avaliacao.getvalue(), up_avaliacao.name)
+                                st.session_state['temp_ai_obs'] = ai_res
+            
+                initial_obs = st.session_state.get('temp_ai_obs', '')
+                observacoes = st.text_area("🗒️ Observações", value=initial_obs, placeholder="Observações adicionais ou notas da IA...", key="new_apt_obs")
 
             c_act1, c_act2 = st.columns([1, 1])
             with c_act1:
