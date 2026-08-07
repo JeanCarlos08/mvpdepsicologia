@@ -1067,6 +1067,15 @@ class DashboardPage:
             else:
                 empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
+def _pac_initials(nome: str) -> str:
+    partes = [p for p in str(nome or "").strip().split() if p]
+    if not partes:
+        return "?"
+    if len(partes) == 1:
+        return partes[0][:2].upper()
+    return (partes[0][0] + partes[-1][0]).upper()
+
+
 class AppointmentsPage:
     @staticmethod
     def render(filters):
@@ -1092,6 +1101,25 @@ class AppointmentsPage:
             filters["date_start"] = d1
             filters["date_end"] = d2
         with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
+            # ─── Integração Pacientes: seletor de paciente já cadastrado (pré-preenche o nome) ───
+            try:
+                pacientes_existentes = db.listar_pacientes() or []
+            except Exception:
+                pacientes_existentes = []
+            opcoes_pac = {"➕ Digitar novo paciente": None}
+            for _p in pacientes_existentes:
+                _p_tel = str(_p.get("telefone") or "").strip()
+                _p_label = str(_p["nome"] or "").strip()
+                if _p_tel:
+                    _p_label += f" — {_p_tel}"
+                if _p_label and _p_label not in opcoes_pac:
+                    opcoes_pac[_p_label] = _p["id"]
+            sel_pac = st.selectbox("👤 Paciente (selecione se já estiver cadastrado)", list(opcoes_pac.keys()), key="new_apt_pac")
+            if opcoes_pac[sel_pac] is not None:
+                _pac_info = db.obter_paciente(opcoes_pac[sel_pac])
+                if _pac_info:
+                    st.session_state["new_apt_nome"] = str(_pac_info.get("nome") or "")
+
             # ─── Campos do formulário (widgets simples, sem st.form) ───
             col1, col2 = st.columns(2)
             with col1:
@@ -1172,6 +1200,17 @@ class AppointmentsPage:
                         if DatabaseManager.add_appointment(novo_atendimento):
                             security.log_access("ADD_APPOINTMENT", f"{nome} - {empresa}")
                             st.toast("Atendimento cadastrado com sucesso!", icon="✅")
+                            # ─── Integração Pacientes: garante que o paciente apareça na página Pacientes ───
+                            try:
+                                dups = db.buscar_pacientes_duplicados(nome)
+                                if dups:
+                                    st.toast(f"Paciente já cadastrado (#{dups[0]['id']}) — reutilizado automaticamente.", icon="ℹ️")
+                                else:
+                                    novo_pac_id = db.inserir_paciente({"nome": nome, "ativo": True})
+                                    if novo_pac_id:
+                                        st.toast(f"Paciente cadastrado automaticamente (#{novo_pac_id}) — já aparece na página Pacientes!", icon="✅")
+                            except Exception:
+                                pass
                             if 'temp_ai_obs' in st.session_state:
                                 del st.session_state['temp_ai_obs']
                             st.rerun()
@@ -1265,6 +1304,7 @@ class AppointmentsPage:
                                         st.rerun()
 
         AppointmentsPage._render_table(filters)
+        AppointmentsPage._gestao_pacientes()
 
     @staticmethod
     def _render_table(filters):
@@ -1701,6 +1741,300 @@ class AppointmentsPage:
                                     st.error(f"Erro ao exportar HTML: {e}")
 
         st.caption(f"Mostrando registros {start+1}–{end} de {total_rows} (página {page}/{total_pages})")
+
+    @staticmethod
+    def _gestao_pacientes() -> None:
+        st.markdown("### 👥 Gestão de Pacientes")
+        st.caption("Prontuário eletrônico, anamnese e evolução clínica — integrado ao Atendimento")
+
+        # ── Alertas de aniversário ──
+        try:
+            aniversariantes = db.listar_aniversariantes(date.today().day, date.today().month)
+            if aniversariantes:
+                nomes = ", ".join([a["nome"] for a in aniversariantes])
+                st.success(f"🎂 Aniversariantes de hoje: {nomes}")
+        except Exception:
+            pass
+
+        tab1, tab2, tab3 = st.tabs(["🔍 Consultar", "➕ Novo Paciente", "📂 Prontuário"])
+
+        with tab1:
+            st.markdown("### 🔎 Buscar Pacientes")
+            col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
+            with col_f1:
+                busca = st.text_input("Buscar por Nome, CPF, Telefone ou E-mail", key="pac_busca")
+            with col_f2:
+                so_ativos = st.checkbox("Somente ativos", value=False, key="pac_ativos")
+            with col_f3:
+                st.markdown("&nbsp;")
+                if st.button("🔍 Buscar", key="pac_buscar_btn", use_container_width=True):
+                    pass
+
+                pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
+                if not pacientes:
+                    st.info("Nenhum paciente encontrado.")
+                else:
+                    card_cores = [
+                        ("#1E7A46", "#4DA768"),
+                        ("#1D5FA8", "#5FA8D3"),
+                        ("#6C3FA8", "#9B7BD6"),
+                        ("#8A1F3D", "#C24A6B"),
+                    ]
+                    cards_html = ['<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;">']
+                    for i, p in enumerate(pacientes):
+                        nome = html.escape(p["nome"] or "")
+                        ini = html.escape(_pac_initials(p["nome"]))
+                        c1, c2 = card_cores[i % len(card_cores)]
+                        ativo = bool(p["ativo"])
+                        status = "Ativo" if ativo else "Inativo"
+                        st_cor = "#22C55E" if ativo else "#EF4444"
+                        st_fundo = "rgba(34,197,94,0.14)" if ativo else "rgba(239,68,68,0.14)"
+                        contatos = []
+                        if p.get("telefone"):
+                            contatos.append(f"📞&nbsp;&nbsp;{html.escape(str(p['telefone']))}")
+                        if p.get("email"):
+                            contatos.append(f"✉️&nbsp;&nbsp;{html.escape(str(p['email']))}")
+                        if p.get("cpf"):
+                            contatos.append(f"🪪&nbsp;&nbsp;{html.escape(str(p['cpf']))}")
+                        contatos_html = "".join(
+                            f"<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{c}</div>"
+                            for c in contatos
+                        ) or "<div style='color:rgba(255,255,255,0.35);font-style:italic;'>Sem contato cadastrado</div>"
+                        cards_html.append(f"""
+                        <div style='flex:0 1 282px;min-width:250px;background:rgba(255,255,255,0.06);
+                            border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 18px;
+                            transition:transform 0.2s ease, box-shadow 0.2s ease;
+                            box-shadow:0 4px 14px rgba(0,0,0,0.10);'>
+                            <div style='display:flex;align-items:center;gap:12px;'>
+                                <div style='width:46px;height:46px;border-radius:50%;flex-shrink:0;
+                                    background:linear-gradient(135deg,{c1},{c2});
+                                    display:flex;align-items:center;justify-content:center;
+                                    color:#fff;font-weight:800;font-size:0.95rem;
+                                    box-shadow:0 3px 10px rgba(0,0,0,0.2);'>{ini}</div>
+                                <div style='min-width:0;'>
+                                    <div style='font-weight:700;font-size:0.94rem;color:#fff;
+                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{nome}</div>
+                                    <div style='font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;
+                                        letter-spacing:0.4px;'>PACIENTE #{p['id']}</div>
+                                </div>
+                            </div>
+                            <div style='margin-top:12px;font-size:0.78rem;color:rgba(255,255,255,0.78);
+                                display:flex;flex-direction:column;gap:5px;'>
+                                {contatos_html}
+                            </div>
+                            <div style='margin-top:14px;display:flex;align-items:center;justify-content:space-between;'>
+                                <span style='background:{st_fundo};color:{st_cor};
+                                    border:1px solid {st_cor}55;border-radius:999px;
+                                    padding:4px 12px;font-size:0.72rem;font-weight:700;'>{status}</span>
+                                <span style='font-size:0.7rem;color:rgba(255,255,255,0.45);'>📂 Prontuário</span>
+                            </div>
+                        </div>""")
+                    cards_html.append('</div>')
+                    st.markdown("".join(cards_html), unsafe_allow_html=True)
+                    st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Abra a aba 📂 Prontuário para ver o prontuário completo.")
+
+        with tab2:
+            st.markdown("### ➕ Cadastrar Novo Paciente")
+            c1, c2 = st.columns(2)
+            with c1:
+                p_nome = st.text_input("Nome completo *", key="np_nome", max_chars=255)
+                p_cpf = st.text_input("CPF", key="np_cpf", max_chars=20)
+                p_rg = st.text_input("RG", key="np_rg", max_chars=30)
+                p_data_nasc = st.date_input("Data de nascimento", value=None, key="np_dt_nasc", min_value=date(1900, 1, 1), max_value=date.today())
+            with c2:
+                p_tel = st.text_input("Telefone", key="np_tel", max_chars=30)
+                p_email = st.text_input("E-mail", key="np_email", max_chars=255)
+                p_end = st.text_input("Endereço", key="np_end", max_chars=255)
+            p_obs = st.text_area("Observações", key="np_obs", max_chars=2000)
+
+            if st.button("💾 Salvar Paciente", type="primary", key="np_salvar", use_container_width=True):
+                if not p_nome.strip():
+                    st.error("Preencha o campo Nome completo (obrigatório).")
+                else:
+                    duplicados = db.buscar_pacientes_duplicados(p_nome, p_cpf)
+                    if duplicados:
+                        st.warning("⚠️ Possível duplicidade de cadastro encontrada:")
+                        for d in duplicados:
+                            st.warning(f"  • #{d['id']} — {d['nome']} ({d.get('telefone') or 'sem telefone'})")
+                        st.error("Cadastro não realizado. Verifique se o paciente já existe.")
+                    else:
+                        dados = {
+                            "nome": p_nome.strip(),
+                            "cpf": p_cpf.strip() or None,
+                            "rg": p_rg.strip() or None,
+                            "data_nascimento": p_data_nasc,
+                            "telefone": p_tel.strip() or None,
+                            "email": p_email.strip() or None,
+                            "endereco": p_end.strip() or None,
+                            "observacoes": p_obs.strip() or None,
+                            "ativo": True,
+                        }
+                        novo_id = db.inserir_paciente(dados)
+                        if novo_id:
+                            st.toast("Paciente cadastrado com sucesso!", icon="✅")
+                            security.log_access("ADD_PACIENTE", p_nome.strip())
+                            st.rerun()
+                        else:
+                            st.error("Erro ao cadastrar paciente. Verifique os dados e tente novamente.")
+
+        with tab3:
+            st.markdown("### 📂 Prontuário do Paciente")
+            pacientes_todos = db.listar_pacientes()
+            if not pacientes_todos:
+                st.info("Cadastre pacientes na aba ➕ Novo Paciente.")
+                return
+
+            opcoes = {f"#{p['id']} — {p['nome']}": p["id"] for p in pacientes_todos}
+            sel = st.selectbox("Selecione o paciente", list(opcoes.keys()), key="pac_sel_pront")
+            pid = opcoes[sel]
+            pac = db.obter_paciente(pid)
+            if not pac:
+                st.error("Paciente não encontrado.")
+                return
+
+            col_p1, col_p2 = st.columns([1, 3])
+            with col_p1:
+                if pac.get("foto_b64"):
+                    st.markdown(
+                        f"<img src='data:{pac.get('foto_mime') or 'image/jpeg'};base64,{pac['foto_b64']}' style='width:140px;height:140px;border-radius:50%;object-fit:cover;'/>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown("<div style='width:140px;height:140px;border-radius:50%;background:#1E5631;display:flex;align-items:center;justify-content:center;font-size:60px;'>👤</div>", unsafe_allow_html=True)
+                up_foto = st.file_uploader("Foto", type=["jpg", "jpeg", "png", "webp"], key=f"pac_foto_{pid}")
+                if up_foto:
+                    fb = up_foto.getvalue()
+                    if len(fb) > 2 * 1024 * 1024:
+                        st.error("❌ Máx 2MB")
+                    else:
+                        b64 = base64.b64encode(fb).decode("utf-8")
+                        db.salvar_foto_paciente(pid, b64, up_foto.type or "image/jpeg")
+                        st.toast("Foto atualizada!", icon="✅")
+                        st.rerun()
+            with col_p2:
+                st.markdown(f"### {pac['nome']}")
+                dt_nasc = pac.get("data_nascimento")
+                idade = ""
+                if dt_nasc:
+                    try:
+                        n = pd.to_datetime(str(dt_nasc)).date()
+                        idade = f"{int((date.today() - n).days / 365.25)} anos"
+                    except Exception:
+                        idade = ""
+                st.markdown(
+                    f"**CPF:** {pac.get('cpf') or '—'} | **RG:** {pac.get('rg') or '—'} | **Nasc.:** {dt_nasc or '—'} ({idade})\n\n"
+                    f"**Telefone:** {pac.get('telefone') or '—'} | **E-mail:** {pac.get('email') or '—'}\n\n"
+                    f"**Endereço:** {pac.get('endereco') or '—'}\n\n"
+                    f"**Status:** {'🟢 Ativo' if pac.get('ativo') else '🔴 Inativo'}"
+                )
+
+            st.divider()
+            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 Anamnese", "🩺 Evolução Clínica", "📅 Histórico de Atendimentos"])
+
+            with sub_tab1:
+                anam = db.obter_anamnese(pid)
+                st.markdown("### 📋 Anamnese Digital")
+                aq = st.text_area("Queixa principal", value=(anam or {}).get("queixa_principal") or "", key=f"ana_q_{pid}")
+                ahd = st.text_area("Histórico da doença atual", value=(anam or {}).get("historico_doenca") or "", key=f"ana_hd_{pid}")
+                ahf = st.text_area("Histórico familiar", value=(anam or {}).get("historico_familiar") or "", key=f"ana_hf_{pid}")
+                amd = st.text_area("Medicamentos em uso", value=(anam or {}).get("medicamentos") or "", key=f"ana_md_{pid}")
+                aal = st.text_area("Alergias", value=(anam or {}).get("alergias") or "", key=f"ana_al_{pid}")
+                ahab = st.text_area("Hábitos", value=(anam or {}).get("habitos") or "", key=f"ana_hb_{pid}")
+                aobs = st.text_area("Observações", value=(anam or {}).get("observacoes") or "", key=f"ana_obs_{pid}")
+                if st.button("💾 Salvar Anamnese", type="primary", key=f"ana_save_{pid}"):
+                    dados_anam = {
+                        "queixa_principal": aq, "historico_doenca": ahd, "historico_familiar": ahf,
+                        "medicamentos": amd, "alergias": aal, "habitos": ahab, "observacoes": aobs,
+                    }
+                    if db.salvar_ou_atualizar_anamnese(pid, dados_anam):
+                        st.toast("Anamnese salva!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar anamnese.")
+
+            with sub_tab2:
+                st.markdown("### 🩺 Evolução Clínica")
+                ev_data = st.date_input("Data", value=date.today(), key=f"ev_data_{pid}")
+                ev_texto = st.text_area("Registro da evolução", key=f"ev_texto_{pid}", height=150)
+                if st.button("➕ Adicionar Evolução", type="primary", key=f"ev_add_{pid}"):
+                    if not ev_texto.strip():
+                        st.warning("Escreva o texto da evolução.")
+                    elif db.inserir_evolucao(pid, ev_data, ev_texto.strip()):
+                        st.toast("Evolução registrada!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao registrar evolução.")
+
+                evolucoes = db.listar_evolucoes(pid)
+                if not evolucoes:
+                    st.info("Nenhuma evolução registrada ainda.")
+                else:
+                    for ev in evolucoes:
+                        with st.container(border=True):
+                            st.markdown(f"**{ev['data']}**")
+                            st.write(ev["texto"])
+                            if st.button("🗑️ Excluir", key=f"ev_del_{ev['id']}"):
+                                db.excluir_evolucao(ev["id"])
+                                st.rerun()
+
+            with sub_tab3:
+                st.markdown("### 📅 Histórico de Atendimentos")
+                atts = db.listar_atendimentos_do_paciente(pid)
+                if not atts:
+                    st.info("Nenhum atendimento vinculado a este paciente.")
+                else:
+                    df_atts = pd.DataFrame(atts, columns=[
+                        "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
+                        "Laudo PDF", "Avaliação PDF", "Status", "Observações",
+                    ])
+                    st.dataframe(df_atts[["ID", "Empresa", "Modalidade", "Data", "Hora", "Status"]], use_container_width=True, hide_index=True)
+                    st.caption(f"Total: {len(atts)} atendimento(s).")
+
+            st.divider()
+            ac1, ac2, ac3 = st.columns(3)
+            with ac1:
+                if st.button("✏️ Editar Dados", key=f"pac_edit_{pid}", use_container_width=True):
+                    st.session_state[f"edit_pac_{pid}"] = True
+            with ac2:
+                novo_status = 0 if pac.get("ativo") else 1
+                if st.button("🔄 Ativar/Inativar", key=f"pac_status_{pid}", use_container_width=True):
+                    db.atualizar_paciente(pid, {"ativo": novo_status})
+                    st.rerun()
+            with ac3:
+                if st.button("🗑️ Excluir Paciente", key=f"pac_del_{pid}", use_container_width=True):
+                    if db.excluir_paciente(pid):
+                        st.toast("Paciente excluído!", icon="🗑️")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao excluir paciente.")
+
+            if st.session_state.get(f"edit_pac_{pid}"):
+                st.markdown("### ✏️ Editar Dados do Paciente")
+                ec1, ec2 = st.columns(2)
+                with ec1:
+                    e_nome = st.text_input("Nome completo", value=pac["nome"], key=f"ep_nome_{pid}")
+                    e_cpf = st.text_input("CPF", value=pac.get("cpf") or "", key=f"ep_cpf_{pid}")
+                    e_rg = st.text_input("RG", value=pac.get("rg") or "", key=f"ep_rg_{pid}")
+                with ec2:
+                    e_tel = st.text_input("Telefone", value=pac.get("telefone") or "", key=f"ep_tel_{pid}")
+                    e_email = st.text_input("E-mail", value=pac.get("email") or "", key=f"ep_email_{pid}")
+                    e_end = st.text_input("Endereço", value=pac.get("endereco") or "", key=f"ep_end_{pid}")
+                e_obs = st.text_area("Observações", value=pac.get("observacoes") or "", key=f"ep_obs_{pid}")
+                if st.button("💾 Salvar Alterações", type="primary", key=f"ep_save_{pid}"):
+                    dados_upd = {
+                        "nome": e_nome.strip(), "cpf": e_cpf.strip() or None,
+                        "rg": e_rg.strip() or None, "telefone": e_tel.strip() or None,
+                        "email": e_email.strip() or None, "endereco": e_end.strip() or None,
+                        "observacoes": e_obs.strip() or None,
+                    }
+                    if db.atualizar_paciente(pid, dados_upd):
+                        st.session_state[f"edit_pac_{pid}"] = False
+                        st.toast("Alterações salvas!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar alterações.")
+
+
 
 def _preview_pdf_from_ref(ref: str, title: str = "PDF"):
         try:
@@ -2632,307 +2966,6 @@ class CompaniesPage:
                     st.dataframe(df_fat, use_container_width=True, hide_index=True)
                     total_fat = sum(float(f["valor_total"] or 0) for f in faturas)
                     st.success(f"💰 Total lançado no ano {f_ano}: **R$ {total_fat:,.2f}**")
-
-def _pac_initials(nome: str) -> str:
-    partes = [p for p in str(nome or "").strip().split() if p]
-    if not partes:
-        return "?"
-    if len(partes) == 1:
-        return partes[0][:2].upper()
-    return (partes[0][0] + partes[-1][0]).upper()
-
-
-class PatientsPage:
-    @staticmethod
-    def render() -> None:
-        render_page_header("👥 Pacientes", "Prontuário eletrônico, anamnese e evolução clínica")
-
-        # ── Alertas de aniversário ──
-        try:
-            aniversariantes = db.listar_aniversariantes(date.today().day, date.today().month)
-            if aniversariantes:
-                nomes = ", ".join([a["nome"] for a in aniversariantes])
-                st.success(f"🎂 Aniversariantes de hoje: {nomes}")
-        except Exception:
-            pass
-
-        tab1, tab2, tab3 = st.tabs(["🔍 Consultar", "➕ Novo Paciente", "📂 Prontuário"])
-
-        with tab1:
-            st.markdown("### 🔎 Buscar Pacientes")
-            col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
-            with col_f1:
-                busca = st.text_input("Buscar por Nome, CPF, Telefone ou E-mail", key="pac_busca")
-            with col_f2:
-                so_ativos = st.checkbox("Somente ativos", value=False, key="pac_ativos")
-            with col_f3:
-                st.markdown("&nbsp;")
-                if st.button("🔍 Buscar", key="pac_buscar_btn", use_container_width=True):
-                    pass
-
-                pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
-                if not pacientes:
-                    st.info("Nenhum paciente encontrado.")
-                else:
-                    card_cores = [
-                        ("#1E7A46", "#4DA768"),
-                        ("#1D5FA8", "#5FA8D3"),
-                        ("#6C3FA8", "#9B7BD6"),
-                        ("#8A1F3D", "#C24A6B"),
-                    ]
-                    cards_html = ['<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;">']
-                    for i, p in enumerate(pacientes):
-                        nome = html.escape(p["nome"] or "")
-                        ini = html.escape(_pac_initials(p["nome"]))
-                        c1, c2 = card_cores[i % len(card_cores)]
-                        ativo = bool(p["ativo"])
-                        status = "Ativo" if ativo else "Inativo"
-                        st_cor = "#22C55E" if ativo else "#EF4444"
-                        st_fundo = "rgba(34,197,94,0.14)" if ativo else "rgba(239,68,68,0.14)"
-                        contatos = []
-                        if p.get("telefone"):
-                            contatos.append(f"📞&nbsp;&nbsp;{html.escape(str(p['telefone']))}")
-                        if p.get("email"):
-                            contatos.append(f"✉️&nbsp;&nbsp;{html.escape(str(p['email']))}")
-                        if p.get("cpf"):
-                            contatos.append(f"🪪&nbsp;&nbsp;{html.escape(str(p['cpf']))}")
-                        contatos_html = "".join(
-                            f"<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{c}</div>"
-                            for c in contatos
-                        ) or "<div style='color:rgba(255,255,255,0.35);font-style:italic;'>Sem contato cadastrado</div>"
-                        cards_html.append(f"""
-                        <div style='flex:0 1 282px;min-width:250px;background:rgba(255,255,255,0.06);
-                            border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 18px;
-                            transition:transform 0.2s ease, box-shadow 0.2s ease;
-                            box-shadow:0 4px 14px rgba(0,0,0,0.10);'>
-                            <div style='display:flex;align-items:center;gap:12px;'>
-                                <div style='width:46px;height:46px;border-radius:50%;flex-shrink:0;
-                                    background:linear-gradient(135deg,{c1},{c2});
-                                    display:flex;align-items:center;justify-content:center;
-                                    color:#fff;font-weight:800;font-size:0.95rem;
-                                    box-shadow:0 3px 10px rgba(0,0,0,0.2);'>{ini}</div>
-                                <div style='min-width:0;'>
-                                    <div style='font-weight:700;font-size:0.94rem;color:#fff;
-                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{nome}</div>
-                                    <div style='font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;
-                                        letter-spacing:0.4px;'>PACIENTE #{p['id']}</div>
-                                </div>
-                            </div>
-                            <div style='margin-top:12px;font-size:0.78rem;color:rgba(255,255,255,0.78);
-                                display:flex;flex-direction:column;gap:5px;'>
-                                {contatos_html}
-                            </div>
-                            <div style='margin-top:14px;display:flex;align-items:center;justify-content:space-between;'>
-                                <span style='background:{st_fundo};color:{st_cor};
-                                    border:1px solid {st_cor}55;border-radius:999px;
-                                    padding:4px 12px;font-size:0.72rem;font-weight:700;'>{status}</span>
-                                <span style='font-size:0.7rem;color:rgba(255,255,255,0.45);'>📂 Prontuário</span>
-                            </div>
-                        </div>""")
-                    cards_html.append('</div>')
-                    st.markdown("".join(cards_html), unsafe_allow_html=True)
-                    st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Abra a aba 📂 Prontuário para ver o prontuário completo.")
-
-        with tab2:
-            st.markdown("### ➕ Cadastrar Novo Paciente")
-            c1, c2 = st.columns(2)
-            with c1:
-                p_nome = st.text_input("Nome completo *", key="np_nome", max_chars=255)
-                p_cpf = st.text_input("CPF", key="np_cpf", max_chars=20)
-                p_rg = st.text_input("RG", key="np_rg", max_chars=30)
-                p_data_nasc = st.date_input("Data de nascimento", value=None, key="np_dt_nasc", min_value=date(1900, 1, 1), max_value=date.today())
-            with c2:
-                p_tel = st.text_input("Telefone", key="np_tel", max_chars=30)
-                p_email = st.text_input("E-mail", key="np_email", max_chars=255)
-                p_end = st.text_input("Endereço", key="np_end", max_chars=255)
-            p_obs = st.text_area("Observações", key="np_obs", max_chars=2000)
-
-            if st.button("💾 Salvar Paciente", type="primary", key="np_salvar", use_container_width=True):
-                if not p_nome.strip():
-                    st.error("Preencha o campo Nome completo (obrigatório).")
-                else:
-                    duplicados = db.buscar_pacientes_duplicados(p_nome, p_cpf)
-                    if duplicados:
-                        st.warning("⚠️ Possível duplicidade de cadastro encontrada:")
-                        for d in duplicados:
-                            st.warning(f"  • #{d['id']} — {d['nome']} ({d.get('telefone') or 'sem telefone'})")
-                        st.error("Cadastro não realizado. Verifique se o paciente já existe.")
-                    else:
-                        dados = {
-                            "nome": p_nome.strip(),
-                            "cpf": p_cpf.strip() or None,
-                            "rg": p_rg.strip() or None,
-                            "data_nascimento": p_data_nasc,
-                            "telefone": p_tel.strip() or None,
-                            "email": p_email.strip() or None,
-                            "endereco": p_end.strip() or None,
-                            "observacoes": p_obs.strip() or None,
-                            "ativo": True,
-                        }
-                        novo_id = db.inserir_paciente(dados)
-                        if novo_id:
-                            st.toast("Paciente cadastrado com sucesso!", icon="✅")
-                            security.log_access("ADD_PACIENTE", p_nome.strip())
-                            st.rerun()
-                        else:
-                            st.error("Erro ao cadastrar paciente. Verifique os dados e tente novamente.")
-
-        with tab3:
-            st.markdown("### 📂 Prontuário do Paciente")
-            pacientes_todos = db.listar_pacientes()
-            if not pacientes_todos:
-                st.info("Cadastre pacientes na aba ➕ Novo Paciente.")
-                return
-
-            opcoes = {f"#{p['id']} — {p['nome']}": p["id"] for p in pacientes_todos}
-            sel = st.selectbox("Selecione o paciente", list(opcoes.keys()), key="pac_sel_pront")
-            pid = opcoes[sel]
-            pac = db.obter_paciente(pid)
-            if not pac:
-                st.error("Paciente não encontrado.")
-                return
-
-            col_p1, col_p2 = st.columns([1, 3])
-            with col_p1:
-                if pac.get("foto_b64"):
-                    st.markdown(
-                        f"<img src='data:{pac.get('foto_mime') or 'image/jpeg'};base64,{pac['foto_b64']}' style='width:140px;height:140px;border-radius:50%;object-fit:cover;'/>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown("<div style='width:140px;height:140px;border-radius:50%;background:#1E5631;display:flex;align-items:center;justify-content:center;font-size:60px;'>👤</div>", unsafe_allow_html=True)
-                up_foto = st.file_uploader("Foto", type=["jpg", "jpeg", "png", "webp"], key=f"pac_foto_{pid}")
-                if up_foto:
-                    fb = up_foto.getvalue()
-                    if len(fb) > 2 * 1024 * 1024:
-                        st.error("❌ Máx 2MB")
-                    else:
-                        b64 = base64.b64encode(fb).decode("utf-8")
-                        db.salvar_foto_paciente(pid, b64, up_foto.type or "image/jpeg")
-                        st.toast("Foto atualizada!", icon="✅")
-                        st.rerun()
-            with col_p2:
-                st.markdown(f"### {pac['nome']}")
-                dt_nasc = pac.get("data_nascimento")
-                idade = ""
-                if dt_nasc:
-                    try:
-                        n = pd.to_datetime(str(dt_nasc)).date()
-                        idade = f"{int((date.today() - n).days / 365.25)} anos"
-                    except Exception:
-                        idade = ""
-                st.markdown(
-                    f"**CPF:** {pac.get('cpf') or '—'} | **RG:** {pac.get('rg') or '—'} | **Nasc.:** {dt_nasc or '—'} ({idade})\n\n"
-                    f"**Telefone:** {pac.get('telefone') or '—'} | **E-mail:** {pac.get('email') or '—'}\n\n"
-                    f"**Endereço:** {pac.get('endereco') or '—'}\n\n"
-                    f"**Status:** {'🟢 Ativo' if pac.get('ativo') else '🔴 Inativo'}"
-                )
-
-            st.divider()
-            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 Anamnese", "🩺 Evolução Clínica", "📅 Histórico de Atendimentos"])
-
-            with sub_tab1:
-                anam = db.obter_anamnese(pid)
-                st.markdown("### 📋 Anamnese Digital")
-                aq = st.text_area("Queixa principal", value=(anam or {}).get("queixa_principal") or "", key=f"ana_q_{pid}")
-                ahd = st.text_area("Histórico da doença atual", value=(anam or {}).get("historico_doenca") or "", key=f"ana_hd_{pid}")
-                ahf = st.text_area("Histórico familiar", value=(anam or {}).get("historico_familiar") or "", key=f"ana_hf_{pid}")
-                amd = st.text_area("Medicamentos em uso", value=(anam or {}).get("medicamentos") or "", key=f"ana_md_{pid}")
-                aal = st.text_area("Alergias", value=(anam or {}).get("alergias") or "", key=f"ana_al_{pid}")
-                ahab = st.text_area("Hábitos", value=(anam or {}).get("habitos") or "", key=f"ana_hb_{pid}")
-                aobs = st.text_area("Observações", value=(anam or {}).get("observacoes") or "", key=f"ana_obs_{pid}")
-                if st.button("💾 Salvar Anamnese", type="primary", key=f"ana_save_{pid}"):
-                    dados_anam = {
-                        "queixa_principal": aq, "historico_doenca": ahd, "historico_familiar": ahf,
-                        "medicamentos": amd, "alergias": aal, "habitos": ahab, "observacoes": aobs,
-                    }
-                    if db.salvar_ou_atualizar_anamnese(pid, dados_anam):
-                        st.toast("Anamnese salva!", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao salvar anamnese.")
-
-            with sub_tab2:
-                st.markdown("### 🩺 Evolução Clínica")
-                ev_data = st.date_input("Data", value=date.today(), key=f"ev_data_{pid}")
-                ev_texto = st.text_area("Registro da evolução", key=f"ev_texto_{pid}", height=150)
-                if st.button("➕ Adicionar Evolução", type="primary", key=f"ev_add_{pid}"):
-                    if not ev_texto.strip():
-                        st.warning("Escreva o texto da evolução.")
-                    elif db.inserir_evolucao(pid, ev_data, ev_texto.strip()):
-                        st.toast("Evolução registrada!", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao registrar evolução.")
-
-                evolucoes = db.listar_evolucoes(pid)
-                if not evolucoes:
-                    st.info("Nenhuma evolução registrada ainda.")
-                else:
-                    for ev in evolucoes:
-                        with st.container(border=True):
-                            st.markdown(f"**{ev['data']}**")
-                            st.write(ev["texto"])
-                            if st.button("🗑️ Excluir", key=f"ev_del_{ev['id']}"):
-                                db.excluir_evolucao(ev["id"])
-                                st.rerun()
-
-            with sub_tab3:
-                st.markdown("### 📅 Histórico de Atendimentos")
-                atts = db.listar_atendimentos_do_paciente(pid)
-                if not atts:
-                    st.info("Nenhum atendimento vinculado a este paciente.")
-                else:
-                    df_atts = pd.DataFrame(atts, columns=[
-                        "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
-                        "Laudo PDF", "Avaliação PDF", "Status", "Observações",
-                    ])
-                    st.dataframe(df_atts[["ID", "Empresa", "Modalidade", "Data", "Hora", "Status"]], use_container_width=True, hide_index=True)
-                    st.caption(f"Total: {len(atts)} atendimento(s).")
-
-            st.divider()
-            ac1, ac2, ac3 = st.columns(3)
-            with ac1:
-                if st.button("✏️ Editar Dados", key=f"pac_edit_{pid}", use_container_width=True):
-                    st.session_state[f"edit_pac_{pid}"] = True
-            with ac2:
-                novo_status = 0 if pac.get("ativo") else 1
-                if st.button("🔄 Ativar/Inativar", key=f"pac_status_{pid}", use_container_width=True):
-                    db.atualizar_paciente(pid, {"ativo": novo_status})
-                    st.rerun()
-            with ac3:
-                if st.button("🗑️ Excluir Paciente", key=f"pac_del_{pid}", use_container_width=True):
-                    if db.excluir_paciente(pid):
-                        st.toast("Paciente excluído!", icon="🗑️")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao excluir paciente.")
-
-            if st.session_state.get(f"edit_pac_{pid}"):
-                st.markdown("### ✏️ Editar Dados do Paciente")
-                ec1, ec2 = st.columns(2)
-                with ec1:
-                    e_nome = st.text_input("Nome completo", value=pac["nome"], key=f"ep_nome_{pid}")
-                    e_cpf = st.text_input("CPF", value=pac.get("cpf") or "", key=f"ep_cpf_{pid}")
-                    e_rg = st.text_input("RG", value=pac.get("rg") or "", key=f"ep_rg_{pid}")
-                with ec2:
-                    e_tel = st.text_input("Telefone", value=pac.get("telefone") or "", key=f"ep_tel_{pid}")
-                    e_email = st.text_input("E-mail", value=pac.get("email") or "", key=f"ep_email_{pid}")
-                    e_end = st.text_input("Endereço", value=pac.get("endereco") or "", key=f"ep_end_{pid}")
-                e_obs = st.text_area("Observações", value=pac.get("observacoes") or "", key=f"ep_obs_{pid}")
-                if st.button("💾 Salvar Alterações", type="primary", key=f"ep_save_{pid}"):
-                    dados_upd = {
-                        "nome": e_nome.strip(), "cpf": e_cpf.strip() or None,
-                        "rg": e_rg.strip() or None, "telefone": e_tel.strip() or None,
-                        "email": e_email.strip() or None, "endereco": e_end.strip() or None,
-                        "observacoes": e_obs.strip() or None,
-                    }
-                    if db.atualizar_paciente(pid, dados_upd):
-                        st.session_state[f"edit_pac_{pid}"] = False
-                        st.toast("Alterações salvas!", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao salvar alterações.")
 
 class SettingsPage:
     @staticmethod
@@ -4087,14 +4120,10 @@ class ExtrasPage:
         with tab4:
             st.markdown("### 📖 Guia Rápido do Sistema")
             guia = [
-                ("👥 Pacientes", "Cadastro, prontuário, anamnese, evolução clínica, busca e aniversariantes."),
-                ("🏢 Empresas", "Cadastro de empresas, convênios, contratos e faturamento por empresa."),
-                ("📅 Agenda", "Agendamentos com conflito de horário, fila de espera, triagem e teleconsulta."),
+                ("👥 Pacientes", "Cadastro, prontuário, anamnese e evolução clínica — disponível dentro de Atendimentos."),
+                ("📅 Atendimentos", "Cadastro de atendimentos, pacientes vinculados automaticamente, anexos e PDFs."),
                 ("📋 Docs Clínicos", "Prescrições, atestados e encaminhamentos com geração de PDF."),
                 ("📑 Laudos", "Modelos de laudos, emissão com código de autenticação e histórico de versões."),
-                ("🤖 IA", "Resumo de paciente, previsão de faltas, OCR de documentos e rascunho de receita."),
-                ("💰 Financeiro", "Lançamentos de receitas/despesas, fluxo de caixa, DRE e notas fiscais."),
-                ("🔐 Segurança", "Consentimentos LGPD, auditoria, backup e portabilidade de dados."),
                 ("☰ Relatórios", "Relatórios gerais, por empresa, tendências e taxa de faltas."),
             ]
             for titulo, desc in guia:
@@ -4647,15 +4676,9 @@ class ClinicalManagementApp:
 
                 pages = {
                     "⌂ Dashboard": "dashboard",
-                    "👥 Pacientes": "patients",
-                    "🏢 Empresas": "companies",
-                    "📅 Agenda": "agenda",
-                    "⦿ Atendimentos": "appointments",
+                    "⦿ Atendimentos & Pacientes": "appointments",
                     "📋 Docs Clínicos": "clinical_docs",
                     "📑 Laudos": "laudos",
-                    "🤖 IA": "ia",
-                    "💰 Financeiro": "finance",
-                    "🔐 Segurança": "security",
                     "🛠️ Extras": "extras",
                     "☰ Relatórios": "reports",
                     "📝 Editor Docs": "docs_editor",
@@ -4697,7 +4720,8 @@ class ClinicalManagementApp:
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
             else:
-                PatientsPage.render()
+                # Página de Pacientes removida — cadastro/atendimento gerencia pacientes
+                pass
         elif page_key == "companies":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
