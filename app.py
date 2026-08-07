@@ -70,23 +70,31 @@ def status_badge(status):
     """Gera uma pill colorida para exibir status em tabelas e cards."""
     style = BADGE_STYLES.get(str(status), {"bg": "#ECECF0", "fg": "#5A5A66"})
     return (
-        f"<span style='display:inline-block;padding:3px 12px;border-radius:999px;"
+        f"<span style='display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:999px;"
         f"font-size:0.72rem;font-weight:700;letter-spacing:0.4px;"
         f"background:{style['bg']};color:{style['fg']};"
-        f"border:1px solid {style['bg']};'>{status}</span>"
+        f"border:1px solid {style['fg']}33;"
+        f"box-shadow:0 1px 4px rgba(0,0,0,0.06);'>"
+        f"<span style='width:6px;height:6px;border-radius:50%;background:{style['fg']};'></span>{status}</span>"
     )
 
 def empty_state(icon, title, message):
-    """Empty state premium: ícone grande + texto acolhedor."""
+    """Empty state premium: ícone em chip vidrado + texto acolhedor."""
     st.markdown(
         f"""
-        <div style="text-align:center;padding:3.5rem 1.5rem;margin:0.5rem 0;
+        <div style="text-align:center;padding:3.5rem 1.5rem;margin:0.75rem 0;
                     background:rgba(255,255,255,0.05);
-                    border:1.5px dashed rgba(255,255,255,0.25);
-                    border-radius:24px;">
-            <div style="font-size:3.2rem;margin-bottom:0.8rem;filter:grayscale(0.2);">{icon}</div>
-            <div style="font-size:1.15rem;font-weight:700;color:rgba(255,255,255,0.92);">{title}</div>
-            <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:4px;max-width:460px;margin-left:auto;margin-right:auto;">{message}</div>
+                    border:1.5px dashed rgba(255,255,255,0.22);
+                    border-radius:26px;
+                    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);">
+            <div style="width:88px;height:88px;border-radius:28px;margin:0 auto 1.1rem auto;
+                        background:linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04));
+                        border:1px solid rgba(255,255,255,0.18);
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:2.6rem;box-shadow:0 10px 30px rgba(0,0,0,0.12);">{icon}</div>
+            <div style="font-size:1.15rem;font-weight:800;color:rgba(255,255,255,0.94);">{title}</div>
+            <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:5px;max-width:480px;
+                        margin-left:auto;margin-right:auto;line-height:1.5;">{message}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -591,6 +599,35 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             border: 1px solid rgba(255,255,255,0.1) !important;
             backdrop-filter: blur(12px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }}
+
+        /* ── LISTA DE OPÇÕES (DROPDOWN) ── */
+        [data-testid="stSelectboxDropdown"], [data-testid="stPopover"] {{
+            border-radius: 14px !important;
+            overflow: hidden;
+        }}
+
+        /* ── MENU DA SIDEBAR LIMPO (sem bolinha do radio) ── */
+        [data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {{
+            display: none !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label {{
+            padding: 8px 12px !important;
+            border-radius: 12px !important;
+            margin: 1px 0 !important;
+            transition: background 0.2s ease !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
+            background: rgba(255,255,255,0.06) !important;
+        }}
+        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
+            background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06)) !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15) !important;
+        }}
+
+        /* ── ALERTS COM ACENTO LATERAL ── */
+        [data-testid="stAlert"] {{
+            border-left: 4px solid rgba(255,255,255,0.30) !important;
         }}
 
         /* ── LOGIN FORM ── */
