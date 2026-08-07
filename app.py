@@ -1830,8 +1830,7 @@ class AppointmentsPage:
 
     @staticmethod
     def _gestao_pacientes() -> None:
-        st.markdown("### 👥 Gestão de Pacientes")
-        st.caption("Prontuário eletrônico, anamnese e evolução clínica — integrado ao Atendimento")
+        section_title("👥", "Gestão de Pacientes", "Prontuário eletrônico, anamnese e evolução clínica — integrado ao Atendimento")
 
         # ── Alertas de aniversário ──
         try:
@@ -2007,11 +2006,39 @@ class AppointmentsPage:
                         idade = f"{int((date.today() - n).days / 365.25)} anos"
                     except Exception:
                         idade = ""
+
+                def _chip_pac(icone, valor):
+                    if not valor:
+                        return ""
+                    return (f"<div style='display:inline-flex;align-items:center;gap:6px;"
+                            f"background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);"
+                            f"border-radius:12px;padding:7px 12px;font-size:0.8rem;font-weight:600;"
+                            f"color:rgba(255,255,255,0.92);"
+                            f"box-shadow:0 2px 8px rgba(0,0,0,0.06);'>"
+                            f"<span style='opacity:.85'>{icone}</span> {html.escape(str(valor))}</div>")
+
+                nasc_c = _chip_pac("🎂", (f"{dt_nasc or '—'}" + (f" ({idade})" if idade else "")) if dt_nasc else "")
+                chips_parts = (
+                    _chip_pac("🪪", pac.get("cpf"))
+                    + _chip_pac("🆔", pac.get("rg"))
+                    + nasc_c
+                    + _chip_pac("📞", pac.get("telefone"))
+                    + _chip_pac("✉️", pac.get("email"))
+                    + _chip_pac("🏠", pac.get("endereco"))
+                )
+                if pac.get("ativo"):
+                    status_chip = ("<span style='background:rgba(34,197,94,0.15);border:1px solid #22C55E55;"
+                                   "border-radius:99px;padding:7px 14px;font-size:0.78rem;font-weight:800;"
+                                   "color:#22C55E;display:inline-flex;align-items:center;gap:6px;'>🟢 Ativo</span>")
+                else:
+                    status_chip = ("<span style='background:rgba(239,68,68,0.15);border:1px solid #EF444455;"
+                                   "border-radius:99px;padding:7px 14px;font-size:0.78rem;font-weight:800;"
+                                   "color:#EF4444;display:inline-flex;align-items:center;gap:6px;'>🔴 Inativo</span>")
                 st.markdown(
-                    f"**CPF:** {pac.get('cpf') or '—'} | **RG:** {pac.get('rg') or '—'} | **Nasc.:** {dt_nasc or '—'} ({idade})\n\n"
-                    f"**Telefone:** {pac.get('telefone') or '—'} | **E-mail:** {pac.get('email') or '—'}\n\n"
-                    f"**Endereço:** {pac.get('endereco') or '—'}\n\n"
-                    f"**Status:** {'🟢 Ativo' if pac.get('ativo') else '🔴 Inativo'}"
+                    f"""<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;'>
+                        {chips_parts}<span style='width:100%;'></span>{status_chip}
+                    </div>""",
+                    unsafe_allow_html=True,
                 )
 
             st.divider()
@@ -4775,7 +4802,16 @@ class ClinicalManagementApp:
                 page_key = pages[selected_page]
 
                 st.divider()
-                st.markdown("### 💬 IA Assistente")
+                st.markdown(
+                    """<div style='display:flex;align-items:center;gap:8px;margin:6px 0 10px 0;'>
+                        <div style='width:30px;height:30px;border-radius:10px;flex-shrink:0;
+                            background:linear-gradient(135deg,#4DA768,#4DA76899);
+                            display:flex;align-items:center;justify-content:center;font-size:0.95rem;
+                            box-shadow:0 4px 12px rgba(0,0,0,0.2);'>🤖</div>
+                        <div style='font-weight:800;font-size:0.92rem;color:#fff;'>IA Assistente</div>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
                 answer = ""
                 user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input", placeholder="Ex: Resumo de hoje")
                 if user_msg:
