@@ -724,17 +724,6 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             font-weight: 800 !important;
         }}
         /* Títulos de seção do menu */
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before {{
-            width: 100%;
-            font-size: 0.62rem !important;
-            font-weight: 800 !important;
-            letter-spacing: 2px !important;
-            text-transform: uppercase !important;
-            color: rgba(255,255,255,0.55) !important;
-            padding: 10px 2px 4px;
-            pointer-events: none;
-        }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1)::before {{ content: "Principal"; }}
 
         /* ── ANIMAÇÃO DE ENTRADA ── */
         @keyframes appFadeIn {{
@@ -881,67 +870,7 @@ class DashboardPage:
         status_html = status_badge("Online" if conn_ok else "Offline")
         status_label = "Postgres conectado" if conn_ok else "Banco indisponível"
         overlay = "rgba(0,0,0,0.28)" if is_dark else "rgba(255,255,255,0.10)"
-        components.html(
-            f"""
-            <html>
-            <head>
-            <style>
-              html, body {{ margin:0; padding:0; height:100%; overflow:hidden; background:transparent; }}
-              .box {{
-                  height:100%; box-sizing:border-box;
-                  background: linear-gradient(120deg, {accent} 0%, {accent}CC 55%, {accent}88 100%);
-                  border: 1px solid rgba(255,255,255,0.18);
-                  border-radius: 24px;
-                  padding: 1.3rem 2.2rem;
-                  box-shadow: 0 12px 40px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.25);
-                  position: relative; overflow: hidden;
-                  display:flex; align-items:center;
-              }}
-              .steth {{ position:absolute; top:-40px; right:-30px; font-size:8rem; opacity:0.10; transform:rotate(-12deg); }}
-              .content {{ position:relative; width:100%; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; }}
-              .kicker {{ font-size:0.72rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.75); margin:0 0 6px 0; }}
-              h1 {{ margin:0; font-size:2.1rem; font-weight:800; color:#fff; letter-spacing:-1px; }}
-              .data {{ font-size:0.9rem; color:rgba(255,255,255,0.85); margin:6px 0 0 0; font-weight:500; }}
-              .direita {{ text-align:right; }}
-              .status-txt {{ font-size:0.75rem; color:rgba(255,255,255,0.75); margin:6px 0 0 0; }}
-            </style>
-            </head>
-            <body>
-              <div class="box">
-                <div class="steth">🩺</div>
-                <div class="content">
-                  <div>
-                    <p class="kicker">Dashboard Executivo</p>
-                    <h1>{saudacao}, {nome_exibido} 👋</h1>
-                    <p class="data">📅 {data_pt} &nbsp;•&nbsp; 🕐 <span id="relogio-manaus" style="font-variant-numeric:tabular-nums;">{hora_pt}</span></p>
-                  </div>
-                  <div class="direita">
-                    <div>{status_html}</div>
-                    <p class="status-txt">{status_label}</p>
-                  </div>
-                </div>
-              </div>
-              <script>
-              (function() {{
-                function formatar(tz) {{
-                  try {{
-                    return new Intl.DateTimeFormat('pt-BR', {{ timeZone: tz, hour: '2-digit', minute: '2-digit' }}).format(new Date());
-                  }} catch (e) {{ return ''; }}
-                }}
-                function atualizar() {{
-                  var el = document.getElementById('relogio-manaus');
-                  if (el) el.textContent = formatar('America/Manaus');
-                }}
-                atualizar();
-                setInterval(atualizar, 1000);
-              }})();
-              </script>
-            </body>
-            </html>
-            """,
-            height=190,
-        )
-        st.caption("PostgreSQL | IA Assistente | Gestão Clínica")
+        render_page_header("⌂ Dashboard", f"{saudacao} • {data_pt} • {hora_pt} • {status_label}")
         try:
             stats = DatabaseManager.get_statistics()
             appointments = DatabaseManager.get_all_appointments()
