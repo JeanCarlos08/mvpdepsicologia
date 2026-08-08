@@ -269,27 +269,24 @@ def display_cards(cards):
                     -webkit-backdrop-filter: blur(20px);
                     border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 20px;
-                    padding: 16px 18px;
+                    padding: 22px 20px 18px 20px;
                     box-shadow: 0 4px 24px rgba(0,0,0,0.07),
                                 inset 0 1px 0 rgba(255,255,255,0.18);
                     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
                     cursor: default;
                     margin-bottom: 4px;
                 ">
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:nowrap;">
-                        <div style="width:40px;height:40px;border-radius:13px;flex-shrink:0;
-                            background:linear-gradient(135deg,{acc},{acc}99);
-                            display:flex;align-items:center;justify-content:center;font-size:1.1rem;
-                            box-shadow:0 6px 18px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.35);">{icon}</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-size:0.66rem;font-weight:700;
-                                text-transform:uppercase;letter-spacing:1.2px;
-                                color:{txt};opacity:0.75;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{title}</div>
-                            <div style="font-size:1.6rem;font-weight:800;
-                                color:{txt};letter-spacing:-1px;line-height:1.1;white-space:nowrap;">{value}</div>
-                            {delta_html}
-                        </div>
-                    </div>
+                    <div style="font-size:1.6rem;margin-bottom:8px;line-height:1;">{icon}</div>
+                    <div style="
+                        font-size:0.7rem;font-weight:700;
+                        text-transform:uppercase;letter-spacing:1.2px;
+                        color:{txt};opacity:0.75;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                    ">{title}</div>
+                    <div style="
+                        font-size:2rem;font-weight:800;
+                        color:{txt};letter-spacing:-1px;line-height:1;
+                    ">{value}</div>
+                    {delta_html}
                 </div>
                 """,
                 unsafe_allow_html=True
