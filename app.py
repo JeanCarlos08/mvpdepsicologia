@@ -1058,6 +1058,13 @@ class DashboardPage:
             st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
+        cards = [
+            {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
+            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": accent},
+            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": accent},
+            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
+        ]
+        display_cards(cards)
 
         if total_appointments > 0:
             section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
