@@ -1066,7 +1066,35 @@ class DashboardPage:
         ]
         display_cards(cards)
 
-        if total_appointments == 0:
+        if total_appointments > 0:
+            section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
+            with st.spinner("Gerando insights de negócio..."):
+                import json
+                stats_resumo = {
+                    "total_atendimentos": total_appointments,
+                    "total_empresas": total_empresas,
+                    "laudos_gerados": laudos_enviados,
+                    "modalidades": stats.get("modalidades", {})
+                }
+                from ai_manager import AIManager
+                dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
+                st.markdown(
+                    f"""
+                    <div style="background:linear-gradient(135deg,{accent}26,rgba(255,255,255,0.05));
+                        border:1px solid {accent}55;border-radius:18px;padding:18px 22px;
+                        display:flex;gap:14px;align-items:flex-start;
+                        box-shadow:0 6px 24px rgba(0,0,0,0.08);">
+                        <div style="font-size:1.5rem;line-height:1;">🤖</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-size:0.72rem;font-weight:800;letter-spacing:1.5px;
+                                text-transform:uppercase;color:{accent};margin-bottom:6px;">IA Assistente</div>
+                            <div style="color:rgba(255,255,255,0.92);line-height:1.6;font-size:0.95rem;">{dicas}</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        else:
             empty_state("✨", "Painel vazio", "Cadastre seu primeiro atendimento para ver a mágica acontecer.")
         
         if total_appointments > 0:
