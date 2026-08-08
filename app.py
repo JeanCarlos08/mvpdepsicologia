@@ -1058,14 +1058,7 @@ class DashboardPage:
             st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
-        cards = [
-            {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
-            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": accent},
-            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": accent},
-            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
-        ]
-        display_cards(cards)
-        
+
         if total_appointments > 0:
             section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
             with st.spinner("Gerando insights de negócio..."):
@@ -1157,37 +1150,6 @@ class DashboardPage:
                                       paper_bgcolor="#000000",
                                       plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF"))
                     st.plotly_chart(fig, use_container_width=True)
-
-            if contagem_empresas:
-                with st.expander("🏆 Ranking por Empresa", expanded=False):
-                    ranking = sorted(contagem_empresas.items(), key=lambda x: -x[1])
-                    max_v = max(v for _, v in ranking)
-                    total_v = sum(v for _, v in ranking)
-                    bars_html = ['<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">']
-                    bars = bars_html
-                    for pos, (emp, qtde) in enumerate(ranking[:8], start=1):
-                        pct = int(qtde / max_v * 100)
-                        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(pos, f"<span style='font-size:.9rem;font-weight:800;color:rgba(255,255,255,0.5);'>{pos}</span>")
-                        bars.append(f"""
-                        <div style='display:flex;align-items:center;gap:12px;'>
-                            <div style='width:30px;text-align:center;flex-shrink:0;font-size:1rem;'>{medal}</div>
-                            <div style='flex:1;min-width:0;'>
-                                <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;'>
-                                    <span style='font-weight:700;font-size:0.88rem;color:rgba(255,255,255,0.92);
-                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{html.escape(str(emp))}</span>
-                                    <span style='font-weight:800;font-size:0.8rem;color:{accent};'>{qtde} atend.</span>
-                                </div>
-                                <div style='height:8px;border-radius:99px;background:rgba(255,255,255,0.12);overflow:hidden;'>
-                                    <div style='height:100%;width:{pct}%;border-radius:99px;
-                                        background:linear-gradient(90deg,{accent},{accent}77);'></div>
-                                </div>
-                            </div>
-                        </div>""")
-                    bars.append('</div>')
-                    st.markdown("".join(bars), unsafe_allow_html=True)
-                    st.caption(f"🏢 {len(ranking)} empresa(s) — {total_v} atendimento(s) no período.")
-            else:
-                empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
 def _pac_initials(nome: str) -> str:
     partes = [p for p in str(nome or "").strip().split() if p]
