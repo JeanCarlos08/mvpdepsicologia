@@ -4149,16 +4149,26 @@ class UploadPage:
                     st.write(f"📄 {arq.get('filename','arquivo.pdf')} ({size_kb} KB)")
                 with col2:
                     file_id = arq.get("id")
-                    if file_id and st.button("Baixar", key=f"dl_db_{file_id}"):
-                        reg = db.obter_arquivo_por_id(int(file_id))
-                        if reg:
-                            st.download_button(
-                                label="Clique para baixar",
-                                data=reg["content"],
-                                file_name=reg.get("filename","arquivo.pdf"),
-                                mime=reg.get("content_type","application/pdf"),
-                                key=f"download_data_{file_id}"
-                            )
+                    if file_id:
+                        try:
+                            reg = db.obter_arquivo_por_id(int(file_id))
+                            if reg and reg.get("content") is not None:
+                                content = reg["content"]
+                                # psycopg2 pode retornar memoryview
+                                if isinstance(content, memoryview):
+                                    content = content.tobytes()
+                                st.download_button(
+                                    label="⬇️ Baixar",
+                                    data=content,
+                                    file_name=reg.get("filename","arquivo.pdf"),
+                                    mime=reg.get("content_type","application/pdf"),
+                                    key=f"download_data_{file_id}",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.caption("Sem conteúdo")
+                        except Exception as e:
+                            st.caption(f"Erro ao carregar: {e}")
         else:
             st.info("Nenhum arquivo no banco ainda.")
 
