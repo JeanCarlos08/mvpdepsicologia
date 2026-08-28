@@ -374,13 +374,18 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             opacity: 0.85;
         }}
 
-        /* ── ANIMAÇÃO FADEIN 0.45s ── */
+        /* ── ANIMAÇÃO FADEIN 0.45s + FUNDO GLOBAL EM TODAS AS PÁGINAS ── */
         @keyframes appFadeIn {{
             from {{ opacity: 0; transform: translateY(8px); }}
             to {{ opacity: 1; transform: translateY(0); }}
         }}
         .stApp {{
             animation: appFadeIn 0.45s ease;
+            background-color: {bg_main} !important;
+        }}
+        /* Garante que Dashboard, Atendimentos, Upload, Laudos, Extras, Relatórios, Docs e Config herdam o mesmo CSS */
+        .stApp * {{
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
         }}
 
         /* ── 4. SIDEBAR confiável: section[data-testid="stSidebar"] ── */
