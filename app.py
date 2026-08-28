@@ -329,24 +329,21 @@ def section_title(emoji, text, sub=None, accent=None):
 def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color="#ffffff", main_bg_color="#73C883", card_bg_color="rgba(255, 255, 255, 0.15)"):
     # Paleta Dinâmica — usa variáveis já existentes
     bg_main = "#121212" if dark_mode else main_bg_color
-    bg_sidebar = "#1a1a1a" if dark_mode else primary_accent
+    # Sidebar usa verde escuro #1E7A46 conforme spec Streamlit Cloud (confiável)
+    bg_sidebar_top = "#1a1a1a" if dark_mode else "#1E7A46"
+    bg_sidebar_bottom = "#1a1a1a" if dark_mode else "#155c33"
     card_bg = "rgba(255, 255, 255, 0.05)" if dark_mode else card_bg_color
-    text_main = "#ffffff"
-    
+
+    # 1. GOOGLE FONTS via <link> separado (confiável no Cloud, não usa @import)
+    st.markdown('<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+
     st.markdown(
         f'''<style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
-        /* ── 10. FUNDO PRINCIPAL + BASE & TYPOGRAPHY PREMIUM (Req 8, 10) ── */
-        html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
-        [data-testid="stMainViewContainer"] {{
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        /* ── 3. FUNDO PRINCIPAL (.stApp) + TIPOGRAFIA (h1,h2,h3,p) ── */
+        .stApp {{
             background-color: {bg_main} !important;
-            -webkit-font-smoothing: antialiased !important;
-            -moz-osx-font-smoothing: grayscale !important;
-            text-rendering: optimizeLegibility !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
         }}
-        * {{ font-family: 'Plus Jakarta Sans', sans-serif !important; }}
         h1 {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
             font-weight: 800 !important;
@@ -364,72 +361,46 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             color: #ffffff !important;
             letter-spacing: -0.5px;
         }}
-        [data-testid="stWidgetLabel"] p, label p, .stSelectbox label, .stTextInput label {{
+        p {{
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            line-height: 1.6;
+        }}
+        /* Labels uppercase 1.2px */
+        .stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label {{
             font-weight: 700 !important;
             font-size: 0.72rem !important;
             text-transform: uppercase !important;
             letter-spacing: 1.2px !important;
             opacity: 0.85;
         }}
-        p, span, div, label {{
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
-            line-height: 1.6;
-        }}
 
-        /* ── ANIMAÇÃO FADEIN 0.45s (Req 10) ── */
+        /* ── ANIMAÇÃO FADEIN 0.45s ── */
         @keyframes appFadeIn {{
             from {{ opacity: 0; transform: translateY(8px); }}
             to {{ opacity: 1; transform: translateY(0); }}
         }}
-        [data-testid="stMainViewContainer"] .block-container {{
+        .stApp {{
             animation: appFadeIn 0.45s ease;
-            padding-top: 1.8rem !important;
-            max-width: 1280px;
         }}
 
-        /* ── CUSTOM SCROLLBAR PREMIUM ── */
-        ::-webkit-scrollbar {{
-            width: 9px;
-            height: 9px;
+        /* ── 4. SIDEBAR confiável: section[data-testid="stSidebar"] ── */
+        section[data-testid="stSidebar"] > div {{
+            background: linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 100%) !important;
         }}
-        ::-webkit-scrollbar-track {{
-            background: transparent;
-            border-radius: 12px;
+        section[data-testid="stSidebar"] * {{
+            color: white !important;
         }}
-        ::-webkit-scrollbar-thumb {{
-            background: rgba(255,255,255,0.18);
-            border-radius: 99px;
-            border: 2px solid transparent;
-            background-clip: padding-box;
-        }}
-        ::-webkit-scrollbar-thumb:hover {{
-            background: rgba(255,255,255,0.30);
-            background-clip: padding-box;
-        }}
-
-        /* ── 1. SIDEBAR: gradiente vertical suave + glassmorphism + sem radio (Req 1) ── */
-        [data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, {bg_sidebar} 0%, {bg_sidebar}E6 50%, {bg_sidebar}CC 100%) !important;
-            box-shadow: 8px 0 32px rgba(0,0,0,0.18);
-            border-right: 1px solid rgba(255,255,255,0.08);
-            backdrop-filter: blur(20px);
-        }}
-        [data-testid="stSidebar"] * {{ color: #ffffff !important; }}
-        /* esconde bolinha nativa do radio */
-        [data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {{
+        /* Esconde bolinha nativa do radio — sem has() */
+        section[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {{
             display: none !important;
         }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child,
-        [data-testid="stSidebar"] div[role="radiogroup"] > label > input {{
-            display: none !important;
-        }}
-        [data-testid="stSidebar"] div[role="radiogroup"] {{
+        section[data-testid="stSidebar"] div[role="radiogroup"] {{
             display: flex;
             flex-direction: column;
             gap: 4px;
             padding: 0 2px;
         }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label {{
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label {{
             display: flex !important;
             align-items: center !important;
             gap: 10px !important;
@@ -442,46 +413,13 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             border: 1px solid transparent !important;
             font-weight: 500 !important;
             font-size: 0.88rem !important;
-            letter-spacing: 0.2px !important;
         }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label p {{
-            margin: 0 !important;
-            font-size: 0.88rem !important;
-            font-weight: 500 !important;
-            letter-spacing: 0.2px !important;
-            text-transform: none !important;
-        }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
             background: rgba(255,255,255,0.08) !important;
-            transform: translateX(2px);
-        }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked),
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(div[aria-checked="true"]) {{
-            background: rgba(255,255,255,0.14) !important;
-            background: linear-gradient(135deg, rgba(255,255,255,0.20), rgba(255,255,255,0.08)) !important;
-            border: 1px solid rgba(255,255,255,0.18) !important;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 14px rgba(0,0,0,0.12) !important;
-            backdrop-filter: blur(20px);
-        }}
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p,
-        [data-testid="stSidebar"] div[role="radiogroup"] > label:has(div[aria-checked="true"]) p {{
-            font-weight: 800 !important;
         }}
 
-        /* ── 3. HEADER H1 gradiente + subtitulo rgba(0.7) + divider sutil (Req 3) ── */
-        hr {{
-            border: none !important;
-            height: 1px !important;
-            margin: 1.2rem 0 1.5rem 0 !important;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent) !important;
-            border-color: rgba(255,255,255,0.10) !important;
-        }}
-        [data-testid="stDivider"] {{
-            border-color: rgba(255,255,255,0.10) !important;
-        }}
-
-        /* ── 2. CARDS DE MÉTRICAS glassmorphism real (Req 2) ── */
-        [data-testid="stMetric"] {{
+        /* ── 5. CARDS GLASSMORPHISM via .stMetric ── */
+        .stMetric {{
             background: {card_bg} !important;
             backdrop-filter: blur(20px) !important;
             -webkit-backdrop-filter: blur(20px) !important;
@@ -491,12 +429,12 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             box-shadow: 0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.18) !important;
             transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
         }}
-        [data-testid="stMetric"]:hover {{
+        .stMetric:hover {{
             transform: translateY(-6px) scale(1.02) !important;
             border-color: rgba(255,255,255,0.28) !important;
             box-shadow: 0 12px 36px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.22) !important;
         }}
-        [data-testid="stMetricLabel"] {{
+        .stMetric label, [data-testid="stMetricLabel"] {{
             color: {card_text_color} !important;
             font-weight: 700 !important;
             font-size: 0.72rem !important;
@@ -511,57 +449,30 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             letter-spacing: -1px !important;
         }}
 
-        /* ── 4. TABELA/DATAFRAME 18px + header rgba + hover suave (Req 4) ── */
-        [data-testid="stDataFrame"] {{
-            background: {"#1e1e1e" if dark_mode else "white"} !important;
+        /* ── 4. TABELA/DATAFRAME ── */
+        .stDataFrame {{
             border: 1px solid rgba(255,255,255,0.08) !important;
             border-radius: 18px !important;
             overflow: hidden !important;
             box-shadow: 0 8px 28px rgba(0,0,0,0.08) !important;
         }}
-        [data-testid="stDataFrame"] thead tr th {{
+        .stDataFrame thead tr th {{
             background: rgba(255,255,255,0.06) !important;
             font-weight: 700 !important;
             font-size: 0.78rem !important;
             letter-spacing: 0.5px !important;
             text-transform: uppercase !important;
             color: rgba(255,255,255,0.85) !important;
-            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
         }}
-        [data-testid="stDataFrame"] tbody tr {{
+        .stDataFrame tbody tr {{
             transition: background 0.15s ease !important;
         }}
-        [data-testid="stDataFrame"] tbody tr:hover {{
+        .stDataFrame tbody tr:hover {{
             background: rgba(255,255,255,0.05) !important;
         }}
-        .stDataFrame, [data-testid="stTable"] {{
-            border-radius: 18px !important;
-            overflow: hidden;
-        }}
 
-        /* ── 9. INPUTS 14px + focus 4px accent25 (Req 9) ── */
-        .stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input, .stTimeInput input,
-        [data-testid="stTextInput"] input, [data-testid="stSelectbox"] select, [data-testid="stTextArea"] textarea {{
-            border-radius: 14px !important;
-            border: 1.5px solid rgba(255,255,255,0.15) !important;
-            background: rgba(255,255,255,{0.05 if dark_mode else 0.95}) !important;
-            color: {"white" if dark_mode else "#1a1a1a"} !important;
-            padding: 12px 16px !important;
-            font-size: 0.92rem !important;
-            font-weight: 500 !important;
-            transition: all 0.3s ease !important;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-        }}
-        .stTextInput input:focus, .stSelectbox select:focus, .stTextArea textarea:focus,
-        .stDateInput input:focus, .stTimeInput input:focus,
-        [data-testid="stTextInput"] input:focus, [data-testid="stSelectbox"] input:focus {{
-            border-color: {primary_accent} !important;
-            box-shadow: 0 0 0 4px {primary_accent}25, inset 0 1px 0 rgba(255,255,255,0.06) !important;
-            outline: none !important;
-        }}
-
-        /* ── 5. BOTÕES gradiente accent + hover translateY(-3px) (Req 5) ── */
-        .stButton > button, button[kind="primary"], [data-testid="stBaseButton-primary"] button {{
+        /* ── 5. BOTÕES (.stButton > button) ── */
+        .stButton > button {{
             width: 100%;
             background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}D9 100%) !important;
             color: white !important;
@@ -575,104 +486,84 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             box-shadow: 0 4px 15px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.20) !important;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         }}
-        .stButton > button:hover, button[kind="primary"]:hover, [data-testid="stBaseButton-primary"] button:hover {{
+        .stButton > button:hover {{
             transform: translateY(-3px) !important;
             box-shadow: 0 12px 28px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.28) !important;
             filter: brightness(1.05);
-            border-color: rgba(255,255,255,0.30) !important;
-        }}
-        .stButton > button:active {{ transform: translateY(0px) !important; }}
-        button[kind="secondary"] {{
-            border-radius: 14px !important;
-            border: 1px solid rgba(255,255,255,0.18) !important;
-            background: rgba(255,255,255,0.06) !important;
-            color: #fff !important;
-            font-weight: 600 !important;
-        }}
-        button[kind="secondary"]:hover {{ background: rgba(255,255,255,0.12) !important; }}
-        [data-testid="stFormSubmitButton"] button {{
-            background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}CC 100%) !important;
-            color: white !important;
-            border-radius: 14px !important;
-            font-weight: 800 !important;
-            border: 1px solid rgba(255,255,255,0.20) !important;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.22) !important;
         }}
 
-        /* ── 6. BADGES pills com dot — sem uppercase, borda 33% (Req 6) ── */
-        .status-badge {{
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+        /* ── 9. INPUTS confiáveis ── */
+        .stTextInput > div > div > input {{
+            border-radius: 14px !important;
+            border: 1.5px solid rgba(255,255,255,0.15) !important;
+            background: rgba(255,255,255,{0.05 if dark_mode else 0.95}) !important;
+            color: {"white" if dark_mode else "#1a1a1a"} !important;
+            padding: 12px 16px !important;
+            font-size: 0.92rem !important;
+            font-weight: 500 !important;
+        }}
+        .stTextInput > div > div > input:focus {{
+            border-color: {primary_accent} !important;
+            box-shadow: 0 0 0 4px {primary_accent}25 !important;
+            outline: none !important;
+        }}
+        .stSelectbox > div > div {{
+            border-radius: 14px !important;
+            border: 1.5px solid rgba(255,255,255,0.15) !important;
+            background: rgba(255,255,255,{0.05 if dark_mode else 0.95}) !important;
+        }}
+        .stSelectbox > div > div:focus-within {{
+            border-color: {primary_accent} !important;
+            box-shadow: 0 0 0 4px {primary_accent}25 !important;
         }}
 
-        /* ── 7. TABS container rgba padding 5px + ativa gradiente + sem underline (Req 7) ── */
-        [data-testid="stTabs"] [data-baseweb="tab-list"] {{
+        /* ── 7. TABS (.stTabs) ── */
+        .stTabs [data-baseweb="tab-list"] {{
             gap: 4px !important;
             background: rgba(255,255,255,0.07) !important;
             border: 1px solid rgba(255,255,255,0.08) !important;
             border-radius: 16px !important;
             padding: 5px !important;
         }}
-        [data-testid="stTabs"] [data-baseweb="tab"] {{
+        .stTabs [data-baseweb="tab"] {{
             border-radius: 11px !important;
             padding: 9px 16px !important;
             font-weight: 600 !important;
             font-size: 0.88rem !important;
             color: rgba(255,255,255,0.75) !important;
             border: none !important;
-            transition: all 0.25s ease !important;
         }}
-        [data-testid="stTabs"] [data-baseweb="tab"]:hover {{
-            color: #fff !important;
-            background: rgba(255,255,255,0.06) !important;
-        }}
-        [data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {{
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
             background: linear-gradient(135deg, {primary_accent} 0%, {primary_accent}CC 100%) !important;
             color: #fff !important;
             box-shadow: 0 4px 14px rgba(0,0,0,0.14) !important;
-            border: 1px solid rgba(255,255,255,0.14) !important;
         }}
-        [data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
+        .stTabs [data-baseweb="tab-highlight"] {{
             background: transparent !important;
-            display: none !important;
-        }}
-        [data-testid="stTabs"] [data-baseweb="tab-border"] {{
-            display: none !important;
         }}
 
-        /* ── EXPANDER / CONTAINERS ── */
+        /* ── EXPANDERS (.stExpander) ── */
         .stExpander {{
             border: 1px solid rgba(255,255,255,0.10) !important;
             background: rgba(255,255,255,0.04) !important;
             border-radius: 18px !important;
-            backdrop-filter: blur(12px);
         }}
-        [data-testid="stVerticalBlockBorderWrapper"] {{
-            background: rgba(255,255,255,0.045) !important;
-            border: 1px solid rgba(255,255,255,0.10) !important;
-            border-radius: 18px !important;
-            padding: 14px 18px !important;
-        }}
-        [data-testid="stAlert"] {{
-            border-radius: 16px !important;
-            backdrop-filter: blur(12px);
-        }}
-        /* ── REMOVER CHROME PADRÃO ── */
-        #MainMenu, footer, [data-testid="stDecoration"], [data-testid="stToolbar"], [data-testid="stMainMenu"] {{
-            visibility: hidden !important;
+
+        /* ── 8. FILE UPLOADER esconde instruções, mostra só botão ── */
+        [data-testid="stFileUploaderDropzoneInstructions"] {{
             display: none !important;
-            height: 0 !important;
         }}
-        header[data-testid="stHeader"] {{
-            background: transparent !important;
-            height: 2rem !important;
+        [data-testid="stFileUploaderDropzone"] {{
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            border-radius: 12px !important;
+            background: rgba(255,255,255,0.04) !important;
+        }}
+
+        /* ── DIVIDER sutil ── */
+        hr {{
+            border: none !important;
+            height: 1px !important;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent) !important;
         }}
 
         </style>''', unsafe_allow_html=True)
@@ -4445,6 +4336,8 @@ class ClinicalManagementApp:
     def __init__(self):
         pass
     def run(self):
+        # Google Fonts confiável no Streamlit Cloud (separado, antes do CSS)
+        st.markdown('<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">', unsafe_allow_html=True)
         # Inicialização do DB e temas (não bloquear a UI se o banco estiver offline)
         db_ok = False
         try:
