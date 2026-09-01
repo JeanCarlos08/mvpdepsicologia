@@ -1163,11 +1163,35 @@ class AppointmentsPage:
             elif val == 'Cancelado': color = '#d32f2f'
             return f'color: {color}; font-weight: bold;'
 
-        df_display = page_df[["Empresa", "Nome", "Modalidade", "Data", "Hora", "Laudo", "Avaliação", "Status"]].copy()
-        try:
-            st.dataframe(df_display.style.map(color_status, subset=['Status']), use_container_width=True, height=420)
-        except:
-            st.dataframe(df_display, use_container_width=True, height=420)
+        # ── Lista moderna (app, não planilha) ──
+        for _, r in page_df.iterrows():
+            pid = r["ID"]
+            # initials
+            nome = str(r["Nome"])
+            initials = "".join([p[0].upper() for p in nome.split()[:2]]) if nome.strip() else "?"
+            st.markdown(
+                f"""
+                <div style="display:flex;align-items:center;gap:14px;
+                    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+                    border-radius:18px;padding:14px 16px;margin-bottom:10px;
+                    transition:all 0.2s ease;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+                    <div style="width:42px;height:42px;border-radius:50%;flex-shrink:0;
+                        background:linear-gradient(135deg,#4DA768,#1E7A46);
+                        display:flex;align-items:center;justify-content:center;
+                        color:#fff;font-weight:800;font-size:0.85rem;">{initials}</div>
+                    <div style="min-width:0;flex:1;">
+                        <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{nome}</div>
+                        <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);">{r["Empresa"]} · {r["Modalidade"]} · {r["Data"]} {r["Hora"]}</div>
+                    </div>
+                    <div style="flex-shrink:0;">{status_badge(r["Status"])}</div>
+                    <div style="display:flex;gap:6px;flex-shrink:0;">
+                        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);">Laudo: {r["Laudo"]}</span>
+                        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(168,85,247,0.12);color:#c4b5fd;border:1px solid rgba(168,85,247,0.25);">Aval: {r["Avaliação"]}</span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         csv_data = df.to_csv(index=False, sep=';').encode("utf-8-sig")
         
@@ -1803,11 +1827,18 @@ class AppointmentsPage:
                 if not atts:
                     st.info("Nenhum atendimento vinculado a este paciente.")
                 else:
-                    df_atts = pd.DataFrame(atts, columns=[
-                        "ID", "Empresa", "Nome", "Modalidade", "Data", "Hora",
-                        "Laudo PDF", "Avaliação PDF", "Status", "Observações",
-                    ])
-                    st.dataframe(df_atts[["ID", "Empresa", "Modalidade", "Data", "Hora", "Status"]], use_container_width=True, hide_index=True)
+                    # Histórico moderno (cards, não planilha)
+                    for a in atts:
+                        aid, emp, _, mod, dt, hr, _, _, stt, _ = a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9] if len(a)>9 else ""
+                        st.markdown(f"""
+                        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+                            border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:8px;">
+                            <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);">#{aid}</span>
+                            <span style="font-weight:600;color:#fff;">{mod}</span>
+                            <span style="color:rgba(255,255,255,0.6);font-size:0.85rem;">{emp} · {dt} {hr}</span>
+                            <span style="margin-left:auto;">{status_badge(stt)}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
                     st.caption(f"Total: {len(atts)} atendimento(s).")
 
             st.divider()
@@ -2145,14 +2176,17 @@ class AgendaPage:
             triagens_hoje = db.listar_triagens(data=date.today().strftime("%Y-%m-%d"))
             if triagens_hoje:
                 st.markdown("#### Triagens de hoje")
-                df_tri = pd.DataFrame([{
-                    "Hora": str(t["hora"])[:5] if t["hora"] else "",
-                    "Médico": t["medico"] or "",
-                    "Peso": t["peso"] or "", "PA": t["pressao"] or "",
-                    "FC": t["freq_cardiaca"] or "", "Sat": t["saturacao"] or "",
-                    "Gravidade": t["gravidade"] or "",
-                } for t in triagens_hoje])
-                st.dataframe(df_tri, use_container_width=True, hide_index=True)
+                for t in triagens_hoje:
+                    grav = t["gravidade"] or "Normal"
+                    grav_c = {"Normal":"#22C55E","Prioritário":"#F59E0B","Urgente":"#EF4444"}.get(grav, "#22C55E")
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
+                        <span style="font-weight:700;color:#fff;">{str(t["hora"])[:5]}</span>
+                        <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;">{t["medico"] or ""} · {t["peso"] or "—"}kg · {t["pressao"] or "—"} · FC {t["freq_cardiaca"] or "—"}</span>
+                        <span style="margin-left:auto;padding:3px 8px;border-radius:999px;font-size:0.7rem;font-weight:700;background:{grav_c}22;color:{grav_c};border:1px solid {grav_c}55;">{grav}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
 
         with tab4:
             st.markdown("### ⏳ Fila de Espera")
@@ -2244,12 +2278,19 @@ class AgendaPage:
             teleconsultas = db.listar_teleconsulta(medico="Todos" if False else None)
             if teleconsultas:
                 st.markdown("#### Teleconsultas agendadas")
-                df_tc = pd.DataFrame([{
-                    "Data": t["data"], "Hora": str(t["hora"])[:5], "Médico": t["medico"],
-                    "Paciente": t.get("paciente_nome") or f"#{t['paciente_id']}",
-                    "Plataforma": t["plataforma"], "Status": t["status"],
-                } for t in teleconsultas])
-                st.dataframe(df_tc, use_container_width=True, hide_index=True)
+                for t in teleconsultas:
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5FA8D3,#1D5FA8);
+                            display:flex;align-items:center;justify-content:center;color:#fff;">🎥</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-weight:600;color:#fff;font-size:0.9rem;">{t.get("paciente_nome") or f"#{t['paciente_id']}"} · {t["medico"]}</div>
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{t["data"]} {str(t["hora"])[:5]} · {t["plataforma"]}</div>
+                        </div>
+                        <div>{status_badge(t["status"] or "")}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 class ClinicalDocsPage:
     @staticmethod
@@ -2304,12 +2345,20 @@ class ClinicalDocsPage:
             if not prescricoes:
                 st.info("Nenhuma prescrição encontrada.")
             else:
-                df_presc = pd.DataFrame([{
-                    "ID": p["id"], "Paciente": p["paciente_nome"] or "",
-                    "Data": p["data"], "Médico": p["medico"],
-                    "Status": p["status"], "Assinatura": "✓" if p["assinatura_digital"] else "",
-                } for p in prescricoes])
-                st.dataframe(df_presc, use_container_width=True, hide_index=True)
+                # Prescrições — cards modernos
+                for p in prescricoes:
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4DA768,#1E7A46);
+                            display:flex;align-items:center;justify-content:center;color:#fff;">💊</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-weight:700;color:#fff;">{html.escape(p["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-weight:400;font-size:0.8rem;">#{p["id"]} · {p["data"]}</span></div>
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(p["medico"] or "")} · {html.escape(p["status"] or "")} {"· ✍️ ass." if p["assinatura_digital"] else ""}</div>
+                        </div>
+                        <div>{status_badge(p["status"] or "")}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 with st.expander("📖 Ver detalhes de uma prescrição"):
                     opcoes = {f"#{p['id']} — {p['paciente_nome'] or '?'} ({p['data']})": p["id"] for p in prescricoes}
@@ -2376,12 +2425,18 @@ class ClinicalDocsPage:
             if not atestados:
                 st.info("Nenhum atestado encontrado.")
             else:
-                df_atest = pd.DataFrame([{
-                    "ID": a["id"], "Paciente": a["paciente_nome"] or "",
-                    "Data": a["data"], "Tipo": a["tipo"], "CID": a["cid"] or "",
-                    "Dias": a["dias_afastamento"] or 0, "Médico": a["medico"],
-                } for a in atestados])
-                st.dataframe(df_atest, use_container_width=True, hide_index=True)
+                for a in atestados:
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#C24A6B,#8A1F3D);
+                            display:flex;align-items:center;justify-content:center;color:#fff;">📄</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-weight:700;color:#fff;">{html.escape(a["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{a["id"]} · {a["data"]}</span></div>
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(a["tipo"] or "")} · CID {html.escape(a["cid"] or "—")} · {a["dias_afastamento"] or 0}d · {html.escape(a["medico"] or "")}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um atestado"):
                     opcoes_a = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({a['data']})": a["id"] for a in atestados}
                     sel_a = st.selectbox("Atestado", list(opcoes_a.keys()), key="atest_sel_det")
@@ -2442,13 +2497,20 @@ class ClinicalDocsPage:
             if not encaminhamentos:
                 st.info("Nenhum encaminhamento encontrado.")
             else:
-                df_enc = pd.DataFrame([{
-                    "ID": e["id"], "Paciente": e["paciente_nome"] or "",
-                    "Data": e["data"], "Especialidade": e["especialidade"],
-                    "Destino": e["profissional_destino"] or "", "Urgente": "⚠️" if e["urgente"] else "",
-                    "Status": e["status"],
-                } for e in encaminhamentos])
-                st.dataframe(df_enc, use_container_width=True, hide_index=True)
+                for e in encaminhamentos:
+                    urg = "⚠️ Urgente" if e["urgente"] else ""
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#9B7BD6,#6C3FA8);
+                            display:flex;align-items:center;justify-content:center;color:#fff;">➡️</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-weight:700;color:#fff;">{html.escape(e["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]} · {e["data"]}</span> <span style="color:#f87171;font-size:0.8rem;">{urg}</span></div>
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["especialidade"] or "")} → {html.escape(e["profissional_destino"] or "—")}</div>
+                        </div>
+                        <div>{status_badge(e["status"] or "")}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um encaminhamento"):
                     opcoes_e = {f"#{e['id']} — {e['paciente_nome'] or '?'} ({e['data']})": e["id"] for e in encaminhamentos}
                     sel_e = st.selectbox("Encaminhamento", list(opcoes_e.keys()), key="enc_sel_det")
@@ -2626,18 +2688,23 @@ class CompaniesPage:
             if not empresas:
                 st.info("Nenhuma empresa encontrada.")
             else:
-                df_emp = pd.DataFrame([{
-                    "ID": e["id"],
-                    "Nome": e["nome"],
-                    "CNPJ": e["cnpj"] or "",
-                    "Responsável": e["responsavel"] or "",
-                    "Telefone": e["telefone"] or "",
-                    "Funcionários": e["quantidade_funcionarios"] or 0,
-                    "Plano": e["plano"] or "",
-                    "Contrato": e["validade_contrato"] or "",
-                    "Status": "Ativa" if e["ativo"] else "Inativa",
-                } for e in empresas])
-                st.dataframe(df_emp, use_container_width=True, hide_index=True, height=320)
+                # Empresas — lista moderna
+                for e in empresas:
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
+                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+                        <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1D5FA8,#5FA8D3);
+                            display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">🏢</div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{html.escape(e["nome"] or "")} <span style="font-weight:400;color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]}</span></div>
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["cnpj"] or "sem CNPJ")} · {html.escape(e["responsavel"] or "—")} · 👥 {e["quantidade_funcionarios"] or 0}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.7);">{e["plano"] or "—"}</div>
+                            <div>{status_badge("Ativa" if e["ativo"] else "Inativa")}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 st.caption(f"{len(empresas)} empresa(s) encontrada(s). Gerencie convênios e faturamento nas abas ao lado.")
 
         with tab2:
