@@ -184,8 +184,11 @@ class DatabaseManager:
 
     @staticmethod
     @st.cache_data(show_spinner="Carregando atendimentos...", ttl=600)
-    def get_all_appointments():
+    def get_all_appointments(limit: int | None = None, offset: int = 0):
         try:
+            # limit None = compat (carrega tudo) para Dashboard; _render_table passa limit=page_size para paginacao DB
+            if limit is not None:
+                return db.listar_atendimentos(limit=limit, offset=offset)
             return db.listar_atendimentos()
         except Exception as e:
             Security.log_error("DB_LIST", e)
@@ -895,7 +898,7 @@ class AppointmentsPage:
         with st.expander("➕ Cadastrar Novo Atendimento", expanded=False):
             # ─── Integração Pacientes: seletor de paciente já cadastrado (pré-preenche o nome) ───
             try:
-                pacientes_existentes = db.listar_pacientes() or []
+                pacientes_existentes = db.listar_pacientes(limit=100) or []
             except Exception:
                 pacientes_existentes = []
             opcoes_pac = {"➕ Digitar novo paciente": None}
@@ -1101,7 +1104,8 @@ class AppointmentsPage:
 
     @staticmethod
     def _render_table(filters):
-        appointments = DatabaseManager.get_all_appointments()
+        # limit 1000 para nao carregar 5000 como antes no Next.js
+        appointments = DatabaseManager.get_all_appointments(limit=1000)
         if not appointments:
             empty_state("📋", "Nenhum atendimento", "Cadastre um novo atendimento para começar a listagem.")
             return
@@ -1586,7 +1590,7 @@ class AppointmentsPage:
                 if st.button("🔍 Buscar", key="pac_buscar_btn", use_container_width=True):
                     pass
 
-                pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos)
+                pacientes = db.listar_pacientes(busca or None, ativos_apenas=so_ativos, limit=100)
                 if not pacientes:
                     st.info("Nenhum paciente encontrado.")
                 else:
@@ -1695,7 +1699,7 @@ class AppointmentsPage:
 
         with tab3:
             st.markdown("### 📂 Prontuário do Paciente")
-            pacientes_todos = db.listar_pacientes()
+            pacientes_todos = db.listar_pacientes(limit=200)
             if not pacientes_todos:
                 st.info("Cadastre pacientes na aba ➕ Novo Paciente.")
                 return
@@ -1983,7 +1987,7 @@ class AgendaPage:
 
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["🗓️ Agenda do Dia", "➕ Agendar", "🩺 Triagem", "⏳ Fila de Espera", "🎥 Teleconsulta"])
 
-        pacientes = db.listar_pacientes()
+        pacientes = db.listar_pacientes(limit=200)
 
         with tab1:
             st.markdown("### 🗓️ Agenda")
@@ -2299,7 +2303,7 @@ class ClinicalDocsPage:
 
         tab1, tab2, tab3 = st.tabs(["💊 Prescrições", "📄 Atestados", "➡️ Encaminhamentos"])
 
-        pacientes = db.listar_pacientes()
+        pacientes = db.listar_pacientes(limit=200)
         nomes_pac = {p["nome"]: p["id"] for p in pacientes}
         medico_padrao = "Dr(a). Cláudia"
 
@@ -2684,7 +2688,7 @@ class CompaniesPage:
                 if st.button("🔍 Buscar", key="emp_buscar_btn", use_container_width=True):
                     pass
 
-            empresas = db.listar_empresas(busca or None, ativas_apenas=so_ativas)
+            empresas = db.listar_empresas(busca or None, ativas_apenas=so_ativas, limit=100)
             if not empresas:
                 st.info("Nenhuma empresa encontrada.")
             else:
@@ -2764,7 +2768,7 @@ class CompaniesPage:
 
         with tab3:
             st.markdown("### 📋 Convênios por Empresa")
-            empresas_todas = db.listar_empresas()
+            empresas_todas = db.listar_empresas(limit=200)
             if not empresas_todas:
                 st.info("Cadastre empresas na aba ➕ Nova Empresa.")
             else:
@@ -2812,7 +2816,7 @@ class CompaniesPage:
 
         with tab4:
             st.markdown("### 💰 Faturamento por Empresa")
-            empresas_todas = db.listar_empresas()
+            empresas_todas = db.listar_empresas(limit=200)
             if not empresas_todas:
                 st.info("Cadastre empresas na aba ➕ Nova Empresa.")
             else:
@@ -3121,7 +3125,7 @@ class LaudosPage:
 
         tab1, tab2, tab3 = st.tabs(["📝 Modelos", "🖨️ Emitir Laudo", "🔎 Laudos Emitidos"])
 
-        pacientes = db.listar_pacientes()
+        pacientes = db.listar_pacientes(limit=200)
         nomes_pac = {p["nome"]: p["id"] for p in pacientes}
 
         # ── Modelos ──
@@ -3409,7 +3413,7 @@ class DocsEditorPage:
 
             st.markdown("---")
             st.markdown("### 🚀 Preencher modelo de laudo no Google Docs")
-            pacientes = db.listar_pacientes()
+            pacientes = db.listar_pacientes(limit=200)
             nomes_pac = {p["nome"]: p["id"] for p in pacientes}
             sel_nome = st.selectbox("Paciente *", list(nomes_pac.keys()) if nomes_pac else [""], key="gdocs_pac")
 
@@ -3494,7 +3498,7 @@ class AIPage:
 
         with tab1:
             st.markdown("### 📝 Resumo Clínico de Paciente (IA)")
-            pacientes = db.listar_pacientes()
+            pacientes = db.listar_pacientes(limit=200)
             if not pacientes:
                 st.info("Cadastre pacientes para usar o resumo.")
             else:
@@ -3620,7 +3624,7 @@ class FinancePage:
                 fin_data = st.date_input("Data *", value=date.today(), key="fin_data")
                 fin_pagamento = st.selectbox("Forma de pagamento", ["", "Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"], key="fin_pag")
             with l3:
-                empresas_fin = db.listar_empresas()
+                empresas_fin = db.listar_empresas(limit=200)
                 fin_empresa = st.selectbox("Empresa", [""] + [e["nome"] for e in empresas_fin], key="fin_empresa")
                 fin_convenio = st.text_input("Convênio", key="fin_convenio", max_chars=255)
                 fin_status = st.selectbox("Status", ["Pago", "Pendente", "Cancelado"], key="fin_status")
@@ -3734,7 +3738,7 @@ class FinancePage:
             st.markdown("### 🧾 Emitir Nota Fiscal")
             n1, n2 = st.columns(2)
             with n1:
-                empresas_nf = db.listar_empresas()
+                empresas_nf = db.listar_empresas(limit=200)
                 nf_empresa = st.selectbox("Empresa *", [e["nome"] for e in empresas_nf] if empresas_nf else [""], key="nf_empresa")
                 nf_numero = st.text_input("Número", key="nf_numero", max_chars=50)
                 nf_data = st.date_input("Data de emissão *", value=date.today(), key="nf_data")
@@ -3801,7 +3805,7 @@ class SecurityPage:
 
         with tab1:
             st.markdown("### ➕ Registrar Consentimento")
-            pacientes = db.listar_pacientes()
+            pacientes = db.listar_pacientes(limit=200)
             nomes_pac = {p["nome"]: p["id"] for p in pacientes}
             if not pacientes:
                 st.info("Cadastre pacientes primeiro.")
@@ -3896,7 +3900,7 @@ class SecurityPage:
         with tab4:
             st.markdown("### 🗂️ Portabilidade de Dados (LGPD Art. 18)")
             st.caption("Exporte todos os dados de um paciente em JSON para portabilidade.")
-            pacientes2 = db.listar_pacientes()
+            pacientes2 = db.listar_pacientes(limit=200)
             if not pacientes2:
                 st.info("Cadastre pacientes primeiro.")
             else:
@@ -3965,7 +3969,7 @@ class ExtrasPage:
         with tab2:
             st.markdown("### 💬 Envio de WhatsApp")
             st.caption("Gera link do WhatsApp com mensagem pronta (abre no navegador).")
-            pacientes_w = db.listar_pacientes()
+            pacientes_w = db.listar_pacientes(limit=200)
             if not pacientes_w:
                 st.info("Cadastre pacientes primeiro.")
             else:
@@ -4114,7 +4118,7 @@ class ReportsPage:
                     fig_e.update_layout(height=420, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_e, use_container_width=True)
                 st.markdown("#### 💰 Faturamento por Empresa")
-                empresas_fat = db.listar_empresas()
+                empresas_fat = db.listar_empresas(limit=200)
                 linhas_fat = []
                 for e in empresas_fat:
                     fat = db.listar_faturamento_empresa(e["id"])

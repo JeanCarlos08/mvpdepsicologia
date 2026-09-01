@@ -837,7 +837,7 @@ def inserir_empresa(dados: Dict[str, Any]) -> Optional[int]:
 		return None
 
 
-def listar_empresas(filtro: Optional[str] = None, ativas_apenas: bool = False) -> List[Dict[str, Any]]:
+def listar_empresas(filtro: Optional[str] = None, ativas_apenas: bool = False, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
 	try:
 		where = []
 		params: List[Any] = []
@@ -848,12 +848,19 @@ def listar_empresas(filtro: Optional[str] = None, ativas_apenas: bool = False) -
 		if ativas_apenas:
 			where.append("ativo = 1")
 		where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+		limit_sql = ""
+		if limit is not None:
+			limit = max(1, min(int(limit), 500))
+			offset = max(0, int(offset))
+			limit_sql = " LIMIT %s OFFSET %s"
+			params.extend([limit, offset])
 		query = f"""
 		SELECT id, nome, cnpj, razao_social, endereco, telefone, email, responsavel,
 			   quantidade_funcionarios, plano, data_contrato, validade_contrato, ativo, observacoes, criado_em
 		FROM empresas
 		{where_sql}
 		ORDER BY nome ASC
+		{limit_sql}
 		"""
 		with _connection_scope(commit=False) as conn:
 			cur = _get_cursor(conn)
