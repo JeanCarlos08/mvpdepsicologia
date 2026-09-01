@@ -763,10 +763,16 @@ def ensure_schema(force: bool = False) -> None:
 def ensure_indexes() -> None:
 	"""Cria índices úteis (idempotentes) para acelerar filtros e buscas."""
 	stmts = (
+		"CREATE EXTENSION IF NOT EXISTS pg_trgm",
 		"CREATE INDEX IF NOT EXISTS idx_atendimentos_empresa ON atendimentos(empresa)",
 		"CREATE INDEX IF NOT EXISTS idx_atendimentos_nome ON atendimentos(nome)",
 		"CREATE INDEX IF NOT EXISTS idx_atendimentos_data ON atendimentos(data)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_data_hora ON atendimentos(data DESC, hora DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_atendimentos_status ON atendimentos(status)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_modalidade ON atendimentos(modalidade)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_criado ON atendimentos(criado_em DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_pacientes_nome_trgm ON pacientes USING gin (nome gin_trgm_ops)",
+		"CREATE INDEX IF NOT EXISTS idx_atendimentos_empresa_trgm ON atendimentos USING gin (empresa gin_trgm_ops)",
 	)
 	with _connection_scope() as conn:
 		cur = _get_cursor(conn)
@@ -2295,8 +2301,8 @@ def inserir_paciente(dados: Dict[str, Any]) -> Optional[int]:
 		return None
 
 
-def listar_pacientes(filtro: Optional[str] = None, ativos_apenas: bool = False) -> List[Dict[str, Any]]:
-	"""Lista pacientes com busca opcional por nome/CPF/telefone/email."""
+def listar_pacientes(filtro: Optional[str] = None, ativos_apenas: bool = False, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+	"""Lista pacientes com busca opcional por nome/CPF/telefone/email. Suporta paginação."""
 	try:
 		where = []
 		params: List[Any] = []
@@ -2309,11 +2315,18 @@ def listar_pacientes(filtro: Optional[str] = None, ativos_apenas: bool = False) 
 		if ativos_apenas:
 			where.append("ativo = 1")
 		where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+		limit_sql = ""
+		if limit is not None:
+			limit = max(1, min(int(limit), 500))
+			offset = max(0, int(offset))
+			limit_sql = " LIMIT %s OFFSET %s"
+			params.extend([limit, offset])
 		query = f"""
 		SELECT id, nome, cpf, rg, data_nascimento, telefone, email, endereco, observacoes, ativo, criado_em
 		FROM pacientes
 		{where_sql}
 		ORDER BY nome ASC
+		{limit_sql}
 		"""
 		with _connection_scope(commit=False) as conn:
 			cur = _get_cursor(conn)
@@ -2722,16 +2735,27 @@ def inserir_atendimento(
 		return new_id
 
 
-def listar_atendimentos() -> List[Tuple]:
+def listar_atendimentos(limit: Optional[int] = None, offset: int = 0) -> List[Tuple]:
 	columns = ["id", "empresa", "nome", "modalidade", "data", "hora", "laudo_pdf", "avaliacao_pdf", "status", "observacoes"]
-	query = """
+	base = """
 	SELECT id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes
 	FROM atendimentos
 	ORDER BY data DESC, hora DESC
 	"""
+	if limit is not None:
+		limit = max(1, min(int(limit), 1000))
+		offset = max(0, int(offset))
+		query = base + " LIMIT %s OFFSET %s"
+		params = (limit, offset)
+	else:
+		query = base
+		params = None
 	with _connection_scope(commit=False) as conn:
 		cur = _get_cursor(conn)
-		cur.execute(query)
+		if params:
+			cur.execute(query, params)
+		else:
+			cur.execute(query)
 		rows = cur.fetchall()
 		return [tuple(row[col] for col in columns) for row in rows]
 
