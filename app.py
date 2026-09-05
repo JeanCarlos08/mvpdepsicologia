@@ -243,7 +243,100 @@ class DatabaseManager:
         except Exception:
             return {"total_atendimentos": 0, "modalidades": {}}
 
-def display_cards(cards):
+def display_cards(cards, style="default"):
+    if style == "minimal":
+        accent = st.session_state.get('accent_color', '#4DA768')
+        metric_items = []
+        for idx, card in enumerate(cards):
+            icon = card.get('icon', '📋')
+            title = card.get('title', '')
+            value = card.get('value', 0)
+            acc = card.get('acc', accent)
+            border_style = "border-right:1px solid rgba(255,255,255,0.08);" if idx < len(cards) - 1 else "border-right:none;"
+            metric_items.append(
+                f"""
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 16px 16px 14px 16px;
+                    min-width: 0;
+                    {border_style}
+                    background: rgba(255,255,255,0.01);
+                ">
+                    <div style="
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.08rem;
+                        background: linear-gradient(135deg, {acc}, {acc}cc);
+                        color: #fff;
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+                        flex-shrink: 0;
+                    ">{icon}</div>
+                    <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                        <div style="
+                            font-size: clamp(1.5rem, 1.9vw, 2.05rem);
+                            font-weight: 800;
+                            color: #ffffff;
+                            line-height: 1.02;
+                            letter-spacing: -0.08em;
+                        ">{value}</div>
+                        <div style="
+                            font-size: 0.67rem;
+                            font-weight: 700;
+                            letter-spacing: 0.12rem;
+                            text-transform: uppercase;
+                            color: rgba(255,255,255,0.72);
+                            margin-top: 6px;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        ">{title}</div>
+                    </div>
+                </div>
+                """
+            )
+
+        st.markdown(
+            f"""
+            <style>
+            .metric-row-minimal {{
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                width: 100%;
+                gap: 0;
+                margin-bottom: 18px;
+            }}
+            @media (max-width: 860px) {{
+                .metric-row-minimal {{
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                }}
+            }}
+            @media (max-width: 540px) {{
+                .metric-row-minimal {{
+                    grid-template-columns: 1fr !important;
+                }}
+                .metric-row-minimal > div {{
+                    border-right: none !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+                }}
+                .metric-row-minimal > div:last-child {{
+                    border-bottom: none !important;
+                }}
+            }}
+            </style>
+            <div class="metric-row-minimal">
+                {''.join(metric_items)}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        return
+
     cols = st.columns(len(cards))
     accent = st.session_state.get('accent_color', '#4DA768')
     txt = st.session_state.get('card_text_color', '#ffffff')
@@ -731,13 +824,36 @@ class DashboardPage:
             st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
+        total_pacientes = 0
+        try:
+            total_pacientes = len(db.listar_pacientes(limit=None)) if hasattr(db, "listar_pacientes") else 0
+        except Exception:
+            total_pacientes = 0
+
+        total_documentos = 0
+        try:
+            total_documentos = len(db.listar_arquivos()) if hasattr(db, "listar_arquivos") else 0
+        except Exception:
+            total_documentos = 0
+
+        total_faturas = 0
+        try:
+            empresas_all = db.listar_empresas(limit=500) if hasattr(db, "listar_empresas") else []
+            for empresa in empresas_all:
+                try:
+                    total_faturas += len(db.listar_faturamento_empresa(empresa["id"]))
+                except Exception:
+                    continue
+        except Exception:
+            total_faturas = 0
+
         cards = [
+            {"icon": "👥", "title": "Pacientes", "value": total_pacientes, "acc": accent},
             {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
-            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": accent},
-            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": accent},
-            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
+            {"icon": "📄", "title": "Documentos", "value": total_documentos, "acc": accent},
+            {"icon": "💰", "title": "Faturas", "value": total_faturas, "acc": accent},
         ]
-        display_cards(cards)
+        display_cards(cards, style="minimal")
 
         if total_appointments > 0:
             section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
