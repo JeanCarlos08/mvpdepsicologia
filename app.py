@@ -243,7 +243,94 @@ class DatabaseManager:
         except Exception:
             return {"total_atendimentos": 0, "modalidades": {}}
 
-def display_cards(cards):
+def display_cards(cards, style="default"):
+    if style == "minimal":
+        accent = st.session_state.get('accent_color', '#4DA768')
+        metric_items = []
+        for idx, card in enumerate(cards):
+            icon = card.get('icon', '📋')
+            title = card.get('title', '')
+            value = card.get('value', 0)
+            acc = card.get('acc', accent)
+            border_style = "border-right:1px solid rgba(255,255,255,0.08);" if idx < len(cards) - 1 else "border-right:none;"
+            metric_items.append(
+                f"""
+                <div class="metric-card-minimal" style="{border_style}">
+                    <div class="metric-card-content">
+                    <div style="
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.08rem;
+                        background: linear-gradient(135deg, {acc}, {acc}cc);
+                        color: #fff;
+                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+                        flex-shrink: 0;
+                    ">{icon}</div>
+                    <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                        <div style="
+                            font-size: clamp(1.5rem, 1.9vw, 2.05rem);
+                            font-weight: 800;
+                            color: #ffffff;
+                            line-height: 1.02;
+                            letter-spacing: -0.08em;
+                        ">{value}</div>
+                        <div style="
+                            font-size: 0.67rem;
+                            font-weight: 700;
+                            letter-spacing: 0.12rem;
+                            text-transform: uppercase;
+                            color: rgba(255,255,255,0.72);
+                            margin-top: 6px;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        ">{title}</div>
+                    </div>
+                    </div>
+                </div>
+                """
+            )
+
+        st.markdown(
+            f"""
+            <style>
+            .metric-row-minimal {{
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                width: 100%;
+                gap: 0;
+                margin-bottom: 18px;
+            }}
+            @media (max-width: 860px) {{
+                .metric-row-minimal {{
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                }}
+            }}
+            @media (max-width: 540px) {{
+                .metric-row-minimal {{
+                    grid-template-columns: 1fr !important;
+                }}
+                .metric-row-minimal > div {{
+                    border-right: none !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+                }}
+                .metric-row-minimal > div:last-child {{
+                    border-bottom: none !important;
+                }}
+            }}
+            </style>
+            <div class="metric-row-minimal">
+                {''.join(metric_items)}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        return
+
     cols = st.columns(len(cards))
     accent = st.session_state.get('accent_color', '#4DA768')
     txt = st.session_state.get('card_text_color', '#ffffff')
@@ -299,9 +386,12 @@ def display_cards(cards):
 def render_page_header(title, subtitle, inverse=False):
     st.markdown(
         f"""
-        <div style='margin-bottom:0.6rem; animation: appFadeIn 0.45s ease;'>
-            <h1 style='margin:0;padding:0;font-family:\"Plus Jakarta Sans\",sans-serif !important;font-weight:800 !important;font-size:2.15rem !important;letter-spacing:-1px !important;line-height:1.15 !important;background:linear-gradient(135deg,#ffffff 0%,rgba(255,255,255,0.75) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'>{title}</h1>
-            <p style='font-size:0.92rem;color:rgba(255,255,255,0.7);margin:6px 0 0 0;font-weight:400;letter-spacing:0.2px;line-height:1.5;'>{subtitle}</p>
+        <div class="page-header">
+            <div class="page-header-copy">
+                <div class="page-header-kicker">Gestão Clínica</div>
+                <h1>{title}</h1>
+                <p>{subtitle}</p>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
@@ -567,6 +657,125 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             background: rgba(255,255,255,0.04) !important;
         }}
 
+        /* ── GLOBAL / HEADER ── */
+        .page-header {{
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 18px;
+            margin: 0 0 20px;
+            padding: 6px 0 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.14);
+        }}
+        .page-header-kicker {{
+            color: {primary_accent};
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.14rem;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+        .page-header h1 {{ margin: 0 !important; }}
+        .page-header p {{
+            color: rgba(255,255,255,0.72);
+            font-size: 0.9rem;
+            margin: 8px 0 0;
+        }}
+
+        /* ── METRIC CARDS ── */
+        .metric-row-minimal {{ align-items: stretch; }}
+        .metric-card-minimal {{
+            min-height: 122px;
+            padding: 16px 18px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 16px;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.16);
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }}
+        .metric-card-minimal:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 16px 30px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.22);
+        }}
+        .metric-card-content {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 90px;
+        }}
+        .metric-card-content > div:first-child {{ border-radius: 12px !important; }}
+
+        /* ── AI ASSISTANT / FILTERS / CHARTS ── */
+        .ai-insight-card {{
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 20px 22px;
+            border: 1px solid {primary_accent}66;
+            border-radius: 16px;
+            background: linear-gradient(135deg, {primary_accent}2a, rgba(255,255,255,0.07));
+            box-shadow: 0 12px 28px rgba(0,0,0,0.10);
+        }}
+        .ai-insight-card .ai-label {{
+            color: {primary_accent}; font-size: 0.68rem; font-weight: 800;
+            letter-spacing: 0.14rem; text-transform: uppercase; margin-bottom: 7px;
+        }}
+        .dashboard-filter {{
+            padding: 10px 14px 2px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.10);
+            margin-bottom: 12px;
+        }}
+        .chart-panel {{
+            padding: 8px 12px 2px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 16px;
+            background: rgba(0,0,0,0.12);
+            min-height: 390px;
+        }}
+        .ranking-table {{
+            width: 100%; border-collapse: collapse; margin-top: 8px;
+            color: rgba(255,255,255,0.9); font-size: 0.86rem;
+        }}
+        .ranking-table th {{
+            padding: 10px 8px; color: rgba(255,255,255,0.58);
+            font-size: 0.68rem; letter-spacing: 0.09rem; text-align: left;
+            text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.14);
+        }}
+        .ranking-table td {{ padding: 11px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }}
+        .ranking-table tr:last-child td {{ border-bottom: 0; }}
+        .ranking-rank {{ color: {primary_accent}; font-weight: 800; width: 38px; }}
+        .ranking-share {{ color: rgba(255,255,255,0.62); text-align: right; }}
+
+        /* ── SIDEBAR / BUTTONS / RESPONSIVE ── */
+        section[data-testid="stSidebar"] .stDivider {{ opacity: 0.5; }}
+        section[data-testid="stSidebar"] [data-testid="stRadio"] {{ margin-top: 4px; }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
+            background: rgba(123, 211, 137, 0.24) !important;
+            border-color: rgba(168, 235, 177, 0.38) !important;
+            box-shadow: inset 3px 0 0 #8ee39a;
+        }}
+        .stDateInput > div > div {{ border-radius: 12px !important; }}
+        @media (max-width: 860px) {{
+            .metric-row-minimal {{ gap: 10px; }}
+            .metric-card-minimal {{ border-right: none !important; }}
+            .page-header {{ padding-bottom: 14px; }}
+        }}
+        @media (max-width: 540px) {{
+            .page-header {{ margin-bottom: 14px; padding-top: 0; }}
+            .page-header h1 {{ font-size: 1.72rem !important; }}
+            .page-header p {{ font-size: 0.82rem; }}
+            .metric-row-minimal {{ gap: 8px; }}
+            .metric-card-minimal {{ min-height: 104px; padding: 12px; }}
+            .metric-card-content {{ min-height: 76px; gap: 9px; }}
+            .metric-card-content > div:first-child {{ width: 32px !important; height: 32px !important; font-size: 0.9rem !important; }}
+            .chart-panel {{ min-height: 0; padding: 4px; }}
+            .ranking-table {{ font-size: 0.78rem; }}
+            .ranking-table th, .ranking-table td {{ padding: 9px 5px; }}
+        }}
+
         /* ── DIVIDER sutil ── */
         hr {{
             border: none !important;
@@ -731,13 +940,36 @@ class DashboardPage:
             st.error("Erro interno ao carregar estatísticas do painel.")
             total_appointments = total_empresas = laudos_enviados = avaliacoes_enviadas = 0
         accent = st.session_state.get('accent_color', PRIMARY_ACCENT)
+        total_pacientes = 0
+        try:
+            total_pacientes = len(db.listar_pacientes(limit=None)) if hasattr(db, "listar_pacientes") else 0
+        except Exception:
+            total_pacientes = 0
+
+        total_documentos = 0
+        try:
+            total_documentos = len(db.listar_arquivos()) if hasattr(db, "listar_arquivos") else 0
+        except Exception:
+            total_documentos = 0
+
+        total_faturas = 0
+        try:
+            empresas_all = db.listar_empresas(limit=500) if hasattr(db, "listar_empresas") else []
+            for empresa in empresas_all:
+                try:
+                    total_faturas += len(db.listar_faturamento_empresa(empresa["id"]))
+                except Exception:
+                    continue
+        except Exception:
+            total_faturas = 0
+
         cards = [
+            {"icon": "👥", "title": "Pacientes", "value": total_pacientes, "acc": accent},
             {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
-            {"icon": "🏢", "title": "Empresas", "value": total_empresas, "acc": accent},
-            {"icon": "📄", "title": "Relatórios", "value": laudos_enviados, "acc": accent},
-            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
+            {"icon": "📄", "title": "Documentos", "value": total_documentos, "acc": accent},
+            {"icon": "💰", "title": "Faturas", "value": total_faturas, "acc": accent},
         ]
-        display_cards(cards)
+        display_cards(cards, style="minimal")
 
         if total_appointments > 0:
             section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
@@ -753,15 +985,11 @@ class DashboardPage:
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.markdown(
                     f"""
-                    <div style="background:linear-gradient(135deg,{accent}26,rgba(255,255,255,0.05));
-                        border:1px solid {accent}55;border-radius:18px;padding:18px 22px;
-                        display:flex;gap:14px;align-items:flex-start;
-                        box-shadow:0 6px 24px rgba(0,0,0,0.08);">
-                        <div style="font-size:1.5rem;line-height:1;">🤖</div>
+                    <div class="ai-insight-card">
+                        <div style="font-size:1.55rem;line-height:1;">🤖</div>
                         <div style="min-width:0;flex:1;">
-                            <div style="font-size:0.72rem;font-weight:800;letter-spacing:1.5px;
-                                text-transform:uppercase;color:{accent};margin-bottom:6px;">IA Assistente</div>
-                            <div style="color:rgba(255,255,255,0.92);line-height:1.6;font-size:0.95rem;">{dicas}</div>
+                            <div class="ai-label">IA Assistente · Insights do período</div>
+                            <div style="color:rgba(255,255,255,0.92);line-height:1.65;font-size:0.95rem;">{html.escape(str(dicas))}</div>
                         </div>
                     </div>
                     """,
@@ -809,55 +1037,51 @@ class DashboardPage:
                     st.markdown("#### 🏥 Distribuição por Modalidade")
                     vals = list(stats["modalidades"].values())
                     labels = list(stats["modalidades"].keys())
-                    fig = px.pie(values=vals, names=labels, title="Distribuição por Modalidade", hole=0.35,
-                                 color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50'])
-                    fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                    fig.update_layout(legend_title_text="Modalidade", height=380, margin=dict(l=10, r=10, t=60, b=10),
-                                      legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                                      paper_bgcolor="#000000",
-                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF"))
-                    st.plotly_chart(fig, use_container_width=True)
+                    fig = px.pie(values=vals, names=labels, hole=0.58,
+                                 color_discrete_sequence=['#164B2A', '#24753D', '#379451', '#58B86A', '#8DDB98'])
+                    fig.update_traces(textposition="inside", textinfo="percent",
+                                      marker=dict(line=dict(color='rgba(255,255,255,0.18)', width=2)),
+                                      hovertemplate="%{label}<br>%{value} atendimentos (%{percent})<extra></extra>")
+                    fig.update_layout(showlegend=True, height=350, margin=dict(l=8, r=8, t=12, b=12),
+                                      legend=dict(orientation="h", yanchor="bottom", y=-0.16, xanchor="center", x=0.5),
+                                      annotations=[dict(text=f"{sum(vals)}<br><span style='font-size:11px'>total</span>",
+                                                        x=0.5, y=0.5, showarrow=False, font=dict(size=22, color="#FFFFFF"))],
+                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                      font=dict(color="#FFFFFF", family="Plus Jakarta Sans"))
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             with col_p2:
                 if contagem_empresas:
                     st.markdown("#### 🏢 Atendimentos por Empresa")
-                    labels = list(contagem_empresas.keys())
-                    vals = list(contagem_empresas.values())
-                    fig = px.pie(values=vals, names=labels, title="Atendimentos por Empresa", hole=0.35,
-                                 color_discrete_sequence=['#1E5631', '#2D7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'])
-                    fig.update_traces(textposition="inside", textinfo="percent+label", marker=dict(line=dict(color='rgba(255,255,255,0.2)', width=2)))
-                    fig.update_layout(legend_title_text="Empresa", height=380, margin=dict(l=10, r=10, t=60, b=10),
-                                      legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                                      paper_bgcolor="#000000",
-                                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFFFFF"))
-                    st.plotly_chart(fig, use_container_width=True)
+                    empresa_df = pd.DataFrame(sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
+                                              columns=["Empresa", "Atendimentos"]).head(10)
+                    fig = px.bar(empresa_df.sort_values("Atendimentos"), x="Atendimentos", y="Empresa",
+                                 orientation="h", color="Atendimentos",
+                                 color_continuous_scale=["#B7E8BF", "#24753D"])
+                    fig.update_traces(hovertemplate="%{y}<br>%{x} atendimentos<extra></extra>")
+                    fig.update_layout(showlegend=False, coloraxis_showscale=False, height=350,
+                                      margin=dict(l=8, r=18, t=12, b=12),
+                                      xaxis=dict(title=None, showgrid=True, gridcolor="rgba(255,255,255,0.10)",
+                                                 zeroline=False, tickfont=dict(color="rgba(255,255,255,0.7)")),
+                                      yaxis=dict(title=None, tickfont=dict(color="#FFFFFF")),
+                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                      font=dict(color="#FFFFFF", family="Plus Jakarta Sans"))
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
             if contagem_empresas:
                 with st.expander("🏆 Ranking por Empresa", expanded=False):
-                    ranking = sorted(contagem_empresas.items(), key=lambda x: -x[1])
-                    max_v = max(v for _, v in ranking)
-                    total_v = sum(v for _, v in ranking)
-                    bars_html = ['<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">']
-                    bars = bars_html
-                    for pos, (emp, qtde) in enumerate(ranking[:8], start=1):
-                        pct = int(qtde / max_v * 100)
-                        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(pos, f"<span style='font-size:.9rem;font-weight:800;color:rgba(255,255,255,0.5);'>{pos}</span>")
-                        bars.append(f"""
-                        <div style='display:flex;align-items:center;gap:12px;'>
-                            <div style='width:30px;text-align:center;flex-shrink:0;font-size:1rem;'>{medal}</div>
-                            <div style='flex:1;min-width:0;'>
-                                <div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;'>
-                                    <span style='font-weight:700;font-size:0.88rem;color:rgba(255,255,255,0.92);
-                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{html.escape(str(emp))}</span>
-                                    <span style='font-weight:800;font-size:0.8rem;color:{accent};'>{qtde} atend.</span>
-                                </div>
-                                <div style='height:8px;border-radius:99px;background:rgba(255,255,255,0.12);overflow:hidden;'>
-                                    <div style='height:100%;width:{pct}%;border-radius:99px;
-                                        background:linear-gradient(90deg,{accent},{accent}77);'></div>
-                                </div>
-                            </div>
-                        </div>""")
-                    bars.append('</div>')
-                    st.markdown("".join(bars), unsafe_allow_html=True)
+                    ranking = sorted(contagem_empresas.items(), key=lambda item: -item[1])
+                    total_v = sum(value for _, value in ranking)
+                    rows_html = [
+                        '<table class="ranking-table"><thead><tr><th>#</th><th>Empresa</th><th>Atendimentos</th><th class="ranking-share">Participação</th></tr></thead><tbody>'
+                    ]
+                    for pos, (emp, qtde) in enumerate(ranking[:10], start=1):
+                        participacao = (qtde / total_v * 100) if total_v else 0
+                        rows_html.append(
+                            f"<tr><td class='ranking-rank'>{pos}</td><td>{html.escape(str(emp))}</td>"
+                            f"<td>{qtde}</td><td class='ranking-share'>{participacao:.1f}%</td></tr>"
+                        )
+                    rows_html.append('</tbody></table>')
+                    st.markdown("".join(rows_html), unsafe_allow_html=True)
                     st.caption(f"🏢 {len(ranking)} empresa(s) — {total_v} atendimento(s) no período.")
             else:
                 empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
