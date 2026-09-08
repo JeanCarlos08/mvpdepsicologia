@@ -6,6 +6,7 @@ import base64
 import pathlib
 import urllib.parse
 import html
+import textwrap
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 from enum import Enum
@@ -81,7 +82,7 @@ def status_badge(status):
 def empty_state(icon, title, message):
     """Empty state premium: ícone em chip vidrado + texto acolhedor."""
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <div style="text-align:center;padding:3.5rem 1.5rem;margin:0.75rem 0;
                     background:rgba(255,255,255,0.05);
                     border:1.5px dashed rgba(255,255,255,0.22);
@@ -96,7 +97,7 @@ def empty_state(icon, title, message):
             <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:5px;max-width:480px;
                         margin-left:auto;margin-right:auto;line-height:1.5;">{message}</div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True,
     )
 
@@ -254,7 +255,7 @@ def display_cards(cards, style="default"):
             acc = card.get('acc', accent)
             border_style = "border-right:1px solid rgba(255,255,255,0.08);" if idx < len(cards) - 1 else "border-right:none;"
             metric_items.append(
-                f"""
+                textwrap.dedent(f"""
                 <div class="metric-card-minimal" style="{border_style}">
                     <div class="metric-card-content">
                     <div style="
@@ -292,11 +293,11 @@ def display_cards(cards, style="default"):
                     </div>
                     </div>
                 </div>
-                """
+                """).strip()
             )
 
         st.markdown(
-            f"""
+            textwrap.dedent(f"""
             <style>
             .metric-row-minimal {{
                 display: grid;
@@ -326,7 +327,7 @@ def display_cards(cards, style="default"):
             <div class="metric-row-minimal">
                 {''.join(metric_items)}
             </div>
-            """,
+            """).strip(),
             unsafe_allow_html=True
         )
         return
@@ -352,7 +353,7 @@ def display_cards(cards, style="default"):
                 delta_html = f"<div style='font-size:0.72rem;font-weight:600;color:{color};margin-top:2px;'>{sign} {delta}</div>"
 
             st.markdown(
-                f"""
+                textwrap.dedent(f"""
                 <div style="
                     background: {bg_css};
                     backdrop-filter: blur(20px);
@@ -378,14 +379,14 @@ def display_cards(cards, style="default"):
                     ">{value}</div>
                     {delta_html}
                 </div>
-                """,
+                """).strip(),
                 unsafe_allow_html=True
             )
 
 
 def render_page_header(title, subtitle, inverse=False):
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <div class="page-header">
             <div class="page-header-copy">
                 <div class="page-header-kicker">Gestão Clínica</div>
@@ -393,7 +394,7 @@ def render_page_header(title, subtitle, inverse=False):
                 <p>{subtitle}</p>
             </div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True
     )
     st.divider()
@@ -402,7 +403,7 @@ def section_title(emoji, text, sub=None, accent=None):
     acc = accent or st.session_state.get('accent_color', PRIMARY_ACCENT)
     sub_html = f"<div style='font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;margin-top:4px;letter-spacing:0.2px;'>{sub}</div>" if sub else ""
     st.markdown(
-        f"""
+        textwrap.dedent(f"""
         <div style='display:flex;align-items:center;gap:12px;margin:28px 0 14px 0;'>
             <div style='width:38px;height:38px;border-radius:12px;flex-shrink:0;
                 background:linear-gradient(135deg,{acc},{acc}99);
@@ -415,7 +416,7 @@ def section_title(emoji, text, sub=None, accent=None):
                 {sub_html}
             </div>
         </div>
-        """,
+        """).strip(),
         unsafe_allow_html=True
     )
 
@@ -984,7 +985,7 @@ class DashboardPage:
                 from ai_manager import AIManager
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div class="ai-insight-card">
                         <div style="font-size:1.55rem;line-height:1;">🤖</div>
                         <div style="min-width:0;flex:1;">
@@ -992,7 +993,7 @@ class DashboardPage:
                             <div style="color:rgba(255,255,255,0.92);line-height:1.65;font-size:0.95rem;">{html.escape(str(dicas))}</div>
                         </div>
                     </div>
-                    """,
+                    """).strip(),
                     unsafe_allow_html=True
                 )
         else:
@@ -1398,7 +1399,7 @@ class AppointmentsPage:
             nome = str(r["Nome"])
             initials = "".join([p[0].upper() for p in nome.split()[:2]]) if nome.strip() else "?"
             st.markdown(
-                f"""
+                textwrap.dedent(f"""
                 <div style="display:flex;align-items:center;gap:14px;
                     background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
                     border-radius:18px;padding:14px 16px;margin-bottom:10px;
@@ -1417,7 +1418,7 @@ class AppointmentsPage:
                         <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(168,85,247,0.12);color:#c4b5fd;border:1px solid rgba(168,85,247,0.25);">Aval: {r["Avaliação"]}</span>
                     </div>
                 </div>
-                """,
+                """).strip(),
                 unsafe_allow_html=True,
             )
 
@@ -2058,7 +2059,7 @@ class AppointmentsPage:
                     # Histórico moderno (cards, não planilha)
                     for a in atts:
                         aid, emp, _, mod, dt, hr, _, _, stt, _ = a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9] if len(a)>9 else ""
-                        st.markdown(f"""
+                        st.markdown(textwrap.dedent(f"""
                         <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
                             border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:8px;">
                             <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);">#{aid}</span>
@@ -2066,7 +2067,7 @@ class AppointmentsPage:
                             <span style="color:rgba(255,255,255,0.6);font-size:0.85rem;">{emp} · {dt} {hr}</span>
                             <span style="margin-left:auto;">{status_badge(stt)}</span>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """).strip(), unsafe_allow_html=True)
                     st.caption(f"Total: {len(atts)} atendimento(s).")
 
             st.divider()
@@ -2407,14 +2408,14 @@ class AgendaPage:
                 for t in triagens_hoje:
                     grav = t["gravidade"] or "Normal"
                     grav_c = {"Normal":"#22C55E","Prioritário":"#F59E0B","Urgente":"#EF4444"}.get(grav, "#22C55E")
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
                         <span style="font-weight:700;color:#fff;">{str(t["hora"])[:5]}</span>
                         <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;">{t["medico"] or ""} · {t["peso"] or "—"}kg · {t["pressao"] or "—"} · FC {t["freq_cardiaca"] or "—"}</span>
                         <span style="margin-left:auto;padding:3px 8px;border-radius:999px;font-size:0.7rem;font-weight:700;background:{grav_c}22;color:{grav_c};border:1px solid {grav_c}55;">{grav}</span>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
 
         with tab4:
             st.markdown("### ⏳ Fila de Espera")
@@ -2445,14 +2446,14 @@ class AgendaPage:
                 st.markdown("#### Fila atual")
                 for i, f in enumerate(fila, start=1):
                     cor = {"Urgente": "#FDECEA", "Prioritário": "#FFF4E6", "Normal": "#E8F4FD"}.get(f["prioridade"], "#FFFFFF")
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style='display:flex;align-items:center;gap:10px;background:{cor};
                          border-radius:8px;padding:8px 12px;margin:3px 0;border-left:4px solid #4A90D9'>
                         <span style='font-weight:700;color:#4A90D9'>{i}.</span>
                         <span style='font-weight:600;color:#1a1a1a'>{f['paciente_nome']}</span>
                         <span style='color:#555;font-size:0.85rem'>• {f['hora_chegada']} • {f['prioridade']}</span>
                         <span style='margin-left:auto;color:#888'>{f['status']}</span>
-                    </div>""", unsafe_allow_html=True)
+                    </div>""").strip(), unsafe_allow_html=True)
                 st.markdown("#### Ações")
                 opcoes_f = {f"{f['id']} — {f['paciente_nome']} ({f['prioridade']})": f["id"] for f in fila}
                 sel_f = st.selectbox("Selecione", list(opcoes_f.keys()), key="fila_sel")
@@ -2507,7 +2508,7 @@ class AgendaPage:
             if teleconsultas:
                 st.markdown("#### Teleconsultas agendadas")
                 for t in teleconsultas:
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
                         <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5FA8D3,#1D5FA8);
@@ -2518,7 +2519,7 @@ class AgendaPage:
                         </div>
                         <div>{status_badge(t["status"] or "")}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
 
 class ClinicalDocsPage:
     @staticmethod
@@ -2575,7 +2576,7 @@ class ClinicalDocsPage:
             else:
                 # Prescrições — cards modernos
                 for p in prescricoes:
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
                         <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4DA768,#1E7A46);
@@ -2586,7 +2587,7 @@ class ClinicalDocsPage:
                         </div>
                         <div>{status_badge(p["status"] or "")}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
 
                 with st.expander("📖 Ver detalhes de uma prescrição"):
                     opcoes = {f"#{p['id']} — {p['paciente_nome'] or '?'} ({p['data']})": p["id"] for p in prescricoes}
@@ -2654,7 +2655,7 @@ class ClinicalDocsPage:
                 st.info("Nenhum atestado encontrado.")
             else:
                 for a in atestados:
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
                         <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#C24A6B,#8A1F3D);
@@ -2664,7 +2665,7 @@ class ClinicalDocsPage:
                             <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(a["tipo"] or "")} · CID {html.escape(a["cid"] or "—")} · {a["dias_afastamento"] or 0}d · {html.escape(a["medico"] or "")}</div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um atestado"):
                     opcoes_a = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({a['data']})": a["id"] for a in atestados}
                     sel_a = st.selectbox("Atestado", list(opcoes_a.keys()), key="atest_sel_det")
@@ -2727,7 +2728,7 @@ class ClinicalDocsPage:
             else:
                 for e in encaminhamentos:
                     urg = "⚠️ Urgente" if e["urgente"] else ""
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
                         <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#9B7BD6,#6C3FA8);
@@ -2738,7 +2739,7 @@ class ClinicalDocsPage:
                         </div>
                         <div>{status_badge(e["status"] or "")}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um encaminhamento"):
                     opcoes_e = {f"#{e['id']} — {e['paciente_nome'] or '?'} ({e['data']})": e["id"] for e in encaminhamentos}
                     sel_e = st.selectbox("Encaminhamento", list(opcoes_e.keys()), key="enc_sel_det")
@@ -2918,7 +2919,7 @@ class CompaniesPage:
             else:
                 # Empresas — lista moderna
                 for e in empresas:
-                    st.markdown(f"""
+                    st.markdown(textwrap.dedent(f"""
                     <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
                         <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1D5FA8,#5FA8D3);
@@ -2932,7 +2933,7 @@ class CompaniesPage:
                             <div>{status_badge("Ativa" if e["ativo"] else "Inativa")}</div>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """).strip(), unsafe_allow_html=True)
                 st.caption(f"{len(empresas)} empresa(s) encontrada(s). Gerencie convênios e faturamento nas abas ao lado.")
 
         with tab2:
@@ -4496,7 +4497,7 @@ class AuthPage:
                 st.session_state['login_attempts'] = 0
 
         # ── CSS global da tela de login ──
-        st.markdown("""
+        st.markdown(textwrap.dedent("""
             <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
             [data-testid="stHeader"], footer, #MainMenu { display: none !important; }
@@ -4559,7 +4560,7 @@ class AuthPage:
                 box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
             }
             </style>
-        """, unsafe_allow_html=True)
+        """).strip(), unsafe_allow_html=True)
 
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         _, col_center, _ = st.columns([1, 1.2, 1])
@@ -4578,7 +4579,7 @@ class AuthPage:
 
             attempts = st.session_state['login_attempts']
 
-            st.markdown(f"""
+            st.markdown(textwrap.dedent(f"""
                 <div style="text-align:center;margin-bottom:1.8rem;">
                     <div style="
                         width: 80px; height: 80px;
@@ -4597,7 +4598,7 @@ class AuthPage:
                               letter-spacing:1.5px;text-transform:uppercase;
                               font-family:'Inter',sans-serif;margin-top:4px;">Portal Administrativo</p>
                 </div>
-            """, unsafe_allow_html=True)
+            """).strip(), unsafe_allow_html=True)
 
             st.markdown(f"<div style='color:rgba(255,255,255,0.85);font-weight:600;margin-bottom:0.8rem;font-family:Inter,sans-serif;'>Acesse sua conta</div>", unsafe_allow_html=True)
 
@@ -4626,7 +4627,7 @@ class AuthPage:
             st.caption(f"🔒 Acesso seguro  •  Tentativas: {attempts}/5")
 
             st.markdown(
-                """
+                textwrap.dedent("""
                 <div style="text-align:center;margin-top:1.6rem;">
                     <div style="width:44px;height:44px;margin:0 auto 8px auto;
                                 background:linear-gradient(135deg,#4DA768,#2ecc71);
@@ -4638,7 +4639,7 @@ class AuthPage:
                               font-family:'Inter',sans-serif;letter-spacing:0.5px;">
                         MVP de Psicologia • Portal Administrativo v1.0</p>
                 </div>
-                """,
+                """).strip(),
                 unsafe_allow_html=True,
             )
 
