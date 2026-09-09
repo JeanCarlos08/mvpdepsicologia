@@ -81,22 +81,20 @@ def status_badge(status):
 def empty_state(icon, title, message):
     """Empty state premium: ícone em chip vidrado + texto acolhedor."""
     st.markdown(
-        f"""
-        <div style="text-align:center;padding:3.5rem 1.5rem;margin:0.75rem 0;
-                    background:rgba(255,255,255,0.05);
-                    border:1.5px dashed rgba(255,255,255,0.22);
-                    border-radius:26px;
-                    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);">
-            <div style="width:88px;height:88px;border-radius:28px;margin:0 auto 1.1rem auto;
-                        background:linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04));
-                        border:1px solid rgba(255,255,255,0.18);
-                        display:flex;align-items:center;justify-content:center;
-                        font-size:2.6rem;box-shadow:0 10px 30px rgba(0,0,0,0.12);">{icon}</div>
-            <div style="font-size:1.15rem;font-weight:800;color:rgba(255,255,255,0.94);">{title}</div>
-            <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:5px;max-width:480px;
-                        margin-left:auto;margin-right:auto;line-height:1.5;">{message}</div>
-        </div>
-        """,
+        f"""<div style="text-align:center;padding:3.5rem 1.5rem;margin:0.75rem 0;
+            background:rgba(255,255,255,0.05);
+            border:1.5px dashed rgba(255,255,255,0.22);
+            border-radius:26px;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);">
+    <div style="width:88px;height:88px;border-radius:28px;margin:0 auto 1.1rem auto;
+                background:linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04));
+                border:1px solid rgba(255,255,255,0.18);
+                display:flex;align-items:center;justify-content:center;
+                font-size:2.6rem;box-shadow:0 10px 30px rgba(0,0,0,0.12);">{icon}</div>
+    <div style="font-size:1.15rem;font-weight:800;color:rgba(255,255,255,0.94);">{title}</div>
+    <div style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-top:5px;max-width:480px;
+                margin-left:auto;margin-right:auto;line-height:1.5;">{message}</div>
+</div>""",
         unsafe_allow_html=True,
     )
 
@@ -254,79 +252,75 @@ def display_cards(cards, style="default"):
             acc = card.get('acc', accent)
             border_style = "border-right:1px solid rgba(255,255,255,0.08);" if idx < len(cards) - 1 else "border-right:none;"
             metric_items.append(
-                f"""
-                <div class="metric-card-minimal" style="{border_style}">
-                    <div class="metric-card-content">
-                    <div style="
-                        width: 38px;
-                        height: 38px;
-                        border-radius: 10px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 1.08rem;
-                        background: linear-gradient(135deg, {acc}, {acc}cc);
-                        color: #fff;
-                        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
-                        flex-shrink: 0;
-                    ">{icon}</div>
-                    <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
-                        <div style="
-                            font-size: clamp(1.5rem, 1.9vw, 2.05rem);
-                            font-weight: 800;
-                            color: #ffffff;
-                            line-height: 1.02;
-                            letter-spacing: -0.08em;
-                        ">{value}</div>
-                        <div style="
-                            font-size: 0.67rem;
-                            font-weight: 700;
-                            letter-spacing: 0.12rem;
-                            text-transform: uppercase;
-                            color: rgba(255,255,255,0.72);
-                            margin-top: 6px;
-                            white-space: nowrap;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                        ">{title}</div>
-                    </div>
-                    </div>
-                </div>
-                """
+                f"""<div class="metric-card-minimal" style="{border_style}">
+    <div class="metric-card-content">
+        <div style="
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.08rem;
+            background: linear-gradient(135deg, {acc}, {acc}cc);
+            color: #fff;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+            flex-shrink: 0;
+        ">{icon}</div>
+        <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+            <div style="
+                font-size: clamp(1.5rem, 1.9vw, 2.05rem);
+                font-weight: 800;
+                color: #ffffff;
+                line-height: 1.02;
+                letter-spacing: -0.08em;
+            ">{value}</div>
+            <div style="
+                font-size: 0.67rem;
+                font-weight: 700;
+                letter-spacing: 0.12rem;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.72);
+                margin-top: 6px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            ">{title}</div>
+        </div>
+    </div>
+</div>"""
             )
 
         st.markdown(
-            f"""
-            <style>
-            .metric-row-minimal {{
-                display: grid;
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-                width: 100%;
-                gap: 0;
-                margin-bottom: 18px;
-            }}
-            @media (max-width: 860px) {{
-                .metric-row-minimal {{
-                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                }}
-            }}
-            @media (max-width: 540px) {{
-                .metric-row-minimal {{
-                    grid-template-columns: 1fr !important;
-                }}
-                .metric-row-minimal > div {{
-                    border-right: none !important;
-                    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-                }}
-                .metric-row-minimal > div:last-child {{
-                    border-bottom: none !important;
-                }}
-            }}
-            </style>
-            <div class="metric-row-minimal">
-                {''.join(metric_items)}
-            </div>
-            """,
+            f"""<style>
+.metric-row-minimal {{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 0;
+    margin-bottom: 18px;
+}}
+@media (max-width: 860px) {{
+    .metric-row-minimal {{
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }}
+}}
+@media (max-width: 540px) {{
+    .metric-row-minimal {{
+        grid-template-columns: 1fr !important;
+    }}
+    .metric-row-minimal > div {{
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    }}
+    .metric-row-minimal > div:last-child {{
+        border-bottom: none !important;
+    }}
+}}
+</style>
+<div class="metric-row-minimal">
+    {''.join(metric_items)}
+</div>""",
             unsafe_allow_html=True
         )
         return
@@ -352,8 +346,7 @@ def display_cards(cards, style="default"):
                 delta_html = f"<div style='font-size:0.72rem;font-weight:600;color:{color};margin-top:2px;'>{sign} {delta}</div>"
 
             st.markdown(
-                f"""
-                <div style="
+                f"""<div style="
                     background: {bg_css};
                     backdrop-filter: blur(20px);
                     -webkit-backdrop-filter: blur(20px);
@@ -366,34 +359,31 @@ def display_cards(cards, style="default"):
                     cursor: default;
                     margin-bottom: 4px;
                 ">
-                    <div style="font-size:1.6rem;margin-bottom:8px;line-height:1;">{icon}</div>
-                    <div style="
-                        font-size:0.7rem;font-weight:700;
-                        text-transform:uppercase;letter-spacing:1.2px;
-                        color:{txt};opacity:0.75;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-                    ">{title}</div>
-                    <div style="
-                        font-size:2rem;font-weight:800;
-                        color:{txt};letter-spacing:-1px;line-height:1;
-                    ">{value}</div>
-                    {delta_html}
-                </div>
-                """,
+    <div style="font-size:1.6rem;margin-bottom:8px;line-height:1;">{icon}</div>
+    <div style="
+        font-size:0.7rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1.2px;
+        color:{txt};opacity:0.75;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    ">{title}</div>
+    <div style="
+        font-size:2rem;font-weight:800;
+        color:{txt};letter-spacing:-1px;line-height:1;
+    ">{value}</div>
+    {delta_html}
+</div>""",
                 unsafe_allow_html=True
             )
 
 
 def render_page_header(title, subtitle, inverse=False):
     st.markdown(
-        f"""
-        <div class="page-header">
-            <div class="page-header-copy">
-                <div class="page-header-kicker">Gestão Clínica</div>
-                <h1>{title}</h1>
-                <p>{subtitle}</p>
-            </div>
-        </div>
-        """,
+        f"""<div class="page-header">
+    <div class="page-header-copy">
+        <div class="page-header-kicker">Gestão Clínica</div>
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
+    </div>
+</div>""",
         unsafe_allow_html=True
     )
     st.divider()
@@ -402,20 +392,18 @@ def section_title(emoji, text, sub=None, accent=None):
     acc = accent or st.session_state.get('accent_color', PRIMARY_ACCENT)
     sub_html = f"<div style='font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;margin-top:4px;letter-spacing:0.2px;'>{sub}</div>" if sub else ""
     st.markdown(
-        f"""
-        <div style='display:flex;align-items:center;gap:12px;margin:28px 0 14px 0;'>
-            <div style='width:38px;height:38px;border-radius:12px;flex-shrink:0;
-                background:linear-gradient(135deg,{acc},{acc}99);
-                display:flex;align-items:center;justify-content:center;font-size:1.1rem;
-                box-shadow:0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.35);'>{emoji}</div>
-            <div style='min-width:0;flex:1;'>
-                <div style='font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:0.2px;font-family:\"Plus Jakarta Sans\",sans-serif;'>{text}</div>
-                <div style='height:3px;width:64px;border-radius:99px;margin-top:5px;
-                    background:linear-gradient(90deg,{acc},{acc}00);'></div>
-                {sub_html}
-            </div>
-        </div>
-        """,
+        f"""<div style='display:flex;align-items:center;gap:12px;margin:28px 0 14px 0;'>
+    <div style='width:38px;height:38px;border-radius:12px;flex-shrink:0;
+        background:linear-gradient(135deg,{acc},{acc}99);
+        display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+        box-shadow:0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.35);'>{emoji}</div>
+    <div style='min-width:0;flex:1;'>
+        <div style='font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:0.2px;font-family:\"Plus Jakarta Sans\",sans-serif;'>{text}</div>
+        <div style='height:3px;width:64px;border-radius:99px;margin-top:5px;
+            background:linear-gradient(90deg,{acc},{acc}00);'></div>
+        {sub_html}
+    </div>
+</div>""",
         unsafe_allow_html=True
     )
 
@@ -984,15 +972,13 @@ class DashboardPage:
                 from ai_manager import AIManager
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
                 st.markdown(
-                    f"""
-                    <div class="ai-insight-card">
-                        <div style="font-size:1.55rem;line-height:1;">🤖</div>
-                        <div style="min-width:0;flex:1;">
-                            <div class="ai-label">IA Assistente · Insights do período</div>
-                            <div style="color:rgba(255,255,255,0.92);line-height:1.65;font-size:0.95rem;">{html.escape(str(dicas))}</div>
-                        </div>
-                    </div>
-                    """,
+                    f"""<div class="ai-insight-card">
+    <div style="font-size:1.55rem;line-height:1;">🤖</div>
+    <div style="min-width:0;flex:1;">
+        <div class="ai-label">IA Assistente · Insights do período</div>
+        <div style="color:rgba(255,255,255,0.92);line-height:1.65;font-size:0.95rem;">{html.escape(str(dicas))}</div>
+    </div>
+</div>""",
                     unsafe_allow_html=True
                 )
         else:
