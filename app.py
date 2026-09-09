@@ -1384,26 +1384,24 @@ class AppointmentsPage:
             nome = str(r["Nome"])
             initials = "".join([p[0].upper() for p in nome.split()[:2]]) if nome.strip() else "?"
             st.markdown(
-                f"""
-                <div style="display:flex;align-items:center;gap:14px;
+                f"""<div style="display:flex;align-items:center;gap:14px;
                     background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
                     border-radius:18px;padding:14px 16px;margin-bottom:10px;
                     transition:all 0.2s ease;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
-                    <div style="width:42px;height:42px;border-radius:50%;flex-shrink:0;
-                        background:linear-gradient(135deg,#4DA768,#1E7A46);
-                        display:flex;align-items:center;justify-content:center;
-                        color:#fff;font-weight:800;font-size:0.85rem;">{initials}</div>
-                    <div style="min-width:0;flex:1;">
-                        <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{nome}</div>
-                        <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);">{r["Empresa"]} · {r["Modalidade"]} · {r["Data"]} {r["Hora"]}</div>
-                    </div>
-                    <div style="flex-shrink:0;">{status_badge(r["Status"])}</div>
-                    <div style="display:flex;gap:6px;flex-shrink:0;">
-                        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);">Laudo: {r["Laudo"]}</span>
-                        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(168,85,247,0.12);color:#c4b5fd;border:1px solid rgba(168,85,247,0.25);">Aval: {r["Avaliação"]}</span>
-                    </div>
-                </div>
-                """,
+    <div style="width:42px;height:42px;border-radius:50%;flex-shrink:0;
+        background:linear-gradient(135deg,#4DA768,#1E7A46);
+        display:flex;align-items:center;justify-content:center;
+        color:#fff;font-weight:800;font-size:0.85rem;">{initials}</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{nome}</div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);">{r["Empresa"]} · {r["Modalidade"]} · {r["Data"]} {r["Hora"]}</div>
+    </div>
+    <div style="flex-shrink:0;">{status_badge(r["Status"])}</div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);">Laudo: {r["Laudo"]}</span>
+        <span style="font-size:0.7rem;padding:4px 8px;border-radius:999px;background:rgba(168,85,247,0.12);color:#c4b5fd;border:1px solid rgba(168,85,247,0.25);">Aval: {r["Avaliação"]}</span>
+    </div>
+</div>""",
                 unsafe_allow_html=True,
             )
 
@@ -1830,35 +1828,34 @@ class AppointmentsPage:
                             f"<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{c}</div>"
                             for c in contatos
                         ) or "<div style='color:rgba(255,255,255,0.35);font-style:italic;'>Sem contato cadastrado</div>"
-                        cards_html.append(f"""
-                        <div style='flex:0 1 282px;min-width:250px;background:rgba(255,255,255,0.06);
-                            border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 18px;
-                            transition:transform 0.2s ease, box-shadow 0.2s ease;
-                            box-shadow:0 4px 14px rgba(0,0,0,0.10);'>
-                            <div style='display:flex;align-items:center;gap:12px;'>
-                                <div style='width:46px;height:46px;border-radius:50%;flex-shrink:0;
-                                    background:linear-gradient(135deg,{c1},{c2});
-                                    display:flex;align-items:center;justify-content:center;
-                                    color:#fff;font-weight:800;font-size:0.95rem;
-                                    box-shadow:0 3px 10px rgba(0,0,0,0.2);'>{ini}</div>
-                                <div style='min-width:0;'>
-                                    <div style='font-weight:700;font-size:0.94rem;color:#fff;
-                                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{nome}</div>
-                                    <div style='font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;
-                                        letter-spacing:0.4px;'>PACIENTE #{p['id']}</div>
-                                </div>
-                            </div>
-                            <div style='margin-top:12px;font-size:0.78rem;color:rgba(255,255,255,0.78);
-                                display:flex;flex-direction:column;gap:5px;'>
-                                {contatos_html}
-                            </div>
-                            <div style='margin-top:14px;display:flex;align-items:center;justify-content:space-between;'>
-                                <span style='background:{st_fundo};color:{st_cor};
-                                    border:1px solid {st_cor}55;border-radius:999px;
-                                    padding:4px 12px;font-size:0.72rem;font-weight:700;'>{status}</span>
-                                <span style='font-size:0.7rem;color:rgba(255,255,255,0.45);'>📂 Prontuário</span>
-                            </div>
-                        </div>""")
+                        cards_html.append(f"""<div style='flex:0 1 282px;min-width:250px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 18px;
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow:0 4px 14px rgba(0,0,0,0.10);'>
+    <div style='display:flex;align-items:center;gap:12px;'>
+        <div style='width:46px;height:46px;border-radius:50%;flex-shrink:0;
+            background:linear-gradient(135deg,{c1},{c2});
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:0.95rem;
+            box-shadow:0 3px 10px rgba(0,0,0,0.2);'>{ini}</div>
+        <div style='min-width:0;'>
+            <div style='font-weight:700;font-size:0.94rem;color:#fff;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{nome}</div>
+            <div style='font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;
+                letter-spacing:0.4px;'>PACIENTE #{p['id']}</div>
+        </div>
+    </div>
+    <div style='margin-top:12px;font-size:0.78rem;color:rgba(255,255,255,0.78);
+        display:flex;flex-direction:column;gap:5px;'>
+        {contatos_html}
+    </div>
+    <div style='margin-top:14px;display:flex;align-items:center;justify-content:space-between;'>
+        <span style='background:{st_fundo};color:{st_cor};
+            border:1px solid {st_cor}55;border-radius:999px;
+            padding:4px 12px;font-size:0.72rem;font-weight:700;'>{status}</span>
+        <span style='font-size:0.7rem;color:rgba(255,255,255,0.45);'>📂 Prontuário</span>
+    </div>
+</div>""")
                     cards_html.append('</div>')
                     st.markdown("".join(cards_html), unsafe_allow_html=True)
                     st.caption(f"{len(pacientes)} paciente(s) encontrado(s). Abra a aba 📂 Prontuário para ver o prontuário completo.")
@@ -2044,15 +2041,13 @@ class AppointmentsPage:
                     # Histórico moderno (cards, não planilha)
                     for a in atts:
                         aid, emp, _, mod, dt, hr, _, _, stt, _ = a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9] if len(a)>9 else ""
-                        st.markdown(f"""
-                        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
-                            border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:8px;">
-                            <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);">#{aid}</span>
-                            <span style="font-weight:600;color:#fff;">{mod}</span>
-                            <span style="color:rgba(255,255,255,0.6);font-size:0.85rem;">{emp} · {dt} {hr}</span>
-                            <span style="margin-left:auto;">{status_badge(stt)}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:8px;">
+    <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);">#{aid}</span>
+    <span style="font-weight:600;color:#fff;">{mod}</span>
+    <span style="color:rgba(255,255,255,0.6);font-size:0.85rem;">{emp} · {dt} {hr}</span>
+    <span style="margin-left:auto;">{status_badge(stt)}</span>
+</div>""", unsafe_allow_html=True)
                     st.caption(f"Total: {len(atts)} atendimento(s).")
 
             st.divider()
@@ -2393,14 +2388,12 @@ class AgendaPage:
                 for t in triagens_hoje:
                     grav = t["gravidade"] or "Normal"
                     grav_c = {"Normal":"#22C55E","Prioritário":"#F59E0B","Urgente":"#EF4444"}.get(grav, "#22C55E")
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);
                         border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
                         <span style="font-weight:700;color:#fff;">{str(t["hora"])[:5]}</span>
                         <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;">{t["medico"] or ""} · {t["peso"] or "—"}kg · {t["pressao"] or "—"} · FC {t["freq_cardiaca"] or "—"}</span>
                         <span style="margin-left:auto;padding:3px 8px;border-radius:999px;font-size:0.7rem;font-weight:700;background:{grav_c}22;color:{grav_c};border:1px solid {grav_c}55;">{grav}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    </div>""", unsafe_allow_html=True)
 
         with tab4:
             st.markdown("### ⏳ Fila de Espera")
@@ -2431,14 +2424,13 @@ class AgendaPage:
                 st.markdown("#### Fila atual")
                 for i, f in enumerate(fila, start=1):
                     cor = {"Urgente": "#FDECEA", "Prioritário": "#FFF4E6", "Normal": "#E8F4FD"}.get(f["prioridade"], "#FFFFFF")
-                    st.markdown(f"""
-                    <div style='display:flex;align-items:center;gap:10px;background:{cor};
-                         border-radius:8px;padding:8px 12px;margin:3px 0;border-left:4px solid #4A90D9'>
-                        <span style='font-weight:700;color:#4A90D9'>{i}.</span>
-                        <span style='font-weight:600;color:#1a1a1a'>{f['paciente_nome']}</span>
-                        <span style='color:#555;font-size:0.85rem'>• {f['hora_chegada']} • {f['prioridade']}</span>
-                        <span style='margin-left:auto;color:#888'>{f['status']}</span>
-                    </div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style='display:flex;align-items:center;gap:10px;background:{cor};
+    border-radius:8px;padding:8px 12px;margin:3px 0;border-left:4px solid #4A90D9'>
+    <span style='font-weight:700;color:#4A90D9'>{i}.</span>
+    <span style='font-weight:600;color:#1a1a1a'>{f['paciente_nome']}</span>
+    <span style='color:#555;font-size:0.85rem'>• {f['hora_chegada']} • {f['prioridade']}</span>
+    <span style='margin-left:auto;color:#888'>{f['status']}</span>
+</div>""", unsafe_allow_html=True)
                 st.markdown("#### Ações")
                 opcoes_f = {f"{f['id']} — {f['paciente_nome']} ({f['prioridade']})": f["id"] for f in fila}
                 sel_f = st.selectbox("Selecione", list(opcoes_f.keys()), key="fila_sel")
@@ -2493,18 +2485,16 @@ class AgendaPage:
             if teleconsultas:
                 st.markdown("#### Teleconsultas agendadas")
                 for t in teleconsultas:
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
-                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5FA8D3,#1D5FA8);
-                            display:flex;align-items:center;justify-content:center;color:#fff;">🎥</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-weight:600;color:#fff;font-size:0.9rem;">{t.get("paciente_nome") or f"#{t['paciente_id']}"} · {t["medico"]}</div>
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{t["data"]} {str(t["hora"])[:5]} · {t["plataforma"]}</div>
-                        </div>
-                        <div>{status_badge(t["status"] or "")}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;margin-bottom:6px;">
+    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5FA8D3,#1D5FA8);
+        display:flex;align-items:center;justify-content:center;color:#fff;">🎥</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:600;color:#fff;font-size:0.9rem;">{t.get("paciente_nome") or f"#{t['paciente_id']}"} · {t["medico"]}</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{t["data"]} {str(t["hora"])[:5]} · {t["plataforma"]}</div>
+    </div>
+    <div>{status_badge(t["status"] or "")}</div>
+</div>""", unsafe_allow_html=True)
 
 class ClinicalDocsPage:
     @staticmethod
@@ -2561,18 +2551,16 @@ class ClinicalDocsPage:
             else:
                 # Prescrições — cards modernos
                 for p in prescricoes:
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
-                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4DA768,#1E7A46);
-                            display:flex;align-items:center;justify-content:center;color:#fff;">💊</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-weight:700;color:#fff;">{html.escape(p["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-weight:400;font-size:0.8rem;">#{p["id"]} · {p["data"]}</span></div>
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(p["medico"] or "")} · {html.escape(p["status"] or "")} {"· ✍️ ass." if p["assinatura_digital"] else ""}</div>
-                        </div>
-                        <div>{status_badge(p["status"] or "")}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4DA768,#1E7A46);
+        display:flex;align-items:center;justify-content:center;color:#fff;">💊</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:700;color:#fff;">{html.escape(p["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-weight:400;font-size:0.8rem;">#{p["id"]} · {p["data"]}</span></div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(p["medico"] or "")} · {html.escape(p["status"] or "")} {"· ✍️ ass." if p["assinatura_digital"] else ""}</div>
+    </div>
+    <div>{status_badge(p["status"] or "")}</div>
+</div>""", unsafe_allow_html=True)
 
                 with st.expander("📖 Ver detalhes de uma prescrição"):
                     opcoes = {f"#{p['id']} — {p['paciente_nome'] or '?'} ({p['data']})": p["id"] for p in prescricoes}
@@ -2640,17 +2628,15 @@ class ClinicalDocsPage:
                 st.info("Nenhum atestado encontrado.")
             else:
                 for a in atestados:
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
-                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#C24A6B,#8A1F3D);
-                            display:flex;align-items:center;justify-content:center;color:#fff;">📄</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-weight:700;color:#fff;">{html.escape(a["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{a["id"]} · {a["data"]}</span></div>
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(a["tipo"] or "")} · CID {html.escape(a["cid"] or "—")} · {a["dias_afastamento"] or 0}d · {html.escape(a["medico"] or "")}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#C24A6B,#8A1F3D);
+        display:flex;align-items:center;justify-content:center;color:#fff;">📄</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:700;color:#fff;">{html.escape(a["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{a["id"]} · {a["data"]}</span></div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(a["tipo"] or "")} · CID {html.escape(a["cid"] or "—")} · {a["dias_afastamento"] or 0}d · {html.escape(a["medico"] or "")}</div>
+    </div>
+</div>""", unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um atestado"):
                     opcoes_a = {f"#{a['id']} — {a['paciente_nome'] or '?'} ({a['data']})": a["id"] for a in atestados}
                     sel_a = st.selectbox("Atestado", list(opcoes_a.keys()), key="atest_sel_det")
@@ -2713,18 +2699,16 @@ class ClinicalDocsPage:
             else:
                 for e in encaminhamentos:
                     urg = "⚠️ Urgente" if e["urgente"] else ""
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
-                        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#9B7BD6,#6C3FA8);
-                            display:flex;align-items:center;justify-content:center;color:#fff;">➡️</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-weight:700;color:#fff;">{html.escape(e["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]} · {e["data"]}</span> <span style="color:#f87171;font-size:0.8rem;">{urg}</span></div>
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["especialidade"] or "")} → {html.escape(e["profissional_destino"] or "—")}</div>
-                        </div>
-                        <div>{status_badge(e["status"] or "")}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#9B7BD6,#6C3FA8);
+        display:flex;align-items:center;justify-content:center;color:#fff;">➡️</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:700;color:#fff;">{html.escape(e["paciente_nome"] or "")} <span style="color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]} · {e["data"]}</span> <span style="color:#f87171;font-size:0.8rem;">{urg}</span></div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["especialidade"] or "")} → {html.escape(e["profissional_destino"] or "—")}</div>
+    </div>
+    <div>{status_badge(e["status"] or "")}</div>
+</div>""", unsafe_allow_html=True)
                 with st.expander("📖 Ver detalhes de um encaminhamento"):
                     opcoes_e = {f"#{e['id']} — {e['paciente_nome'] or '?'} ({e['data']})": e["id"] for e in encaminhamentos}
                     sel_e = st.selectbox("Encaminhamento", list(opcoes_e.keys()), key="enc_sel_det")
@@ -2904,21 +2888,19 @@ class CompaniesPage:
             else:
                 # Empresas — lista moderna
                 for e in empresas:
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
-                        border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
-                        <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1D5FA8,#5FA8D3);
-                            display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">🏢</div>
-                        <div style="min-width:0;flex:1;">
-                            <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{html.escape(e["nome"] or "")} <span style="font-weight:400;color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]}</span></div>
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["cnpj"] or "sem CNPJ")} · {html.escape(e["responsavel"] or "—")} · 👥 {e["quantidade_funcionarios"] or 0}</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:0.8rem;color:rgba(255,255,255,0.7);">{e["plano"] or "—"}</div>
-                            <div>{status_badge("Ativa" if e["ativo"] else "Inativa")}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+    <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1D5FA8,#5FA8D3);
+        display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">🏢</div>
+    <div style="min-width:0;flex:1;">
+        <div style="font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{html.escape(e["nome"] or "")} <span style="font-weight:400;color:rgba(255,255,255,0.5);font-size:0.8rem;">#{e["id"]}</span></div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">{html.escape(e["cnpj"] or "sem CNPJ")} · {html.escape(e["responsavel"] or "—")} · 👥 {e["quantidade_funcionarios"] or 0}</div>
+    </div>
+    <div style="text-align:right;">
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.7);">{e["plano"] or "—"}</div>
+        <div>{status_badge("Ativa" if e["ativo"] else "Inativa")}</div>
+    </div>
+</div>""", unsafe_allow_html=True)
                 st.caption(f"{len(empresas)} empresa(s) encontrada(s). Gerencie convênios e faturamento nas abas ao lado.")
 
         with tab2:
@@ -4564,26 +4546,24 @@ class AuthPage:
 
             attempts = st.session_state['login_attempts']
 
-            st.markdown(f"""
-                <div style="text-align:center;margin-bottom:1.8rem;">
-                    <div style="
-                        width: 80px; height: 80px;
-                        background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
-                        border: 1px solid rgba(255,255,255,0.25);
-                        border-radius: 24px;
-                        display: flex; align-items: center; justify-content: center;
-                        margin: 0 auto 1.2rem auto;
-                        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
-                        backdrop-filter: blur(12px);
-                        overflow: hidden;
-                    ">{avatar_html}</div>
-                    <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:0;letter-spacing:-1px;
-                               color:#fff;font-family:'Inter',sans-serif;">Gestão Clínica</h1>
-                    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;
-                              letter-spacing:1.5px;text-transform:uppercase;
-                              font-family:'Inter',sans-serif;margin-top:4px;">Portal Administrativo</p>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="text-align:center;margin-bottom:1.8rem;">
+    <div style="
+        width: 80px; height: 80px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 24px;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1.2rem auto;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        backdrop-filter: blur(12px);
+        overflow: hidden;
+    ">{avatar_html}</div>
+    <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:0;letter-spacing:-1px;
+               color:#fff;font-family:'Inter',sans-serif;">Gestão Clínica</h1>
+    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;
+              letter-spacing:1.5px;text-transform:uppercase;
+              font-family:'Inter',sans-serif;margin-top:4px;">Portal Administrativo</p>
+</div>""", unsafe_allow_html=True)
 
             st.markdown(f"<div style='color:rgba(255,255,255,0.85);font-weight:600;margin-bottom:0.8rem;font-family:Inter,sans-serif;'>Acesse sua conta</div>", unsafe_allow_html=True)
 
