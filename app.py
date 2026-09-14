@@ -245,48 +245,26 @@ def display_cards(cards, style="default"):
     if style == "minimal":
         accent = st.session_state.get('accent_color', '#4DA768')
         metric_items = []
-        for idx, card in enumerate(cards):
+        for card in cards:
             icon = card.get('icon', '📋')
             title = card.get('title', '')
             value = card.get('value', 0)
             acc = card.get('acc', accent)
-            border_style = "border-right:1px solid rgba(255,255,255,0.08);" if idx < len(cards) - 1 else "border-right:none;"
             metric_items.append(
-                f"""<div class="metric-card-minimal" style="{border_style}">
-    <div class="metric-card-content">
-        <div style="
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.08rem;
-            background: linear-gradient(135deg, {acc}, {acc}cc);
-            color: #fff;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
-            flex-shrink: 0;
-        ">{icon}</div>
+                f"""<div class="metric-card-minimal">
+    <div class="metric-card-topline">
         <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
-            <div style="
-                font-size: clamp(1.5rem, 1.9vw, 2.05rem);
-                font-weight: 800;
-                color: #ffffff;
-                line-height: 1.02;
-                letter-spacing: -0.08em;
-            ">{value}</div>
-            <div style="
-                font-size: 0.67rem;
-                font-weight: 700;
-                letter-spacing: 0.12rem;
-                text-transform: uppercase;
-                color: rgba(255,255,255,0.72);
-                margin-top: 6px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            ">{title}</div>
+            <div class="metric-card-label">{title}</div>
+            <div class="metric-card-value">{value}</div>
         </div>
+        <div class="metric-card-icon" style="
+            background: linear-gradient(135deg, {acc}, {acc}cc);
+            box-shadow: 0 10px 18px {acc}33, inset 0 1px 0 rgba(255,255,255,0.24);
+        ">{icon}</div>
+    </div>
+    <div class="metric-card-foot">
+        <span class="metric-card-foot-dot" style="background:{acc};"></span>
+        <span class="metric-card-foot-label">Resumo geral</span>
     </div>
 </div>"""
             )
@@ -297,8 +275,8 @@ def display_cards(cards, style="default"):
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
-    gap: 0;
-    margin-bottom: 18px;
+    gap: 14px;
+    margin: 8px 0 24px;
 }}
 @media (max-width: 860px) {{
     .metric-row-minimal {{
@@ -308,13 +286,6 @@ def display_cards(cards, style="default"):
 @media (max-width: 540px) {{
     .metric-row-minimal {{
         grid-template-columns: 1fr !important;
-    }}
-    .metric-row-minimal > div {{
-        border-right: none !important;
-        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    }}
-    .metric-row-minimal > div:last-child {{
-        border-bottom: none !important;
     }}
 }}
 </style>
@@ -673,40 +644,98 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         /* ── METRIC CARDS ── */
         .metric-row-minimal {{ align-items: stretch; }}
         .metric-card-minimal {{
-            min-height: 122px;
-            padding: 16px 18px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 16px;
-            box-shadow: 0 10px 26px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.16);
+            min-height: 134px;
+            padding: 18px 18px 16px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08));
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 22px;
+            box-shadow: 0 16px 34px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.18);
             transition: transform 0.22s ease, box-shadow 0.22s ease;
         }}
         .metric-card-minimal:hover {{
-            transform: translateY(-3px);
-            box-shadow: 0 16px 30px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.22);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 38px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.24);
         }}
-        .metric-card-content {{
+        .metric-card-topline {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            min-height: 88px;
+        }}
+        .metric-card-icon {{
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            min-height: 90px;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: #fff;
+            flex-shrink: 0;
         }}
-        .metric-card-content > div:first-child {{ border-radius: 12px !important; }}
+        .metric-card-label {{
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.16rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.74);
+            margin-bottom: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .metric-card-value {{
+            font-size: clamp(1.9rem, 2.7vw, 2.5rem);
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            letter-spacing: -0.08em;
+        }}
+        .metric-card-foot {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }}
+        .metric-card-foot-dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.10);
+        }}
+        .metric-card-foot-label {{
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.76);
+        }}
 
         /* ── AI ASSISTANT / FILTERS / CHARTS ── */
         .ai-insight-card {{
             display: flex;
             align-items: flex-start;
             gap: 14px;
-            padding: 20px 22px;
-            border: 1px solid {primary_accent}66;
-            border-radius: 16px;
-            background: linear-gradient(135deg, {primary_accent}2a, rgba(255,255,255,0.07));
-            box-shadow: 0 12px 28px rgba(0,0,0,0.10);
+            padding: 24px 24px 22px;
+            border: 1px solid {primary_accent}5a;
+            border-radius: 22px;
+            background: linear-gradient(135deg, {primary_accent}30, rgba(255,255,255,0.10));
+            box-shadow: 0 18px 34px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.12);
         }}
         .ai-insight-card .ai-label {{
             color: {primary_accent}; font-size: 0.68rem; font-weight: 800;
             letter-spacing: 0.14rem; text-transform: uppercase; margin-bottom: 7px;
+        }}
+        .ai-insight-card .ai-title {{
+            color: #ffffff;
+            font-size: 1.08rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }}
+        .ai-insight-card .ai-body {{
+            color: rgba(255,255,255,0.90);
+            line-height: 1.72;
+            font-size: 0.96rem;
         }}
         .dashboard-filter {{
             padding: 10px 14px 2px;
@@ -714,6 +743,92 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             border-radius: 14px;
             background: rgba(0,0,0,0.10);
             margin-bottom: 12px;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-period-anchor) {{
+            margin: 0 0 20px;
+            padding: 6px 10px 2px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            background: linear-gradient(135deg, #164B2A, {primary_accent});
+            box-shadow: 0 20px 34px rgba(10,40,22,0.18), inset 0 1px 0 rgba(255,255,255,0.14);
+        }}
+        .dashboard-period-heading {{
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 10px;
+        }}
+        .dashboard-period-heading .period-icon {{
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            color: #fff;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+        }}
+        .dashboard-period-heading .period-eyebrow {{
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.16rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.72);
+            margin-bottom: 3px;
+        }}
+        .dashboard-period-heading .period-title {{
+            color: #ffffff;
+            font-size: 1.08rem;
+            font-weight: 800;
+            letter-spacing: 0.01rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-period-anchor) [data-testid="stDateInput"] {{
+            background: rgba(255,255,255,0.96);
+            border-radius: 18px;
+            padding: 2px 2px 0;
+            box-shadow: 0 10px 22px rgba(12,54,29,0.16);
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-period-anchor) [data-testid="stDateInput"] label {{
+            display: none !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-period-anchor) [data-baseweb="input"] {{
+            background: transparent !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-period-anchor) [data-baseweb="input"] input {{
+            color: #164B2A !important;
+            font-weight: 700 !important;
+            font-size: 0.98rem !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-chart-anchor) {{
+            padding: 10px 14px 6px;
+            border-radius: 24px;
+            border: 1px solid rgba(22,75,42,0.10) !important;
+            background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(244,251,246,0.96));
+            box-shadow: 0 16px 34px rgba(9,30,18,0.10);
+            min-height: 100%;
+        }}
+        .dashboard-chart-kicker {{
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.14rem;
+            text-transform: uppercase;
+            color: {primary_accent};
+            margin-bottom: 4px;
+        }}
+        .dashboard-chart-subtitle {{
+            color: rgba(22,75,42,0.72);
+            font-size: 0.84rem;
+            margin-top: -4px;
+            margin-bottom: 10px;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.dashboard-chart-anchor) h4 {{
+            color: #164B2A !important;
+            font-size: 1.02rem !important;
+            font-weight: 800 !important;
+            margin-bottom: 0.1rem !important;
         }}
         .chart-panel {{
             padding: 8px 12px 2px;
@@ -756,12 +871,15 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             .page-header h1 {{ font-size: 1.72rem !important; }}
             .page-header p {{ font-size: 0.82rem; }}
             .metric-row-minimal {{ gap: 8px; }}
-            .metric-card-minimal {{ min-height: 104px; padding: 12px; }}
-            .metric-card-content {{ min-height: 76px; gap: 9px; }}
-            .metric-card-content > div:first-child {{ width: 32px !important; height: 32px !important; font-size: 0.9rem !important; }}
+            .metric-card-minimal {{ min-height: 116px; padding: 14px 14px 12px; }}
+            .metric-card-topline {{ min-height: 72px; gap: 10px; }}
+            .metric-card-icon {{ width: 42px !important; height: 42px !important; font-size: 1.05rem !important; border-radius: 14px !important; }}
+            .metric-card-label {{ margin-bottom: 10px; letter-spacing: 0.12rem; }}
+            .metric-card-foot {{ padding-top: 10px; }}
             .chart-panel {{ min-height: 0; padding: 4px; }}
             .ranking-table {{ font-size: 0.78rem; }}
             .ranking-table th, .ranking-table td {{ padding: 9px 5px; }}
+            .dashboard-period-heading {{ align-items: flex-start; }}
         }}
 
         /* ── DIVIDER sutil ── */
@@ -940,24 +1058,14 @@ class DashboardPage:
         except Exception:
             total_documentos = 0
 
-        total_faturas = 0
-        try:
-            empresas_all = db.listar_empresas(limit=500) if hasattr(db, "listar_empresas") else []
-            for empresa in empresas_all:
-                try:
-                    total_faturas += len(db.listar_faturamento_empresa(empresa["id"]))
-                except Exception:
-                    continue
-        except Exception:
-            total_faturas = 0
-
         cards = [
             {"icon": "👥", "title": "Pacientes", "value": total_pacientes, "acc": accent},
             {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
             {"icon": "📄", "title": "Documentos", "value": total_documentos, "acc": accent},
-            {"icon": "💰", "title": "Faturas", "value": total_faturas, "acc": accent},
+            {"icon": "📝", "title": "Avaliações", "value": avaliacoes_enviadas, "acc": accent},
         ]
         display_cards(cards, style="minimal")
+        st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
 
         if total_appointments > 0:
             section_title("🧠", "Insights da IA Assistente", "Análise automática dos seus atendimentos", accent=accent)
@@ -971,12 +1079,14 @@ class DashboardPage:
                 }
                 from ai_manager import AIManager
                 dicas = AIManager.generate_dashboard_insights(json.dumps(stats_resumo))
+                dicas_html = html.escape(str(dicas)).replace("\n", "<br>")
                 st.markdown(
                     f"""<div class="ai-insight-card">
-    <div style="font-size:1.55rem;line-height:1;">🤖</div>
+    <div style="font-size:1.7rem;line-height:1;">🧠</div>
     <div style="min-width:0;flex:1;">
         <div class="ai-label">IA Assistente · Insights do período</div>
-        <div style="color:rgba(255,255,255,0.92);line-height:1.65;font-size:0.95rem;">{html.escape(str(dicas))}</div>
+        <div class="ai-title">Insights da IA Assistente</div>
+        <div class="ai-body">{dicas_html}</div>
     </div>
 </div>""",
                     unsafe_allow_html=True
@@ -997,17 +1107,36 @@ class DashboardPage:
             data_max = max(datas_validas) if datas_validas else date.today()
             if 'dash_periodo' not in st.session_state:
                 st.session_state['dash_periodo'] = (data_min, data_max)
-            calendario = st.date_input(
-                "Período",
-                value=st.session_state['dash_periodo'],
-                min_value=data_min,
-                max_value=data_max,
-                key="dash_calendario",
-            )
-            if isinstance(calendario, tuple) and len(calendario) == 2:
-                inicio, fim = calendario
+            with st.container(border=True):
+                st.markdown(
+                    """<div class="dashboard-period-anchor"></div>
+<div class="dashboard-period-heading">
+    <div class="period-icon">📅</div>
+    <div>
+        <div class="period-eyebrow">Período do dashboard</div>
+        <div class="period-title">Selecione o intervalo para analisar os atendimentos</div>
+    </div>
+</div>""",
+                    unsafe_allow_html=True,
+                )
+                calendario = st.date_input(
+                    "Período",
+                    value=st.session_state['dash_periodo'],
+                    min_value=data_min,
+                    max_value=data_max,
+                    key="dash_calendario",
+                    label_visibility="collapsed",
+                )
+            if isinstance(calendario, (tuple, list)):
+                if len(calendario) == 2:
+                    inicio, fim = calendario
+                elif len(calendario) == 1:
+                    inicio = fim = calendario[0]
+                else:
+                    inicio = fim = data_max
             else:
                 inicio = fim = calendario
+            st.session_state['dash_periodo'] = (inicio, fim)
 
             contagem_empresas = {}
             for a in appointments:
@@ -1020,38 +1149,47 @@ class DashboardPage:
             col_p1, col_p2 = st.columns(2)
             with col_p1:
                 if stats.get("modalidades"):
-                    st.markdown("#### 🏥 Distribuição por Modalidade")
-                    vals = list(stats["modalidades"].values())
-                    labels = list(stats["modalidades"].keys())
-                    fig = px.pie(values=vals, names=labels, hole=0.58,
-                                 color_discrete_sequence=['#164B2A', '#24753D', '#379451', '#58B86A', '#8DDB98'])
-                    fig.update_traces(textposition="inside", textinfo="percent",
-                                      marker=dict(line=dict(color='rgba(255,255,255,0.18)', width=2)),
-                                      hovertemplate="%{label}<br>%{value} atendimentos (%{percent})<extra></extra>")
-                    fig.update_layout(showlegend=True, height=350, margin=dict(l=8, r=8, t=12, b=12),
-                                      legend=dict(orientation="h", yanchor="bottom", y=-0.16, xanchor="center", x=0.5),
-                                      annotations=[dict(text=f"{sum(vals)}<br><span style='font-size:11px'>total</span>",
-                                                        x=0.5, y=0.5, showarrow=False, font=dict(size=22, color="#FFFFFF"))],
-                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                      font=dict(color="#FFFFFF", family="Plus Jakarta Sans"))
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    with st.container(border=True):
+                        st.markdown('<div class="dashboard-chart-anchor"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="dashboard-chart-kicker">Visão por modalidade</div>', unsafe_allow_html=True)
+                        st.markdown("#### 🏥 Distribuição por Modalidade")
+                        st.markdown('<div class="dashboard-chart-subtitle">Panorama das modalidades registradas no sistema.</div>', unsafe_allow_html=True)
+                        vals = list(stats["modalidades"].values())
+                        labels = list(stats["modalidades"].keys())
+                        fig = px.pie(values=vals, names=labels, hole=0.58,
+                                     color_discrete_sequence=['#164B2A', '#24753D', '#379451', '#58B86A', '#8DDB98'])
+                        fig.update_traces(textposition="inside", textinfo="percent",
+                                          marker=dict(line=dict(color='rgba(255,255,255,0.88)', width=2)),
+                                          hovertemplate="%{label}<br>%{value} atendimentos (%{percent})<extra></extra>")
+                        fig.update_layout(showlegend=True, height=350, margin=dict(l=8, r=8, t=12, b=12),
+                                          legend=dict(orientation="h", yanchor="bottom", y=-0.16, xanchor="center", x=0.5,
+                                                      font=dict(color="#164B2A")),
+                                          annotations=[dict(text=f"{sum(vals)}<br><span style='font-size:11px'>total</span>",
+                                                            x=0.5, y=0.5, showarrow=False, font=dict(size=22, color="#164B2A"))],
+                                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                          font=dict(color="#164B2A", family="Plus Jakarta Sans"))
+                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             with col_p2:
                 if contagem_empresas:
-                    st.markdown("#### 🏢 Atendimentos por Empresa")
-                    empresa_df = pd.DataFrame(sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
-                                              columns=["Empresa", "Atendimentos"]).head(10)
-                    fig = px.bar(empresa_df.sort_values("Atendimentos"), x="Atendimentos", y="Empresa",
-                                 orientation="h", color="Atendimentos",
-                                 color_continuous_scale=["#B7E8BF", "#24753D"])
-                    fig.update_traces(hovertemplate="%{y}<br>%{x} atendimentos<extra></extra>")
-                    fig.update_layout(showlegend=False, coloraxis_showscale=False, height=350,
-                                      margin=dict(l=8, r=18, t=12, b=12),
-                                      xaxis=dict(title=None, showgrid=True, gridcolor="rgba(255,255,255,0.10)",
-                                                 zeroline=False, tickfont=dict(color="rgba(255,255,255,0.7)")),
-                                      yaxis=dict(title=None, tickfont=dict(color="#FFFFFF")),
-                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                      font=dict(color="#FFFFFF", family="Plus Jakarta Sans"))
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    with st.container(border=True):
+                        st.markdown('<div class="dashboard-chart-anchor"></div>', unsafe_allow_html=True)
+                        st.markdown('<div class="dashboard-chart-kicker">Comparativo por empresa</div>', unsafe_allow_html=True)
+                        st.markdown("#### 🏢 Atendimentos por Empresa")
+                        st.markdown('<div class="dashboard-chart-subtitle">Top empresas com mais atendimentos no período selecionado.</div>', unsafe_allow_html=True)
+                        empresa_df = pd.DataFrame(sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
+                                                  columns=["Empresa", "Atendimentos"]).head(10)
+                        fig = px.bar(empresa_df.sort_values("Atendimentos"), x="Atendimentos", y="Empresa",
+                                     orientation="h", color="Atendimentos",
+                                     color_continuous_scale=["#B7E8BF", "#24753D"])
+                        fig.update_traces(hovertemplate="%{y}<br>%{x} atendimentos<extra></extra>")
+                        fig.update_layout(showlegend=False, coloraxis_showscale=False, height=350,
+                                          margin=dict(l=8, r=18, t=12, b=12),
+                                          xaxis=dict(title=None, showgrid=True, gridcolor="rgba(22,75,42,0.12)",
+                                                     zeroline=False, tickfont=dict(color="rgba(22,75,42,0.78)")),
+                                          yaxis=dict(title=None, tickfont=dict(color="#164B2A")),
+                                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                          font=dict(color="#164B2A", family="Plus Jakarta Sans"))
+                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
             if contagem_empresas:
                 with st.expander("🏆 Ranking por Empresa", expanded=False):
