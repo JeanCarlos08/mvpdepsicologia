@@ -955,7 +955,7 @@ class DashboardPage:
             {"icon": "👥", "title": "Pacientes", "value": total_pacientes, "acc": accent},
             {"icon": "📋", "title": "Atendimentos", "value": total_appointments, "acc": accent},
             {"icon": "📄", "title": "Documentos", "value": total_documentos, "acc": accent},
-            {"icon": "💰", "title": "Faturas", "value": total_faturas, "acc": accent},
+            {"icon": "💰", "title": "Avaliações", "value": total_faturas, "acc": accent},
         ]
         display_cards(cards, style="minimal")
 
