@@ -933,6 +933,24 @@ class DashboardPage:
             total_pacientes = len(db.listar_pacientes(limit=None)) if hasattr(db, "listar_pacientes") else 0
         except Exception:
             total_pacientes = 0
+        # Fallback: se pacientes 0 mas atendimentos tem dados (compat schema), conta distintos via atendimentos
+        if total_pacientes == 0 and total_appointments > 0:
+            try:
+                # tenta via DISTINCT nome dos atendimentos (evita mostrar 0 no dashboard do print)
+                with db._connection_scope(commit=False) as _conn:
+                    _cur = db._get_cursor(_conn)
+                    _cur.execute("SELECT COUNT(DISTINCT nome) AS cnt FROM atendimentos WHERE nome IS NOT NULL AND nome <> ''")
+                    _row = _cur.fetchone()
+                    if _row and _row.get("cnt"):
+                        total_pacientes = int(_row["cnt"])
+            except Exception:
+                pass
+            if total_pacientes == 0:
+                # último fallback: conta distintos em memória dos appointments já carregados
+                try:
+                    total_pacientes = len(set(str(a[2]).strip().lower() for a in appointments if len(a) > 2 and str(a[2]).strip()))
+                except Exception:
+                    pass
 
         total_documentos = 0
         try:

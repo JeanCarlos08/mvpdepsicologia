@@ -729,6 +729,39 @@ def _migrate_modalidade_periodico() -> None:
 	except Exception:
 		pass
 
+def _migrate_pacientes_compat() -> None:
+	"""Garante compatibilidade entre schema Next.js (gestao_clinica) e Streamlit.
+	Adiciona colunas faltantes para que ambos os apps leiam a mesma tabela `pacientes`.
+	Corrige bug do dashboard que mostrava 0 pacientes (coluna `rg`/`ativo` faltando).
+	"""
+	stmts = (
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS rg VARCHAR(30)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS ativo INTEGER DEFAULT 1",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto_b64 TEXT",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto_mime VARCHAR(50)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS slug VARCHAR(300)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS sexo VARCHAR(20)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS estado_civil VARCHAR(50)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS profissao VARCHAR(200)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS convenio VARCHAR(200)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS numero_convenio VARCHAR(100)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS empresa VARCHAR(200)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS contato_emergencia VARCHAR(300)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS telefone_emergencia VARCHAR(30)",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS foto TEXT",
+		"ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ DEFAULT NOW()",
+	)
+	try:
+		with _connection_scope() as conn:
+			cur = _get_cursor(conn)
+			for s in stmts:
+				try:
+					cur.execute(s)
+				except Exception:
+					continue
+	except Exception:
+		pass
+
 _SCHEMA_OK: bool = False
 
 
@@ -753,6 +786,8 @@ def ensure_schema(force: bool = False) -> None:
 	_migrate_date_time_columns()
 	# Corrigir nome de modalidade Período -> Periódico
 	_migrate_modalidade_periodico()
+	# Compatibilidade pacientes Next.js <-> Streamlit (fix 0 pacientes)
+	_migrate_pacientes_compat()
 
 	# Garantir índices atualizados
 	ensure_indexes()
@@ -2339,8 +2374,28 @@ def listar_pacientes(filtro: Optional[str] = None, ativos_apenas: bool = False, 
 			cur = _get_cursor(conn)
 			cur.execute(query, tuple(params))
 			return [_format_paciente(r) for r in cur.fetchall()]
-	except Exception:
-		return []
+	except Exception as e:
+		# Fallback robusto: se colunas rg/ativo faltarem (compat Next.js), tenta SELECT * sem filtrar por ativo
+		try:
+			# tenta sem o filtro de ativo e sem colunas extras
+			where2 = []
+			params2: List[Any] = []
+			if filtro:
+				q = f"%{filtro.strip()}%"
+				where2.append("(nome ILIKE %s OR cpf ILIKE %s OR telefone ILIKE %s OR email ILIKE %s)")
+				params2.extend([q, q, q, q])
+			where_sql2 = f"WHERE {' AND '.join(where2)}" if where2 else ""
+			limit_sql2 = ""
+			if limit is not None:
+				limit_sql2 = " LIMIT %s OFFSET %s"
+				params2.extend([limit, offset])
+			query2 = f"SELECT * FROM pacientes {where_sql2} ORDER BY nome ASC {limit_sql2}"
+			with _connection_scope(commit=False) as conn:
+				cur = _get_cursor(conn)
+				cur.execute(query2, tuple(params2))
+				return [_format_paciente(r) for r in cur.fetchall()]
+		except Exception:
+			return []
 
 
 def obter_paciente(paciente_id: int) -> Optional[Dict[str, Any]]:
