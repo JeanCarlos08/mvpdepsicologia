@@ -780,15 +780,40 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"] {{
-            background: rgba(255,255,255,0.04) !important;
-            border: 1px dashed rgba(255,255,255,0.14) !important;
-            border-radius: 12px !important;
-            padding: 6px !important;
+            background: rgba(255,255,255,0.09) !important;
+            border: 1.5px solid rgba(255,255,255,0.20) !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 0 0 18px 18px !important;
+            padding: 10px 14px 12px !important;
+            margin-top: -1px !important;
+            margin-bottom: 10px !important;
             transition: all 0.22s ease !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06) !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {{
             border-color: rgba(255,255,255,0.22) !important;
-            background: rgba(255,255,255,0.06) !important;
+            background: rgba(255,255,255,0.11) !important;
+        }}
+        /* Botão interno do uploader — pill premium usando só branco translúcido (mesma paleta) */
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"] button {{
+            background: rgba(255,255,255,0.10) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            color: #fff !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            font-size: 0.78rem !important;
+            padding: 6px 12px !important;
+            transition: all 0.22s ease !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"] button:hover {{
+            background: rgba(255,255,255,0.16) !important;
+            border-color: rgba(255,255,255,0.22) !important;
+            transform: translateY(-1px) !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"] small {{
+            color: rgba(255,255,255,0.62) !important;
+            font-size: 0.68rem !important;
+            letter-spacing: 0.3px !important;
         }}
         .stDateInput > div > div {{ border-radius: 12px !important; }}
         @media (max-width: 860px) {{
@@ -4782,7 +4807,7 @@ class ClinicalManagementApp:
 
                 st.markdown(
                     f"""<div style='background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,255,255,0.20);
-                    border-radius:18px;padding:16px 16px;margin-bottom:10px;
+                    border-radius:18px 18px 0 0;padding:16px 16px 14px;margin-bottom:0;
                     display:flex;align-items:center;gap:14px;backdrop-filter:blur(12px);
                     box-shadow:0 8px 24px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.10);
                     transition: all 0.28s ease;'>
@@ -4801,7 +4826,7 @@ class ClinicalManagementApp:
                     unsafe_allow_html=True
                 )
 
-                # Uploader de foto compacto direto na sidebar
+                # Uploader acoplado ao mesmo card do perfil (mesma identidade visual #1E7A46)
                 sidebar_photo = st.file_uploader(
                     "📷 Trocar foto",
                     type=["jpg", "jpeg", "png", "webp"],
