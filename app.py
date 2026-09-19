@@ -472,7 +472,18 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         /* ── 4. SIDEBAR PREMIUM — refinamento SaaS sem trocar paleta #1E7A46/#155c33 ── */
         section[data-testid="stSidebar"] > div {{
             background: linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 100%) !important;
-            padding-top: 8px !important;
+            padding-top: 10px !important;
+            position: relative !important;
+        }}
+        section[data-testid="stSidebar"] > div::before {{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 12px;
+            right: 12px;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent);
+            pointer-events: none;
         }}
         section[data-testid="stSidebar"] * {{
             color: white !important;
@@ -4811,12 +4822,13 @@ class ClinicalManagementApp:
                     display:flex;align-items:center;gap:14px;backdrop-filter:blur(12px);
                     box-shadow:0 8px 24px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.10);
                     transition: all 0.28s ease;'>
-                        <div style='width:46px;height:46px;border-radius:50%;overflow:hidden;
+                        <div style='width:46px;height:46px;border-radius:50%;overflow:hidden;position:relative;
                             border:2.5px solid rgba(255,255,255,0.45);
                             box-shadow:0 3px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.20);
                             display:flex;align-items:center;justify-content:center;
                             background:linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08));flex-shrink:0;'>
                             {avatar_inner}
+                            <div style='position:absolute;bottom:-1px;right:-1px;width:13px;height:13px;background:#8ee39a;border:2.5px solid rgba(255,255,255,0.95);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.18);'></div>
                         </div>
                         <div style='min-width:0;flex:1;'>
                             <div style='font-weight:700;font-size:0.92rem;color:#fff;letter-spacing:0.15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{u_name}</div>
