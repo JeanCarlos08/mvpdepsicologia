@@ -469,39 +469,52 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             font-family: 'Plus Jakarta Sans', sans-serif !important;
         }}
 
-        /* ── 4. SIDEBAR confiável: section[data-testid="stSidebar"] ── */
+        /* ── 4. SIDEBAR PREMIUM — refinamento SaaS sem trocar paleta #1E7A46/#155c33 ── */
         section[data-testid="stSidebar"] > div {{
             background: linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 100%) !important;
+            padding-top: 8px !important;
         }}
         section[data-testid="stSidebar"] * {{
             color: white !important;
         }}
-        /* Esconde bolinha nativa do radio — sem has() */
+        /* Esconde bolinha nativa do radio */
         section[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {{
             display: none !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] {{
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding: 0 2px;
+            gap: 6px !important;
+            padding: 0 10px !important;
+            margin-top: 4px !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label {{
             display: flex !important;
             align-items: center !important;
-            gap: 10px !important;
-            padding: 10px 14px !important;
+            gap: 12px !important;
+            padding: 11px 14px !important;
             margin: 0 !important;
-            border-radius: 12px !important;
+            min-height: 44px !important;
+            border-radius: 14px !important;
             cursor: pointer;
-            transition: all 0.22s ease !important;
+            transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
             background: transparent !important;
             border: 1px solid transparent !important;
-            font-weight: 500 !important;
-            font-size: 0.88rem !important;
+            font-weight: 600 !important;
+            font-size: 0.875rem !important;
+            letter-spacing: 0.2px !important;
+            line-height: 1.35 !important;
+            position: relative !important;
+            overflow: hidden !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
             background: rgba(255,255,255,0.08) !important;
+            border-color: rgba(255,255,255,0.10) !important;
+            transform: translateX(2px) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label:active {{
+            transform: translateX(1px) scale(0.99) !important;
         }}
 
         /* ── 5. CARDS GLASSMORPHISM via .stMetric ── */
@@ -741,9 +754,41 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         section[data-testid="stSidebar"] [data-testid="stRadio"] {{ margin-top: 4px; }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
-            background: rgba(123, 211, 137, 0.24) !important;
-            border-color: rgba(168, 235, 177, 0.38) !important;
-            box-shadow: inset 3px 0 0 #8ee39a;
+            background: linear-gradient(135deg, rgba(123, 211, 137, 0.24), rgba(255,255,255,0.06)) !important;
+            border-color: rgba(168, 235, 177, 0.42) !important;
+            box-shadow: inset 3px 0 0 #8ee39a, 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+            font-weight: 700 !important;
+            transform: translateX(1px) !important;
+        }}
+        /* ── SIDEBAR PREMIUM — logout e uploader refinados (isolado, só sidebar) ── */
+        section[data-testid="stSidebar"] .stButton > button {{
+            background: rgba(255,255,255,0.06) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            color: rgba(255,255,255,0.92) !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            letter-spacing: 0.2px !important;
+            border-radius: 12px !important;
+            padding: 10px 14px !important;
+            transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: none !important;
+        }}
+        section[data-testid="stSidebar"] .stButton > button:hover {{
+            background: rgba(255,255,255,0.10) !important;
+            border-color: rgba(255,255,255,0.18) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"] {{
+            background: rgba(255,255,255,0.04) !important;
+            border: 1px dashed rgba(255,255,255,0.14) !important;
+            border-radius: 12px !important;
+            padding: 6px !important;
+            transition: all 0.22s ease !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {{
+            border-color: rgba(255,255,255,0.22) !important;
+            background: rgba(255,255,255,0.06) !important;
         }}
         .stDateInput > div > div {{ border-radius: 12px !important; }}
         @media (max-width: 860px) {{
@@ -4691,18 +4736,18 @@ class ClinicalManagementApp:
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
                 u_name = st.session_state.get('user_name', 'Admin')
-                # Marca / logo da clínica
+                # Marca / logo — refinamento premium (mesma paleta #1E7A46, só proporção e espaçamento)
                 st.markdown(
-                    """<div style='display:flex;align-items:center;gap:12px;padding:2px 6px 16px;'>
-                        <div style='width:44px;height:44px;border-radius:14px;flex-shrink:0;
-                            background:linear-gradient(135deg,#ffffff40,#ffffff18);
-                            border:1px solid rgba(255,255,255,0.35);
+                    """<div style='display:flex;align-items:center;gap:14px;padding:6px 10px 18px;'>
+                        <div style='width:48px;height:48px;border-radius:16px;flex-shrink:0;
+                            background:linear-gradient(135deg,#ffffff42,#ffffff14);
+                            border:1.5px solid rgba(255,255,255,0.38);
                             display:flex;align-items:center;justify-content:center;
-                            font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,0.18);'>🩺</div>
-                        <div>
-                            <div style='font-weight:800;font-size:1.04rem;color:#fff;line-height:1.15;letter-spacing:0.2px;'>Gestão Clínica</div>
-                            <div style='font-size:0.62rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;
-                                color:rgba(255,255,255,0.6);margin-top:2px;'>MVP Psicologia</div>
+                            font-size:23px;box-shadow:0 6px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.22);'>🩺</div>
+                        <div style='min-width:0;flex:1;'>
+                            <div style='font-weight:800;font-size:1.06rem;color:#fff;line-height:1.15;letter-spacing:0.15px;white-space:nowrap;'>Gestão Clínica</div>
+                            <div style='font-size:0.60rem;font-weight:700;letter-spacing:2.8px;text-transform:uppercase;
+                                color:rgba(255,255,255,0.62);margin-top:3px;white-space:nowrap;'>MVP Psicologia</div>
                         </div>
                     </div>""",
                     unsafe_allow_html=True
@@ -4736,19 +4781,21 @@ class ClinicalManagementApp:
                     avatar_inner = "<span style='font-size:22px;line-height:44px;'>&#128105;&#8205;&#9877;&#65039;</span>"
 
                 st.markdown(
-                    f"""<div style='background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);
-                    border-radius:16px;padding:14px 16px;margin-bottom:8px;
-                    display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);'>
-                        <div style='width:44px;height:44px;border-radius:50%;overflow:hidden;
-                            border:2px solid rgba(255,255,255,0.4);
-                            box-shadow:0 2px 8px rgba(0,0,0,0.2);
+                    f"""<div style='background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,255,255,0.20);
+                    border-radius:18px;padding:16px 16px;margin-bottom:10px;
+                    display:flex;align-items:center;gap:14px;backdrop-filter:blur(12px);
+                    box-shadow:0 8px 24px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.10);
+                    transition: all 0.28s ease;'>
+                        <div style='width:46px;height:46px;border-radius:50%;overflow:hidden;
+                            border:2.5px solid rgba(255,255,255,0.45);
+                            box-shadow:0 3px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.20);
                             display:flex;align-items:center;justify-content:center;
-                            background:rgba(255,255,255,0.15);flex-shrink:0;'>
+                            background:linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08));flex-shrink:0;'>
                             {avatar_inner}
                         </div>
-                        <div>
-                            <div style='font-weight:700;font-size:0.88rem;color:#fff;letter-spacing:0.2px;'>{u_name}</div>
-                            <div style='font-size:0.72rem;color:rgba(255,255,255,0.6);letter-spacing:0.5px;text-transform:uppercase;font-weight:600;'>Administradora</div>
+                        <div style='min-width:0;flex:1;'>
+                            <div style='font-weight:700;font-size:0.92rem;color:#fff;letter-spacing:0.15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{u_name}</div>
+                            <div style='font-size:0.70rem;color:rgba(255,255,255,0.62);letter-spacing:0.9px;text-transform:uppercase;font-weight:600;margin-top:2px;'>Administradora</div>
                         </div>
                     </div>""",
                     unsafe_allow_html=True
@@ -4779,8 +4826,8 @@ class ClinicalManagementApp:
                         st.rerun()
 
                 st.markdown(
-                    """<div style='display:flex;align-items:center;gap:12px;margin:8px 0 2px 4px;'>
-                        <div style='flex:1;height:1px;background:rgba(255,255,255,0.14);'></div>
+                    """<div style='display:flex;align-items:center;gap:12px;margin:14px 10px 10px;'>
+                        <div style='flex:1;height:1px;background:linear-gradient(to right, transparent, rgba(255,255,255,0.14), transparent);'></div>
                     </div>""",
                     unsafe_allow_html=True
                 )
