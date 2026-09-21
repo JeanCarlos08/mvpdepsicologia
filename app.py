@@ -4621,7 +4621,58 @@ class AuthPage:
         if st.session_state['lockout_time']:
             time_diff = (datetime.now() - st.session_state['lockout_time']).total_seconds()
             if time_diff < 30:
-                st.error(f"🚨 Muitas tentativas falhas. Tente novamente em {int(30 - time_diff)} segundos.")
+                _secs = max(1, int(30 - time_diff))
+                _pct = int((_secs / 30) * 100)
+                st.markdown(
+                    f"""
+                    <style>
+                      @keyframes authIn {{ 0% {{ opacity:0; transform: translateY(22px) scale(0.97); filter: blur(6px); }} 100% {{ opacity:1; transform: translateY(0) scale(1); filter: blur(0); }} }}
+                      @keyframes authPulse {{ 0%,100% {{ box-shadow: 0 0 0 0 rgba(255,107,107,0.45); }} 60% {{ box-shadow: 0 0 0 10px rgba(255,107,107,0); }} }}
+                      [data-testid="stHeader"], footer, #MainMenu {{ display: none !important; }}
+                      [data-testid="stAppViewContainer"]::before {{
+                        content: "" !important; position: fixed !important; inset: 0 !important;
+                        background: linear-gradient(160deg, rgba(30,92,53,0.72), rgba(10,30,18,0.88)) !important;
+                        z-index: 0 !important; pointer-events: none !important;
+                      }}
+                      .auth-lock {{
+                        position: relative; z-index: 5; max-width: 520px; margin: 18vh auto 0;
+                        display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;
+                        padding: 34px 30px; border-radius: 28px;
+                        background: rgba(0,0,0,0.42); border: 1.5px solid rgba(255,120,120,0.35);
+                        backdrop-filter: blur(26px) saturate(140%);
+                        box-shadow: 0 30px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+                        animation: authIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+                      }}
+                      .auth-lock-ic {{
+                        width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
+                        font-size: 1.8rem; background: linear-gradient(145deg, rgba(255,80,80,0.25), rgba(120,0,0,0.2));
+                        border: 1px solid rgba(255,120,120,0.4); animation: authPulse 1.6s ease-out infinite;
+                      }}
+                      .auth-lock b {{ color: #fff; font: 800 1.1rem 'Plus Jakarta Sans',sans-serif; display: block; letter-spacing: -0.3px; }}
+                      .auth-lock span {{ color: rgba(255,255,255,0.7); font: 500 0.9rem/1.5 'Inter',sans-serif; }}
+                      .auth-lock span i {{ color: #ffb4b4; font-style: normal; font-weight: 800; }}
+                      .auth-lock-bar {{
+                        width: 100%; height: 8px; border-radius: 99px; overflow: hidden;
+                        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+                      }}
+                      .auth-lock-bar i {{
+                        display: block; height: 100%; border-radius: 99px;
+                        background: linear-gradient(90deg, #ff6b6b, #ffa8a8);
+                        box-shadow: 0 0 12px rgba(255,107,107,0.6);
+                        transition: width 1s linear;
+                      }}
+                    </style>
+                    <div class="auth-lock">
+                      <div class="auth-lock-ic">⛔</div>
+                      <div>
+                        <b>Muitas tentativas falhas</b>
+                        <span>Bloqueio temporário — tente novamente em <i>{_secs}s</i></span>
+                      </div>
+                      <div class="auth-lock-bar"><i style="width:{_pct}%"></i></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
                 return
             else:
                 st.session_state['lockout_time'] = None
@@ -5103,6 +5154,64 @@ class AuthPage:
                 }
                 .auth-title .ch { opacity: 1 !important; }
             }
+            
+            /* ── TETO MÁXIMO: iframe canvas + iridescente + typewriter + magnetic ── */
+            [data-testid="stAppViewContainer"] iframe,
+            main iframe {
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                border: 0 !important;
+                outline: 0 !important;
+                z-index: 6 !important;
+                pointer-events: none !important;
+                background: transparent !important;
+            }
+            .auth-card::before {
+                background: conic-gradient(from var(--auth-angle, 0deg),
+                    transparent 0%,
+                    rgba(167,139,250,0.35) 6%,
+                    rgba(123,211,145,0.7) 14%,
+                    transparent 28%,
+                    rgba(56,189,248,0.3) 48%,
+                    transparent 62%,
+                    rgba(46,204,113,0.55) 76%,
+                    rgba(250,204,21,0.25) 86%,
+                    transparent 94%);
+                animation: authSpinBorder 5s linear infinite;
+            }
+            .auth-sub {
+                animation: authTypeReveal 1.6s cubic-bezier(0.16,1,0.3,1) 0.85s both;
+            }
+            @keyframes authTypeReveal {
+                from { clip-path: inset(0 100% 0 0); opacity: 0.3; filter: blur(2px); }
+                to { clip-path: inset(0 0 0 0); opacity: 1; filter: blur(0); }
+            }
+            .auth-sub::after {
+                content: "";
+                display: inline-block; width: 0.55ch; height: 1em;
+                background: #7bd391; margin-left: 3px; vertical-align: -0.12em;
+                animation: authCaret 0.9s steps(1) infinite, authCaretHide 0.2s 2.6s forwards;
+                box-shadow: 0 0 8px rgba(123,211,145,0.8);
+            }
+            @keyframes authCaret { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+            @keyframes authCaretHide { to { opacity: 0; width: 0; } }
+            .auth-brand-top { animation: authUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+            .auth-title { animation: authUp 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s both; }
+            div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+                will-change: transform;
+            }
+            /* Cursor glow styles (applied no parent pelo JS) */
+            #auth-cursor-glow, #auth-cursor-ring, #auth-cursor-dot { display: none; }
+            .auth-clock {
+                font-variant-numeric: tabular-nums;
+                color: rgba(255,255,255,0.55);
+            }
+            .auth-clock b { color: #a8e8b7; font-weight: 800; }
+            @media (pointer: coarse) {
+                #auth-cursor-glow, #auth-cursor-ring { display: none !important; }
+            }
             </style>
         """, unsafe_allow_html=True)
 
@@ -5140,6 +5249,112 @@ class AuthPage:
             '</div>'
             '<div class="auth-shell"><div class="auth-card">',
             unsafe_allow_html=True,
+        )
+        # FX engine: canvas full-viewport + glow de cursor + botão magnético (máximo JS permitido)
+        components.html(
+            r"""
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden;pointer-events:none!important;}
+  canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block;}
+</style></head><body>
+<canvas id="fx"></canvas>
+<script>
+(function(){
+  var cv=document.getElementById('fx'),ctx=cv.getContext('2d'),W,H,DPR;
+  function size(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=window.innerWidth;H=window.innerHeight;
+    cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  size();window.addEventListener('resize',size);
+  var N=window.innerWidth<700?28:55,ps=[];
+  for(var i=0;i<N;i++){
+    ps.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.8+.6,a:Math.random()*.5+.25,h:Math.random()<.15?1:0});
+  }
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<N;i++){
+      var p=ps[i];p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.2832);
+      ctx.fillStyle=p.h?'rgba(123,211,145,'+p.a+')':'rgba(255,255,255,'+(p.a*.55)+')';
+      ctx.fill();
+    }
+    for(var i=0;i<N;i++)for(var j=i+1;j<N;j++){
+      var a=ps[i],b=ps[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+      if(d2<110*110){
+        var o=(1-Math.sqrt(d2)/110)*.14;
+        ctx.strokeStyle='rgba(123,211,145,'+o+')';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  /* Mesmo origin: efeitos no documento pai */
+  try{
+    var P=window.parent, D=P.document;
+    if(!D.getElementById('auth-cursor-glow')){
+      var g=D.createElement('div');g.id='auth-cursor-glow';
+      g.style.cssText='position:fixed;left:0;top:0;width:380px;height:380px;margin:-190px 0 0 -190px;border-radius:50%;pointer-events:none!important;z-index:2147483000;background:radial-gradient(circle,rgba(77,167,104,.28),rgba(46,204,113,.08) 45%,transparent 70%);filter:blur(6px);mix-blend-mode:screen;opacity:0;transition:opacity .35s ease;will-change:transform;';
+      D.body.appendChild(g);
+      var ring=D.createElement('div');ring.id='auth-cursor-ring';
+      ring.style.cssText='position:fixed;left:0;top:0;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;pointer-events:none!important;z-index:2147483001;border:1.5px solid rgba(168,232,183,.75);box-shadow:0 0 18px rgba(77,167,104,.45),inset 0 0 12px rgba(77,167,104,.25);opacity:0;transition:opacity .3s ease,transform .12s ease;will-change:transform;';
+      D.body.appendChild(ring);
+      var dot=D.createElement('div');dot.id='auth-cursor-dot';
+      dot.style.cssText='position:fixed;left:0;top:0;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none!important;z-index:2147483002;background:#a8e8b7;box-shadow:0 0 10px #4DA768;opacity:0;transition:opacity .3s ease;will-change:transform;';
+      D.body.appendChild(dot);
+      var mx=0,my=0,rx=0,ry=0;
+      D.addEventListener('mousemove',function(e){
+        mx=e.clientX;my=e.clientY;
+        g.style.opacity='1';ring.style.opacity='1';dot.style.opacity='1';
+        g.style.transform='translate3d('+mx+'px,'+my+'px,0)';
+        dot.style.transform='translate3d('+mx+'px,'+my+'px,0)';
+      },{passive:true});
+      D.addEventListener('mouseleave',function(){g.style.opacity='0';ring.style.opacity='0';dot.style.opacity='0';});
+      (function follow(){
+        rx+=(mx-rx)*.16;ry+=(my-ry)*.16;
+        ring.style.transform='translate3d('+rx+'px,'+ry+'px,0)';
+        requestAnimationFrame(follow);
+      })();
+      var styles=D.createElement('style');
+      styles.textContent='#auth-cursor-glow,#auth-cursor-ring,#auth-cursor-dot{display:block!important}@media (pointer:coarse){#auth-cursor-glow,#auth-cursor-ring,#auth-cursor-dot{display:none!important}}';
+      D.head.appendChild(styles);
+    }
+    /* Relógio ao vivo no footer */
+    var tick=function(){
+      var el=D.getElementById('auth-clock');
+      if(!el)return;
+      var n=new Date();
+      var hh=String(n.getHours()).padStart(2,'0');
+      var mm=String(n.getMinutes()).padStart(2,'0');
+      var ss=String(n.getSeconds()).padStart(2,'0');
+      el.innerHTML='v3.0 • #1E7A46 • <b>'+hh+':'+mm+':'+ss+'</b>';
+    };
+    tick();setInterval(tick,1000);
+    /* Botão magnético */
+    var mag=function(){
+      var btn=D.querySelector('[data-testid="stFormSubmitButton"] button');
+      if(!btn||btn.__mag)return;
+      btn.__mag=1;
+      btn.addEventListener('mousemove',function(e){
+        var r=btn.getBoundingClientRect();
+        var x=(e.clientX-r.left-r.width/2)/r.width;
+        var y=(e.clientY-r.top-r.height/2)/r.height;
+        btn.style.transform='translate('+(x*10).toFixed(1)+'px,'+(y*8-3).toFixed(1)+'px) scale(1.02)';
+      });
+      btn.addEventListener('mouseleave',function(){btn.style.transform='';});
+    };
+    mag();setInterval(mag,800);
+  }catch(e){}
+})();
+</script>
+</body></html>
+            """,
+            height=1,
         )
         st.markdown(f"""
             <div class="auth-brand">
@@ -5226,7 +5441,7 @@ class AuthPage:
         st.markdown(f"""
             <div class="auth-foot">
                 <span class="auth-attempts">Tentativas: <b style="color:#fff">{attempts}/5</b> • Protegido por rate-limit</span>
-                <span class="auth-version">v3.0 • #1E7A46</span>
+                <span class="auth-version"><span class="auth-clock" id="auth-clock">v3.0 • #1E7A46</span></span>
             </div>
             <div class="auth-divider"></div>
             <div class="auth-logo-line">
