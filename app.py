@@ -3660,25 +3660,86 @@ class DocsEditorPage:
             DocsEditorPage._manual_link()
             return
 
-        # ── Callback OAuth (retorno do Google com ?code=...) ──
-        params = st.query_params
-        if "code" in params:
-            st.session_state["google_pending_code"] = params["code"]
-            st.session_state["google_pending_state"] = params.get("state", "")
-            st.query_params.clear()
-        if st.session_state.get("google_pending_code"):
-            with st.spinner("Conectando ao Google..."):
+        # ── Callback OAuth (fallback) ──
+        # Handler principal agora em ClinicalManagementApp.run() (global, antes do roteamento).
+        # Este bloco é fallback: se o usuário ainda chegar aqui com ?code=, concluir corretamente.
+        # Ordem: detectar code/error -> validar state -> trocar por tokens -> confirmar salvamento -> limpar query -> rerun.
+        try:
+            def _qp_str_fallback(v):
+                if v is None:
+                    return ""
+                if isinstance(v, (list, tuple)):
+                    return str(v[0]) if v else ""
+                return str(v)
+            qp2 = None
+            try:
+                qp2 = st.query_params
+            except Exception:
+                qp2 = None
+            has_pending = bool(st.session_state.get("google_pending_code"))
+            # Se há ?code na URL e ainda não está em pending, mover para pending (sem limpar ainda)
+            if qp2 is not None and "code" in qp2 and not has_pending:
                 try:
-                    gdocs.exchange_code(
-                        st.session_state.pop("google_pending_code", ""),
-                        expected_state=st.session_state.pop("google_pending_state", ""),
-                    )
-                    st.success("Conta Google conectada!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Falha ao conectar com o Google: {e}")
-                    st.session_state.pop("google_pending_code", None)
-                    st.session_state.pop("google_pending_state", None)
+                    raw_code2 = _qp_str_fallback(qp2.get("code", ""))
+                    raw_state2 = _qp_str_fallback(qp2.get("state", ""))
+                    if raw_code2:
+                        st.session_state["google_pending_code"] = raw_code2
+                        st.session_state["google_pending_state"] = raw_state2
+                        has_pending = True
+                except Exception:
+                    pass
+            # Detectar erro do Google (ex: access_denied, redirect_uri_mismatch)
+            if qp2 is not None and "error" in qp2:
+                err2 = _qp_str_fallback(qp2.get("error", ""))
+                desc2 = _qp_str_fallback(qp2.get("error_description", ""))
+                try:
+                    st.query_params.clear()
+                except Exception:
+                    pass
+                st.error(f"Google retornou erro: {err2} {desc2}".strip())
+                try:
+                    print(f"[oauth editor fallback] error: {err2}")
+                except Exception:
+                    pass
+                has_pending = False
+                st.session_state.pop("google_pending_code", None)
+                st.session_state.pop("google_pending_state", None)
+            if has_pending and st.session_state.get("google_pending_code"):
+                with st.spinner("Conectando ao Google..."):
+                    try:
+                        code_to_use = st.session_state.get("google_pending_code", "")
+                        state_to_use = st.session_state.get("google_pending_state", "")
+                        if not code_to_use or not str(code_to_use).strip():
+                            raise ValueError("Código de autorização vazio.")
+                        creds_tmp = gdocs.exchange_code(str(code_to_use).strip(), expected_state=str(state_to_use or ""))
+                        if not creds_tmp or not getattr(creds_tmp, "token", None):
+                            raise RuntimeError("Google não retornou credenciais válidas.")
+                        # exchange_code já persistiu e validou; double-check no DB
+                        if not db.obter_google_tokens():
+                            raise RuntimeError("Não foi possível salvar a autorização do Google no banco de dados.")
+                        # Só agora limpar query params (após confirmar salvamento)
+                        try:
+                            st.query_params.clear()
+                        except Exception:
+                            pass
+                        st.session_state.pop("google_pending_code", None)
+                        st.session_state.pop("google_pending_state", None)
+                        st.success("Conta Google conectada!")
+                        st.rerun()
+                    except Exception as e:
+                        try:
+                            st.query_params.clear()
+                        except Exception:
+                            pass
+                        st.error(f"Falha ao conectar com o Google: {e}")
+                        try:
+                            print(f"[oauth editor fallback] falha: {type(e).__name__}: {e}")
+                        except Exception:
+                            pass
+                        st.session_state.pop("google_pending_code", None)
+                        st.session_state.pop("google_pending_state", None)
+        except Exception:
+            pass
 
         creds = gdocs.get_credentials()
         if not creds:
@@ -4769,6 +4830,96 @@ class ClinicalManagementApp:
         
         apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg_css)
         apply_plotly_theme(dark_mode=is_dark)
+
+        # ── CALLBACK GLOBAL GOOGLE DOCS OAUTH (corrigido) ──
+        # Deve rodar EM TODA RERUN, antes do roteamento de páginas, para capturar ?code=... independente da página atual.
+        # Ordem correta: detectar code/error -> validar state -> trocar por tokens -> confirmar salvamento -> limpar query_params -> rerun.
+        try:
+            # Helper para extrair string de query_params (compatível list/str)
+            def _qp_str(val):
+                if val is None:
+                    return ""
+                if isinstance(val, (list, tuple)):
+                    return str(val[0]) if val else ""
+                return str(val)
+            qp = None
+            try:
+                qp = st.query_params
+            except Exception:
+                qp = None
+            if qp is not None:
+                # 1) Detectar erros retornados pelo Google (ex: access_denied, redirect_uri_mismatch)
+                if "error" in qp:
+                    err = _qp_str(qp.get("error", ""))
+                    desc = _qp_str(qp.get("error_description", qp.get("error", "")))
+                    # Limpar para não ficar em loop
+                    try:
+                        st.query_params.clear()
+                    except Exception:
+                        pass
+                    st.error(f"Google retornou erro: {err} {desc}".strip())
+                    try:
+                        print(f"[oauth global] error: {err}")
+                    except Exception:
+                        pass
+                elif "code" in qp:
+                    raw_code = _qp_str(qp.get("code", ""))
+                    raw_state = _qp_str(qp.get("state", ""))
+                    if raw_code:
+                        # Evitar reprocessar mesmo code em loop (Streamlit pode rerun)
+                        import hashlib
+                        h = hashlib.sha256(raw_code.encode()).hexdigest()[:16]
+                        last_h = st.session_state.get("google_last_code_hash")
+                        if last_h == h:
+                            try:
+                                st.query_params.clear()
+                            except Exception:
+                                pass
+                        else:
+                            st.session_state["google_last_code_hash"] = h
+                            # Só processar se autenticado (Editor requer login) ou se config presente
+                            try:
+                                import gdocs as _gdocs_global
+                                if _gdocs_global.configurado():
+                                    with st.spinner("Conectando ao Google..."):
+                                        try:
+                                            creds = _gdocs_global.exchange_code(raw_code, expected_state=raw_state)
+                                        except Exception as e:
+                                            # Não limpar pending antes de mostrar erro; limpar query para não loop, mas manter hash para não reprocessar
+                                            try:
+                                                st.query_params.clear()
+                                            except Exception:
+                                                pass
+                                            st.error(f"Falha ao conectar com o Google: {e}")
+                                            try:
+                                                print(f"[oauth global] exchange falhou: {type(e).__name__}: {e}")
+                                            except Exception:
+                                                pass
+                                        else:
+                                            # 8) Confirmar salvamento já feito dentro de exchange_code; só então limpar e rerun
+                                            try:
+                                                st.query_params.clear()
+                                            except Exception:
+                                                pass
+                                            st.success("Conta Google conectada!")
+                                            # Pequeno delay visual antes de rerun
+                                            st.rerun()
+                                else:
+                                    # Não configurado, apenas limpar para não poluir URL
+                                    try:
+                                        st.query_params.clear()
+                                    except Exception:
+                                        pass
+                            except Exception as _e:
+                                try:
+                                    st.query_params.clear()
+                                except Exception:
+                                    pass
+                                st.error(f"Erro no fluxo OAuth: {_e}")
+        except Exception:
+            pass
+        # ── FIM CALLBACK GLOBAL ──
+
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
                 u_name = st.session_state.get('user_name', 'Admin')

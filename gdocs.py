@@ -31,6 +31,15 @@ SECRETS_FILE = BASE_DIR / ".streamlit" / "secrets.toml"
 _DEFAULT_REDIRECT = "http://localhost:8501"
 
 
+def _log(msg: str) -> None:
+    """Log seguro: nunca expor tokens/secrets. Apenas print para logs do servidor."""
+    try:
+        # No Streamlit Cloud os prints vão para logs
+        print(f"[gdocs] {msg}")
+    except Exception:
+        pass
+
+
 def _load_secrets() -> dict:
     try:
         with open(SECRETS_FILE, "rb") as fh:
@@ -58,9 +67,12 @@ def client_secret() -> Optional[str]:
 def redirect_uri() -> str:
     try:
         import streamlit as st
-        return st.secrets.get("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+        # Não adicionar "/" automaticamente; deve ser EXATAMENTE igual ao cadastrado no Google Cloud
+        val = st.secrets.get("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+        return str(val).strip() if val else _DEFAULT_REDIRECT
     except Exception:
-        return _load_secrets().get("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+        val = _load_secrets().get("GOOGLE_REDIRECT_URI", _DEFAULT_REDIRECT)
+        return str(val).strip() if val else _DEFAULT_REDIRECT
 
 
 def configurado() -> bool:
@@ -83,7 +95,8 @@ def _build_flow() -> Flow:
 
 def authorization_url() -> str:
     flow = _build_flow()
-    url, state = flow.authorization_url(access_type="offline", prompt="consent")
+    # access_type offline + prompt consent garante refresh_token no primeiro consentimento
+    url, state = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
     try:
         import streamlit as st
         st.session_state["google_oauth_state"] = state
@@ -93,6 +106,8 @@ def authorization_url() -> str:
 
 
 def exchange_code(code: str, expected_state: str = "") -> Credentials:
+    if not code or not str(code).strip():
+        raise ValueError("Código de autorização vazio.")
     flow = _build_flow()
     state = None
     try:
@@ -100,33 +115,147 @@ def exchange_code(code: str, expected_state: str = "") -> Credentials:
         state = st.session_state.get("google_oauth_state")
     except Exception:
         pass
+    # Validação CSRF: só falha se ambos existirem e forem diferentes
     if expected_state and state and expected_state != state:
-        raise ValueError("Estado de autenticação inválido (proteção CSRF).")
-    flow.fetch_token(code=code)
+        _log("state mismatch")
+        raise ValueError("Estado de autenticação inválido (proteção CSRF). Tente novamente.")
+    try:
+        flow.fetch_token(code=str(code).strip())
+    except Exception as e:
+        # Não expor code/client_secret nos logs
+        _log(f"fetch_token falhou: {type(e).__name__}")
+        # Mensagens específicas para diagnóstico seguro
+        msg = str(e)
+        if "redirect_uri_mismatch" in msg:
+            raise RuntimeError(
+                "redirect_uri_mismatch: o GOOGLE_REDIRECT_URI configurado não confere com o cadastrado no Google Cloud. "
+                f"Verifique se o valor é exatamente '{redirect_uri()}' (sem '/' extra) e se está autorizado em console.cloud.google.com → Credentials → OAuth 2.0 Client ID."
+            ) from e
+        if "invalid_grant" in msg:
+            raise RuntimeError("Código expirado ou já utilizado (invalid_grant). Tente conectar novamente.") from e
+        raise RuntimeError(f"Falha ao trocar código por token: {type(e).__name__}") from e
     creds = flow.credentials
-    if creds and creds.refresh_token:
-        db.salvar_google_tokens(creds.to_json())
+    if not creds:
+        raise RuntimeError("Não foi possível obter credenciais do Google (creds vazias).")
+    if not creds.token:
+        raise RuntimeError("Google não retornou access_token.")
+
+    # ── Preservar refresh_token se Google não enviar um novo ──
+    # Google só envia refresh_token no primeiro consentimento ou com prompt=consent.
+    # Se vier vazio, reaproveitar o já salvo no banco.
+    if not creds.refresh_token:
+        raw_old = db.obter_google_tokens()
+        if raw_old:
+            try:
+                old_data = json.loads(raw_old)
+                old_rt = old_data.get("refresh_token")
+                if old_rt:
+                    creds.refresh_token = old_rt
+                    _log("refresh_token preservado do DB")
+                else:
+                    _log("aviso: novo creds sem refresh_token e DB também sem refresh_token")
+            except Exception:
+                _log("aviso: falha ao ler old token para preservar refresh_token")
+        else:
+            _log("aviso: novo creds sem refresh_token e nenhum token antigo no DB")
+
+    # Mesmo sem refresh_token ainda salvamos o token (access_token pode ser usado até expirar),
+    # mas se tivermos refresh_token, garantimos persistência de longa duração.
+    try:
+        token_json = creds.to_json()
+    except Exception as e:
+        _log(f"to_json falhou: {type(e).__name__}")
+        raise RuntimeError("Falha ao serializar credenciais.") from e
+
+    # Validar que o JSON contém ao menos token
+    try:
+        data_check = json.loads(token_json)
+        if not data_check.get("token"):
+            raise ValueError("JSON sem access_token")
+    except Exception as e:
+        _log(f"token_json inválido: {type(e).__name__}")
+        raise RuntimeError("Token JSON inválido.") from e
+
+    # Persistir no PostgreSQL e CONFIRMAR salvamento
+    try:
+        saved = db.salvar_google_tokens(token_json)
+    except Exception as e:
+        _log(f"salvar_google_tokens exception: {type(e).__name__}")
+        raise RuntimeError("Não foi possível salvar a autorização do Google no banco de dados.") from e
+    if not saved:
+        _log("salvar_google_tokens retornou False")
+        raise RuntimeError("Não foi possível salvar a autorização do Google no banco de dados (persistência falhou).")
+
+    # Cache em sessão para uso imediato (evita leitura do DB no mesmo rerun)
+    try:
+        import streamlit as st
+        st.session_state["google_creds"] = creds
+        # Limpar state após uso bem-sucedido (single-use)
+        st.session_state.pop("google_oauth_state", None)
+    except Exception:
+        pass
+    _log("exchange_code sucesso")
     return creds
 
 
-def _save(creds: Credentials) -> None:
+def _save(creds: Credentials) -> bool:
+    """Persiste credenciais após refresh. Preserva refresh_token se necessário. Retorna bool sucesso."""
     try:
-        if creds.refresh_token:
-            db.salvar_google_tokens(creds.to_json())
-    except Exception:
-        pass
+        if not creds:
+            return False
+        # Se creds.token vazio, não salvar
+        if not getattr(creds, "token", None):
+            _log("_save: token vazio, ignorando")
+            return False
+        # Preservar refresh_token se creds.refresh_token estiver vazio mas DB tem um
+        if not creds.refresh_token:
+            raw_old = db.obter_google_tokens()
+            if raw_old:
+                try:
+                    old_data = json.loads(raw_old)
+                    old_rt = old_data.get("refresh_token")
+                    if old_rt:
+                        creds.refresh_token = old_rt
+                        _log("_save: refresh_token preservado")
+                except Exception:
+                    pass
+        token_json = creds.to_json()
+        ok = db.salvar_google_tokens(token_json)
+        if not ok:
+            _log("_save: salvar_google_tokens retornou False")
+            return False
+        return True
+    except Exception as e:
+        _log(f"_save falhou: {type(e).__name__}")
+        return False
 
 
 def get_credentials() -> Optional[Credentials]:
     """Devolve credenciais válidas (da sessão ou do banco), com refresh automático."""
+    # 1) Tentar cache em sessão
     try:
         import streamlit as st
         cached = st.session_state.get("google_creds")
         if isinstance(cached, Credentials):
+            # Se não expirado, retorna direto
+            if not getattr(cached, "expired", False):
+                return cached
+            # Se expirado e tem refresh_token, tenta refresh
             if cached.expired and cached.refresh_token:
-                cached.refresh(Request())
-                _save(cached)
-            return cached
+                try:
+                    cached.refresh(Request())
+                    _save(cached)
+                    return cached
+                except Exception as e:
+                    _log(f"refresh cache falhou: {type(e).__name__}")
+                    # Fallback: tentar carregar do DB (pode ter token mais recente)
+                    pass
+            # Se expirado sem refresh_token, não é utilizável -> cair para DB
+            elif cached.expired and not cached.refresh_token:
+                _log("cached expirado sem refresh_token, buscando DB")
+                pass
+            else:
+                return cached
     except Exception:
         pass
 
@@ -135,14 +264,36 @@ def get_credentials() -> Optional[Credentials]:
         return None
     try:
         creds = Credentials.from_authorized_user_info(json.loads(raw), SCOPES)
-    except Exception:
+    except Exception as e:
+        _log(f"from_authorized_user_info falhou: {type(e).__name__}")
         return None
+    # Se credencial já é válida (não expirada), retorna
+    if not getattr(creds, "expired", False) and creds.token:
+        try:
+            import streamlit as st
+            st.session_state["google_creds"] = creds
+        except Exception:
+            pass
+        return creds
+    # Se expirada e tem refresh_token, tenta refresh
     if creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
             _save(creds)
-        except Exception:
+        except Exception as e:
+            _log(f"refresh DB token falhou: {type(e).__name__}")
             return None
+        try:
+            import streamlit as st
+            st.session_state["google_creds"] = creds
+        except Exception:
+            pass
+        return creds
+    # Se expirada sem refresh_token, não há como renovar -> creds inválida
+    if creds.expired and not creds.refresh_token:
+        _log("DB token expirado sem refresh_token - reautorização necessária")
+        return None
+    # Caso token ainda válido mesmo sem refresh (access_token recente), retorna
     try:
         import streamlit as st
         st.session_state["google_creds"] = creds
@@ -155,9 +306,16 @@ def disconnect() -> None:
     try:
         import streamlit as st
         st.session_state.pop("google_creds", None)
+        st.session_state.pop("google_oauth_state", None)
+        st.session_state.pop("google_last_code_hash", None)
     except Exception:
         pass
-    db.limpar_google_tokens()
+    try:
+        ok = db.limpar_google_tokens()
+        if not ok:
+            _log("disconnect: limpar_google_tokens retornou False (talvez já vazio)")
+    except Exception as e:
+        _log(f"disconnect falhou: {type(e).__name__}")
 
 
 def account_info() -> str:
@@ -170,7 +328,8 @@ def account_info() -> str:
         about = drive.about().get(fields="user").execute()
         user = about.get("user", {})
         return user.get("emailAddress") or user.get("displayName") or ""
-    except Exception:
+    except Exception as e:
+        _log(f"account_info falhou: {type(e).__name__}")
         return ""
 
 

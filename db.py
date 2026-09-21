@@ -2703,8 +2703,47 @@ def delete_preference(key: str) -> bool:
 
 
 def salvar_google_tokens(token_json: str) -> bool:
-	"""Persiste o JSON de tokens OAuth do Google (refresh token)."""
+	"""Persiste o JSON de tokens OAuth do Google (refresh token).
+	Preserva refresh_token existente se o novo JSON vier sem ele (Google nem sempre reenvia).
+	Nunca loga o conteúdo do token.
+	"""
 	try:
+		if not token_json or not isinstance(token_json, str):
+			print("[db] salvar_google_tokens: token_json vazio ou inválido")
+			return False
+		# Validar JSON e preservar refresh_token se necessário
+		try:
+			new_data = json.loads(token_json)
+		except Exception as e:
+			print(f"[db] salvar_google_tokens: JSON inválido: {type(e).__name__}")
+			return False
+		if not isinstance(new_data, dict) or not new_data.get("token"):
+			print("[db] salvar_google_tokens: JSON sem access_token")
+			return False
+		# Se novo JSON não tem refresh_token, tentar reaproveitar do DB
+		if not new_data.get("refresh_token"):
+			try:
+				old_raw = None
+				try:
+					with _connection_scope(commit=False) as _conn:
+						_cur = _get_cursor(_conn)
+						_cur.execute("SELECT token_json FROM google_oauth WHERE id = 1")
+						_row = _cur.fetchone()
+						old_raw = _row["token_json"] if _row else None
+				except Exception:
+					old_raw = None
+				if old_raw:
+					try:
+						old_data = json.loads(old_raw)
+						old_rt = old_data.get("refresh_token")
+						if old_rt:
+							new_data["refresh_token"] = old_rt
+							token_json = json.dumps(new_data)
+							print("[db] salvar_google_tokens: refresh_token preservado do DB")
+					except Exception:
+						pass
+			except Exception:
+				pass
 		with _connection_scope() as conn:
 			cur = _get_cursor(conn)
 			cur.execute(
@@ -2717,7 +2756,12 @@ def salvar_google_tokens(token_json: str) -> bool:
 				(token_json,),
 			)
 		return True
-	except Exception:
+	except Exception as e:
+		# Não expor token; apenas tipo do erro
+		try:
+			print(f"[db] salvar_google_tokens falhou: {type(e).__name__}")
+		except Exception:
+			pass
 		return False
 
 
@@ -2729,7 +2773,11 @@ def obter_google_tokens() -> Optional[str]:
 			cur.execute("SELECT token_json FROM google_oauth WHERE id = 1")
 			row = cur.fetchone()
 			return row["token_json"] if row else None
-	except Exception:
+	except Exception as e:
+		try:
+			print(f"[db] obter_google_tokens falhou: {type(e).__name__}")
+		except Exception:
+			pass
 		return None
 
 
@@ -2739,8 +2787,13 @@ def limpar_google_tokens() -> bool:
 		with _connection_scope() as conn:
 			cur = _get_cursor(conn)
 			cur.execute("DELETE FROM google_oauth WHERE id = 1")
-			return cur.rowcount > 0
-	except Exception:
+			# True mesmo se já estava vazio (idempotente), mas manter rowcount para compat
+			return True if cur.rowcount >= 0 else True
+	except Exception as e:
+		try:
+			print(f"[db] limpar_google_tokens falhou: {type(e).__name__}")
+		except Exception:
+			pass
 		return False
 
 
