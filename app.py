@@ -3705,6 +3705,8 @@ class DocsEditorPage:
                 st.session_state.pop("google_pending_code", None)
                 st.session_state.pop("google_pending_state", None)
             if has_pending and st.session_state.get("google_pending_code"):
+                _fb_success = False
+                _fb_error = None
                 with st.spinner("Conectando ao Google..."):
                     try:
                         code_to_use = st.session_state.get("google_pending_code", "")
@@ -3714,30 +3716,32 @@ class DocsEditorPage:
                         creds_tmp = gdocs.exchange_code(str(code_to_use).strip(), expected_state=str(state_to_use or ""))
                         if not creds_tmp or not getattr(creds_tmp, "token", None):
                             raise RuntimeError("Google não retornou credenciais válidas.")
-                        # exchange_code já persistiu e validou; double-check no DB
                         if not db.obter_google_tokens():
                             raise RuntimeError("Não foi possível salvar a autorização do Google no banco de dados.")
-                        # Só agora limpar query params (após confirmar salvamento)
-                        try:
-                            st.query_params.clear()
-                        except Exception:
-                            pass
-                        st.session_state.pop("google_pending_code", None)
-                        st.session_state.pop("google_pending_state", None)
-                        st.success("Conta Google conectada!")
-                        st.rerun()
+                        _fb_success = True
                     except Exception as e:
-                        try:
-                            st.query_params.clear()
-                        except Exception:
-                            pass
-                        st.error(f"Falha ao conectar com o Google: {e}")
-                        try:
-                            print(f"[oauth editor fallback] falha: {type(e).__name__}: {e}")
-                        except Exception:
-                            pass
-                        st.session_state.pop("google_pending_code", None)
-                        st.session_state.pop("google_pending_state", None)
+                        _fb_error = e
+                if _fb_success:
+                    try:
+                        st.query_params.clear()
+                    except Exception:
+                        pass
+                    st.session_state.pop("google_pending_code", None)
+                    st.session_state.pop("google_pending_state", None)
+                    st.toast("Conta Google conectada!", icon="✅")
+                    st.rerun()
+                elif _fb_error is not None:
+                    try:
+                        st.query_params.clear()
+                    except Exception:
+                        pass
+                    st.error(f"Falha ao conectar com o Google: {_fb_error}")
+                    try:
+                        print(f"[oauth editor fallback] falha: {type(_fb_error).__name__}: {_fb_error}")
+                    except Exception:
+                        pass
+                    st.session_state.pop("google_pending_code", None)
+                    st.session_state.pop("google_pending_state", None)
         except Exception:
             pass
 
@@ -4881,29 +4885,32 @@ class ClinicalManagementApp:
                             try:
                                 import gdocs as _gdocs_global
                                 if _gdocs_global.configurado():
+                                    _oauth_success = False
+                                    _oauth_error = None
                                     with st.spinner("Conectando ao Google..."):
                                         try:
                                             creds = _gdocs_global.exchange_code(raw_code, expected_state=raw_state)
+                                            _oauth_success = True
                                         except Exception as e:
-                                            # Não limpar pending antes de mostrar erro; limpar query para não loop, mas manter hash para não reprocessar
-                                            try:
-                                                st.query_params.clear()
-                                            except Exception:
-                                                pass
-                                            st.error(f"Falha ao conectar com o Google: {e}")
-                                            try:
-                                                print(f"[oauth global] exchange falhou: {type(e).__name__}: {e}")
-                                            except Exception:
-                                                pass
-                                        else:
-                                            # 8) Confirmar salvamento já feito dentro de exchange_code; só então limpar e rerun
-                                            try:
-                                                st.query_params.clear()
-                                            except Exception:
-                                                pass
-                                            st.success("Conta Google conectada!")
-                                            # Pequeno delay visual antes de rerun
-                                            st.rerun()
+                                            _oauth_error = e
+                                    # Fora do spinner para evitar removeChild (bug frontend)
+                                    if _oauth_success:
+                                        try:
+                                            st.query_params.clear()
+                                        except Exception:
+                                            pass
+                                        st.toast("Conta Google conectada!", icon="✅")
+                                        st.rerun()
+                                    elif _oauth_error is not None:
+                                        try:
+                                            st.query_params.clear()
+                                        except Exception:
+                                            pass
+                                        st.error(f"Falha ao conectar com o Google: {_oauth_error}")
+                                        try:
+                                            print(f"[oauth global] exchange falhou: {type(_oauth_error).__name__}: {_oauth_error}")
+                                        except Exception:
+                                            pass
                                 else:
                                     # Não configurado, apenas limpar para não poluir URL
                                     try:
