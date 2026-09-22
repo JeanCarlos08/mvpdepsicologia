@@ -376,23 +376,31 @@ def display_cards(cards, style="default"):
 
 
 def render_page_header(title, subtitle, inverse=False):
+    acc = st.session_state.get('accent_color', PRIMARY_ACCENT)
+    now = datetime.now()
+    data_pt = now.strftime("%d/%m/%Y")
+    hora_pt = now.strftime("%H:%M")
     st.markdown(
-        f"""<div class="page-header">
+        f"""<div class="page-header page-header-premium">
     <div class="page-header-copy">
-        <div class="page-header-kicker">Gestão Clínica</div>
+        <div class="page-header-kicker"><span class="k-dot"></span> Gestão Clínica</div>
         <h1>{title}</h1>
         <p>{subtitle}</p>
+    </div>
+    <div class="page-header-meta">
+        <span class="ph-pill">● Online</span>
+        <span class="ph-pill ph-time">{data_pt} · {hora_pt}</span>
     </div>
 </div>""",
         unsafe_allow_html=True
     )
-    st.divider()
+    st.markdown('<div class="page-header-rule"></div>', unsafe_allow_html=True)
 
 def section_title(emoji, text, sub=None, accent=None):
     acc = accent or st.session_state.get('accent_color', PRIMARY_ACCENT)
     sub_html = f"<div style='font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;margin-top:4px;letter-spacing:0.2px;'>{sub}</div>" if sub else ""
     st.markdown(
-        f"""<div style='display:flex;align-items:center;gap:12px;margin:28px 0 14px 0;'>
+        f"""<div class="sec-title" style='display:flex;align-items:center;gap:12px;margin:28px 0 14px 0;'>
     <div style='width:38px;height:38px;border-radius:12px;flex-shrink:0;
         background:linear-gradient(135deg,{acc},{acc}99);
         display:flex;align-items:center;justify-content:center;font-size:1.1rem;
@@ -853,6 +861,315 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
 
         </style>''', unsafe_allow_html=True)
+
+
+def apply_max_ui_css(accent="#4DA768", dark_mode=False):
+    """CSS máximo compartilhado — eleva TODAS as páginas autenticadas ao teto do Streamlit."""
+    a = accent
+    st.markdown(f"""
+<style>
+/* ═════════ MAX UI — teto em todas as páginas ═════════ */
+@keyframes phIn {{ from {{ opacity:0; transform: translateY(14px); filter: blur(4px); }} to {{ opacity:1; transform:none; filter:none; }} }}
+@keyframes secIn {{ from {{ opacity:0; transform: translateX(-10px); }} to {{ opacity:1; transform:none; }} }}
+@keyframes riseIn {{ from {{ opacity:0; transform: translateY(12px); }} to {{ opacity:1; transform:none; }} }}
+@keyframes pulseDot {{ 0%,100% {{ box-shadow: 0 0 0 0 rgba(74,222,128,0.55); }} 60% {{ box-shadow: 0 0 0 7px rgba(74,222,128,0); }} }}
+@keyframes shimmer {{ 0% {{ background-position: 0% 50%; }} 100% {{ background-position: 200% 50%; }} }}
+@keyframes borderRun {{ from {{ --mx-angle: 0deg; }} to {{ --mx-angle: 360deg; }} }}
+@property --mx-angle {{ syntax: '<angle>'; inherits: false; initial-value: 0deg; }}
+
+/* Chrome */
+[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer {{ display: none !important; }}
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ opacity: 0.35 !important; }}
+::selection {{ background: {a}66; color: #fff; }}
+::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.22); }}
+::-webkit-scrollbar-thumb {{ background: linear-gradient(180deg, {a}, {a}aa); border-radius: 99px; border: 2px solid rgba(0,0,0,0.22); }}
+::-webkit-scrollbar-thumb:hover {{ filter: brightness(1.12); }}
+
+/* Header de página — glass premium */
+.page-header-premium {{
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
+  margin: 4px 0 0; padding: 20px 22px 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.14);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  animation: phIn 0.55s cubic-bezier(0.16,1,0.3,1) both;
+  overflow: hidden;
+}}
+.page-header-premium::after {{
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(600px 120px at 0% 0%, {a}33, transparent 60%);
+  pointer-events: none;
+}}
+.page-header-premium .page-header-copy {{ position: relative; z-index: 1; min-width: 0; }}
+.page-header-premium h1 {{ margin: 0 !important; }}
+.page-header-premium p {{ margin-top: 6px !important; }}
+.page-header-kicker {{ display: inline-flex; align-items: center; gap: 8px; }}
+.k-dot {{
+  width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
+  animation: pulseDot 2s ease-out infinite;
+}}
+.page-header-meta {{ display: flex; flex-wrap: wrap; gap: 8px; position: relative; z-index: 1; }}
+.ph-pill {{
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: 999px;
+  background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.82); font: 700 0.68rem 'Plus Jakarta Sans',sans-serif;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}}
+.ph-pill:first-child {{ color: #b7f0c6; border-color: rgba(74,222,128,0.35); }}
+.page-header-rule {{
+  height: 3px; margin: 14px 0 18px; border-radius: 99px;
+  background: linear-gradient(90deg, {a}, {a}00 70%);
+  box-shadow: 0 0 16px {a}55;
+  animation: phIn 0.6s 0.1s cubic-bezier(0.16,1,0.3,1) both;
+}}
+.sec-title {{ animation: secIn 0.5s cubic-bezier(0.16,1,0.3,1) both; }}
+
+/* KPI / metric glass max */
+.stMetric {{
+  animation: riseIn 0.55s cubic-bezier(0.16,1,0.3,1) both !important;
+  background: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04)) !important;
+  border: 1.5px solid rgba(255,255,255,0.16) !important;
+  border-radius: 22px !important;
+  position: relative; overflow: hidden !important;
+}}
+.stMetric::before {{
+  content: ""; position: absolute; inset: 0; padding: 1.2px;
+  border-radius: 22px;
+  background: conic-gradient(from var(--mx-angle), transparent 10%, {a}88 22%, transparent 40%, transparent 70%, rgba(46,204,113,0.45) 82%, transparent 94%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.7; pointer-events: none;
+  animation: borderRun 8s linear infinite;
+}}
+.metric-card-minimal {{ animation: riseIn 0.55s cubic-bezier(0.16,1,0.3,1) both !important; }}
+[data-testid="stMetricValue"] {{ background: linear-gradient(180deg, #fff 20%, rgba(255,255,255,0.78)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }}
+
+/* Botões max */
+.stButton > button, .stDownloadButton > button {{
+  position: relative; overflow: hidden !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.14), inset 0 1.5px 0 rgba(255,255,255,0.22) !important;
+  font-weight: 800 !important; letter-spacing: 0.35px !important;
+}}
+.stButton > button::after, .stDownloadButton > button::after {{
+  content: ""; position: absolute; top: -40%; left: -50%; width: 40%; height: 180%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+  transform: skewX(-18deg) translateX(-120%);
+  transition: transform 0.55s ease;
+}}
+.stButton > button:hover::after, .stDownloadButton > button:hover::after {{ transform: skewX(-18deg) translateX(320%); }}
+.stButton > button:hover {{
+  box-shadow: 0 16px 36px rgba(0,0,0,0.18), 0 0 0 1px {a}55, inset 0 1.5px 0 rgba(255,255,255,0.28) !important;
+  filter: brightness(1.05) saturate(1.05);
+}}
+.stButton > button:active {{ transform: translateY(0) scale(0.975) !important; }}
+.stButton > button[kind="secondary"], .stButton > button[kind="secondary"] {{
+  background: rgba(255,255,255,0.08) !important;
+  border: 1.5px solid rgba(255,255,255,0.16) !important;
+  color: rgba(255,255,255,0.92) !important;
+}}
+.stButton > button[kind="secondary"]:hover {{
+  background: rgba(255,255,255,0.13) !important; border-color: rgba(255,255,255,0.26) !important;
+}}
+.stButton > button[kind="primary"], .stDownloadButton > button {{
+  background: linear-gradient(135deg, {a} 0%, {a}dd 45%, #2ecc71 100%) !important;
+  background-size: 170% 170% !important;
+}}
+.stButton > button[kind="primary"]:hover {{ animation: shimmer 1.4s linear infinite; }}
+
+/* Inputs max */
+.stTextInput input, .stTextArea textarea, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div {{
+  background: rgba(255,255,255,0.07) !important;
+  border: 1.5px solid rgba(255,255,255,0.14) !important;
+  border-radius: 14px !important;
+  transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.12) !important;
+}}
+.stTextInput input:hover, .stTextArea textarea:hover {{ border-color: rgba(255,255,255,0.24) !important; transform: translateY(-1px); }}
+.stTextInput input:focus, .stTextArea textarea:focus, .stNumberInput input:focus {{
+  border-color: {a} !important;
+  box-shadow: 0 0 0 4px {a}33, inset 0 2px 6px rgba(0,0,0,0.12) !important;
+  outline: none !important;
+}}
+.stTextInput input:-webkit-autofill, .stNumberInput input:-webkit-autofill {{
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(28,48,38,0.95) inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}}
+.stSelectbox [data-baseweb="select"] > div:focus-within {{
+  border-color: {a} !important; box-shadow: 0 0 0 4px {a}33 !important;
+}}
+div[data-baseweb="dropdown"] {{
+  background: rgba(20,28,24,0.98) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.35) !important;
+}}
+div[role="listbox"] li {{ border-radius: 10px !important; margin: 2px 6px !important; }}
+div[role="listbox"] li:hover {{ background: {a}33 !important; }}
+div[role="listbox"] li[aria-selected="true"] {{ background: {a}55 !important; font-weight: 700 !important; }}
+
+/* Tabs max */
+.stTabs [data-baseweb="tab-list"] {{ animation: riseIn 0.5s ease both; box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }}
+.stTabs [data-baseweb="tab"] {{ transition: all 0.22s ease !important; }}
+.stTabs [data-baseweb="tab"]:hover {{ background: rgba(255,255,255,0.07) !important; color: #fff !important; }}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {{
+  background: linear-gradient(135deg, {a}, #2ecc71) !important;
+  box-shadow: 0 8px 20px {a}55, inset 0 1px 0 rgba(255,255,255,0.25) !important;
+  transform: translateY(-1px);
+}}
+.stTabs [data-baseweb="tab-highlight"] {{ background: transparent !important; }}
+.stTabs [data-baseweb="tab-border"] {{ background: transparent !important; }}
+
+/* Expander / accordion */
+.stExpander {{
+  background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)) !important;
+  border: 1.5px solid rgba(255,255,255,0.12) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+  overflow: hidden;
+}}
+.stExpander:hover {{ border-color: {a}66 !important; box-shadow: 0 14px 34px rgba(0,0,0,0.16), 0 0 0 1px {a}33 !important; }}
+.stExpander summary {{ font-weight: 700 !important; letter-spacing: 0.2px; }}
+
+/* Alerts premium */
+div[data-testid="stAlert"] {{
+  border-radius: 16px !important;
+  border-width: 1.5px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18) !important;
+  animation: riseIn 0.4s ease both !important;
+  font-weight: 600 !important;
+}}
+div[data-testid="stSuccess"], div[data-testid="stSuccess"] div {{ color: #0d2a18 !important; }}
+div[data-testid="stError"] {{ background: rgba(120,20,30,0.88) !important; color: #ffd0d6 !important; }}
+div[data-testid="stWarning"] {{ background: rgba(90,70,10,0.88) !important; color: #ffe9b0 !important; }}
+div[data-testid="stInfo"] {{ background: rgba(20,50,70,0.88) !important; color: #d7f0ff !important; }}
+div[data-testid="stToast"] {{ border-radius: 14px !important; backdrop-filter: blur(14px) !important; }}
+
+/* Forms / panels glass */
+div[data-testid="stForm"] {{
+  background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025)) !important;
+  border: 1.5px solid rgba(255,255,255,0.12) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  backdrop-filter: blur(16px) !important;
+}}
+.chart-panel {{
+  background: linear-gradient(160deg, rgba(0,0,0,0.28), rgba(0,0,0,0.14)) !important;
+  border: 1.5px solid rgba(255,255,255,0.1) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  animation: riseIn 0.55s ease both;
+}}
+.dashboard-filter {{
+  background: rgba(0,0,0,0.2) !important;
+  border: 1.5px solid rgba(255,255,255,0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}}
+.ai-insight-card {{ animation: riseIn 0.55s ease both; border-radius: 20px !important; }}
+
+/* Tables / dataframe */
+.stDataFrame, [data-testid="stDataFrame"] {{
+  border-radius: 18px !important;
+  border: 1.5px solid rgba(255,255,255,0.12) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.16) !important;
+  overflow: hidden !important;
+}}
+[data-testid="stTable"] table {{ border-collapse: separate; border-spacing: 0; width: 100%; }}
+[data-testid="stTable"] thead th {{
+  background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04)) !important;
+  text-transform: uppercase; letter-spacing: 0.8px; font-size: 0.7rem !important;
+  color: rgba(255,255,255,0.78) !important; border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+}}
+[data-testid="stTable"] tbody tr {{ transition: background 0.18s ease; }}
+[data-testid="stTable"] tbody tr:hover {{ background: {a}22 !important; }}
+[data-testid="stTable"] tbody tr:nth-child(even) {{ background: rgba(255,255,255,0.025); }}
+[data-testid="stTable"] tbody tr:nth-child(even):hover {{ background: {a}22 !important; }}
+
+/* Plotly charts glass */
+.stPlotlyChart, .stPlotlyChart > div, [data-testid="stPlotlyChart"] {{
+  border-radius: 18px !important;
+  border: 1.5px solid rgba(255,255,255,0.1) !important;
+  background: rgba(0,0,0,0.18) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.14) !important;
+  overflow: hidden !important;
+}}
+
+/* File uploader */
+[data-testid="stFileUploaderDropzone"] {{
+  border: 1.5px dashed rgba(255,255,255,0.22) !important;
+  border-radius: 18px !important;
+  background: rgba(255,255,255,0.04) !important;
+  transition: border-color 0.25s ease, background 0.25s ease !important;
+}}
+[data-testid="stFileUploaderDropzone"]:hover {{
+  border-color: {a} !important;
+  background: {a}18 !important;
+  box-shadow: 0 0 0 4px {a}22 !important;
+}}
+
+/* Progress / sliders */
+[data-testid="stProgress"] > div, div[role="progressbar"] > div {{
+  background: linear-gradient(90deg, {a}, #2ecc71) !important;
+  border-radius: 99px !important;
+  box-shadow: 0 0 12px {a}66 !important;
+}}
+.stSlider div[data-baseweb="slider"] {{ color: {a} !important; }}
+
+/* Dividers / captions / code */
+hr {{ background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent) !important; }}
+.stCaption, caption {{ color: rgba(255,255,255,0.55) !important; }}
+.stCodeBlock, .stMarkdown code, pre {{
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  background: rgba(0,0,0,0.35) !important;
+}}
+
+/* Sidebar extras (nav já estilizado no CSS base) */
+section[data-testid="stSidebar"] > div {{
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 28px rgba(0,0,0,0.18) !important;
+}}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label {{ animation: riseIn 0.4s ease both; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1) {{ animation-delay: .04s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(2) {{ animation-delay: .08s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(3) {{ animation-delay: .12s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(4) {{ animation-delay: .16s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(5) {{ animation-delay: .20s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(6) {{ animation-delay: .24s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(7) {{ animation-delay: .28s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(8) {{ animation-delay: .32s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(9) {{ animation-delay: .36s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10) {{ animation-delay: .40s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(11) {{ animation-delay: .44s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(12) {{ animation-delay: .48s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(13) {{ animation-delay: .52s; }}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(14) {{ animation-delay: .56s; }}
+
+/* Main entrance on every page */
+[data-testid="stMain"] .block-container, .main .block-container {{
+  animation: phIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}}
+
+/* Responsive header */
+@media (max-width: 720px) {{
+  .page-header-premium {{ flex-direction: column; align-items: flex-start; padding: 16px; border-radius: 18px; }}
+  .page-header-meta {{ width: 100%; }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+  *, *::before, *::after {{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }}
+}}
+</style>
+""", unsafe_allow_html=True)
+
 
 def apply_plotly_theme(dark_mode=False):
     pio.templates.default = "plotly_dark" if dark_mode else "plotly_white"
@@ -5513,6 +5830,7 @@ class ClinicalManagementApp:
         card_bg_css = "rgba(255, 255, 255, 0.15)" if card_bg_hex.lower() == "#ffffff" else card_bg_hex
         
         apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg_css)
+        apply_max_ui_css(accent=accent, dark_mode=is_dark)
         apply_plotly_theme(dark_mode=is_dark)
 
         # ── CALLBACK GLOBAL GOOGLE DOCS OAUTH (corrigido) ──
@@ -5710,11 +6028,16 @@ class ClinicalManagementApp:
                 pages = {
                     "⌂ Dashboard": "dashboard",
                     "⦿ Atendimentos & Pacientes": "appointments",
+                    "📅 Agenda": "agenda",
+                    "🏢 Empresas": "companies",
                     "📋 Docs Clínicos": "clinical_docs",
                     "📑 Laudos": "laudos",
-                    "🛠️ Extras": "extras",
-                    "☰ Relatórios": "reports",
                     "📝 Editor Docs": "docs_editor",
+                    "🤖 IA": "ia",
+                    "💰 Financeiro": "finance",
+                    "🔐 Segurança & LGPD": "security",
+                    "☰ Relatórios": "reports",
+                    "🛠️ Extras": "extras",
                     "↑ Upload": "upload",
                     "⚙ Configurações": "settings"
                 }
