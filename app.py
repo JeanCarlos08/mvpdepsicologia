@@ -1454,20 +1454,55 @@ class DashboardPage:
             with col_p2:
                 if contagem_empresas:
                     st.markdown("#### 🏢 Atendimentos por Empresa")
-                    empresa_df = pd.DataFrame(sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
-                                              columns=["Empresa", "Atendimentos"]).head(10)
-                    fig = px.bar(empresa_df.sort_values("Atendimentos"), x="Atendimentos", y="Empresa",
-                                 orientation="h", color="Atendimentos",
-                                 color_continuous_scale=["#B7E8BF", "#24753D"])
-                    fig.update_traces(hovertemplate="%{y}<br>%{x} atendimentos<extra></extra>")
-                    fig.update_layout(showlegend=False, coloraxis_showscale=False, height=350,
-                                      margin=dict(l=8, r=18, t=12, b=12),
-                                      xaxis=dict(title=None, showgrid=True, gridcolor="rgba(255,255,255,0.10)",
-                                                 zeroline=False, tickfont=dict(color="rgba(255,255,255,0.7)")),
-                                      yaxis=dict(title=None, tickfont=dict(color="#FFFFFF")),
-                                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                      font=dict(color="#FFFFFF", family="Plus Jakarta Sans"))
+                    empresa_df = pd.DataFrame(
+                        sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
+                        columns=["Empresa", "Atendimentos"],
+                    ).head(10)
+                    _tot_emp = int(empresa_df["Atendimentos"].sum())
+                    _n_emp = len(empresa_df)
+                    # Pizza premium — fatia maior destacada + paleta verde clínica
+                    fig = px.pie(
+                        empresa_df,
+                        names="Empresa",
+                        values="Atendimentos",
+                        hole=0.0,
+                        color_discrete_sequence=[
+                            "#0F3D24", "#164B2A", "#1E7A46", "#24753D", "#379451",
+                            "#4DA768", "#58B86A", "#7BCF8A", "#8DDB98", "#B7E8BF",
+                        ],
+                    )
+                    fig.update_traces(
+                        textposition="inside",
+                        textinfo="percent+label",
+                        textfont=dict(size=11, color="#FFFFFF", family="Plus Jakarta Sans"),
+                        marker=dict(line=dict(color="rgba(255,255,255,0.22)", width=2)),
+                        pull=[0.08 if i == 0 else 0.02 for i in range(_n_emp)],
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "%{value} atendimentos · %{percent}<extra></extra>"
+                        ),
+                        sort=False,
+                        direction="clockwise",
+                    )
+                    fig.update_layout(
+                        showlegend=True,
+                        height=360,
+                        margin=dict(l=8, r=8, t=16, b=8),
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=-0.22,
+                            xanchor="center",
+                            x=0.5,
+                            font=dict(size=11, color="rgba(255,255,255,0.85)"),
+                            bgcolor="rgba(0,0,0,0)",
+                        ),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color="#FFFFFF", family="Plus Jakarta Sans"),
+                    )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    st.caption(f"Top {_n_emp} empresas no período · total {_tot_emp} atendimentos")
 
             if contagem_empresas:
                 with st.expander("🏆 Ranking por Empresa", expanded=False):
@@ -4786,10 +4821,48 @@ class ReportsPage:
                 ).reset_index().sort_values("Atendimentos", ascending=False)
                 st.dataframe(grupo, use_container_width=True, hide_index=True)
                 if not grupo.empty:
-                    fig_e = px.bar(grupo, x="Empresa", y="Atendimentos", title="Atendimentos por Empresa",
-                                   color="Atendimentos", color_continuous_scale="greens")
-                    fig_e.update_layout(height=420, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                    st.plotly_chart(fig_e, use_container_width=True)
+                    # Pizza premium — Atendimentos por Empresa (Relatórios)
+                    g_pie = grupo.head(12).copy()
+                    _tot_r = int(g_pie["Atendimentos"].sum())
+                    fig_e = px.pie(
+                        g_pie,
+                        names="Empresa",
+                        values="Atendimentos",
+                        hole=0.0,
+                        title="Atendimentos por Empresa",
+                        color_discrete_sequence=[
+                            "#0F3D24", "#164B2A", "#1E7A46", "#24753D", "#379451",
+                            "#4DA768", "#58B86A", "#7BCF8A", "#8DDB98", "#B7E8BF",
+                            "#D4F0DA", "#EAF8ED",
+                        ],
+                    )
+                    fig_e.update_traces(
+                        textposition="inside",
+                        textinfo="percent+label",
+                        textfont=dict(size=11, color="#FFFFFF", family="Plus Jakarta Sans"),
+                        marker=dict(line=dict(color="rgba(255,255,255,0.22)", width=2)),
+                        pull=[0.08 if i == 0 else 0.02 for i in range(len(g_pie))],
+                        hovertemplate="<b>%{label}</b><br>%{value} atendimentos · %{percent}<extra></extra>",
+                        sort=False,
+                        direction="clockwise",
+                    )
+                    fig_e.update_layout(
+                        height=440,
+                        font=dict(color="white", family="Plus Jakarta Sans"),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=10, r=10, t=56, b=10),
+                        legend=dict(
+                            orientation="h", yanchor="bottom", y=-0.12,
+                            xanchor="center", x=0.5,
+                            font=dict(size=11, color="rgba(255,255,255,0.85)"),
+                        ),
+                        title=dict(
+                            font=dict(color="#FFFFFF", size=18, family="Plus Jakarta Sans"),
+                            x=0.5, xanchor="center",
+                        ),
+                    )
+                    st.plotly_chart(fig_e, use_container_width=True, config={"displayModeBar": False})
                 st.markdown("#### 💰 Faturamento por Empresa")
                 empresas_fat = db.listar_empresas(limit=200)
                 linhas_fat = []
