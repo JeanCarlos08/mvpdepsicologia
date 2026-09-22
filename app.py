@@ -1295,7 +1295,6 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(10) {{
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(11) {{ animation-delay: .44s; }}
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(12) {{ animation-delay: .48s; }}
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(13) {{ animation-delay: .52s; }}
-section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(14) {{ animation-delay: .56s; }}
 
 /* Main entrance on every page */
 [data-testid="stMain"] .block-container, .main .block-container {{
@@ -4448,197 +4447,6 @@ def _dia_semana(data):
         except Exception:
             return ""
 
-class FinancePage:
-    @staticmethod
-    def render() -> None:
-        render_page_header("💰 Financeiro", "Lançamentos, fluxo de caixa, DRE e notas fiscais")
-
-        tab1, tab2, tab3 = st.tabs(["💸 Lançamentos", "📊 Fluxo de Caixa / DRE", "🧾 Notas Fiscais"])
-
-        with tab1:
-            st.markdown("### ➕ Novo Lançamento")
-            l1, l2, l3 = st.columns(3)
-            with l1:
-                fin_tipo = st.selectbox("Tipo *", ["Receita", "Despesa"], key="fin_tipo")
-                fin_categoria = st.selectbox("Categoria *", _fin_categorias(fin_tipo), key="fin_cat")
-                fin_descricao = st.text_input("Descrição", key="fin_desc", max_chars=255)
-            with l2:
-                fin_valor = st.number_input("Valor (R$) *", min_value=0.0, step=10.0, value=0.0, key="fin_valor")
-                fin_data = st.date_input("Data *", value=date.today(), key="fin_data")
-                fin_pagamento = st.selectbox("Forma de pagamento", ["", "Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Boleto", "Transferência"], key="fin_pag")
-            with l3:
-                empresas_fin = db.listar_empresas(limit=200)
-                fin_empresa = st.selectbox("Empresa", [""] + [e["nome"] for e in empresas_fin], key="fin_empresa")
-                fin_convenio = st.text_input("Convênio", key="fin_convenio", max_chars=255)
-                fin_status = st.selectbox("Status", ["Pago", "Pendente", "Cancelado"], key="fin_status")
-            fin_obs = st.text_input("Observações", key="fin_obs", max_chars=500)
-
-            if st.button("💾 Salvar Lançamento", type="primary", key="fin_salvar", use_container_width=True):
-                if fin_valor <= 0:
-                    st.error("Informe um valor maior que zero.")
-                else:
-                    emp_id = None
-                    for e in empresas_fin:
-                        if e["nome"] == fin_empresa:
-                            emp_id = e["id"]
-                            break
-                    ok = db.inserir_lancamento({
-                        "tipo": fin_tipo, "categoria": fin_categoria,
-                        "descricao": fin_descricao.strip() or None,
-                        "valor": float(fin_valor), "data": fin_data.strftime("%Y-%m-%d"),
-                        "forma_pagamento": fin_pagamento or None,
-                        "status": fin_status, "empresa_id": emp_id,
-                        "empresa_nome": fin_empresa or None,
-                        "convenio": fin_convenio.strip() or None,
-                        "observacoes": fin_obs.strip() or None,
-                    })
-                    if ok:
-                        st.toast("Lançamento registrado!", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao salvar lançamento.")
-
-            st.markdown("---")
-            st.markdown("### 🔎 Lançamentos")
-            fl1, fl2, fl3 = st.columns(3)
-            with fl1:
-                fl_tipo = st.selectbox("Filtrar tipo", ["(Todos)", "Receita", "Despesa"], key="fin_filtro_tipo")
-            with fl2:
-                fl_dini = st.date_input("Data inicial", value=None, key="fin_filtro_dini")
-            with fl3:
-                fl_dfim = st.date_input("Data final", value=None, key="fin_filtro_dfim")
-            lancamentos = db.listar_lancamentos(
-                periodo_inicio=fl_dini.strftime("%Y-%m-%d") if fl_dini else None,
-                periodo_fim=fl_dfim.strftime("%Y-%m-%d") if fl_dfim else None,
-                tipo=None if fl_tipo == "(Todos)" else fl_tipo,
-            )
-            if not lancamentos:
-                st.info("Nenhum lançamento encontrado.")
-            else:
-                df_fin = pd.DataFrame([{
-                    "ID": l["id"], "Tipo": l["tipo"], "Categoria": l["categoria"],
-                    "Descrição": l["descricao"] or "", "Data": l["data"],
-                    "Valor (R$)": float(l["valor"]),
-                    "Pagamento": l["forma_pagamento"] or "",
-                    "Empresa": l["empresa_nome"] or "",
-                    "Status": l["status"],
-                } for l in lancamentos])
-                st.dataframe(df_fin, use_container_width=True, hide_index=True)
-                receitas = sum(float(l["valor"]) for l in lancamentos if l["tipo"] == "Receita")
-                despesas = sum(float(l["valor"]) for l in lancamentos if l["tipo"] == "Despesa")
-                st.success(f"Receitas: R$ {receitas:,.2f}  |  Despesas: R$ {despesas:,.2f}  |  **Resultado: R$ {receitas - despesas:,.2f}**")
-                opcoes_fin = {f"#{l['id']} — {l['descricao'] or l['categoria']}": l["id"] for l in lancamentos}
-                sel_fin = st.selectbox("Excluir lançamento", list(opcoes_fin.keys()), key="fin_sel_del")
-                if st.button("🗑️ Excluir", key="fin_del_btn"):
-                    db.excluir_lancamento(opcoes_fin[sel_fin])
-                    st.rerun()
-
-        with tab2:
-            st.markdown("### 📊 Fluxo de Caixa")
-            r1, r2 = st.columns(2)
-            with r1:
-                dre_dini = st.date_input("Período inicial", value=date(date.today().year, 1, 1), key="dre_dini")
-            with r2:
-                dre_dfim = st.date_input("Período final", value=date.today(), key="dre_dfim")
-            resumo = db.resumo_financeiro(
-                dre_dini.strftime("%Y-%m-%d"), dre_dfim.strftime("%Y-%m-%d"))
-            cards_dre = [
-                {"icon": "⬆️", "title": "Receitas", "value": f"R$ {resumo['receitas']:,.2f}"},
-                {"icon": "⬇️", "title": "Despesas", "value": f"R$ {resumo['despesas']:,.2f}"},
-                {"icon": "📊", "title": "Resultado", "value": f"R$ {resumo['resultado']:,.2f}"},
-            ]
-            display_cards(cards_dre)
-
-            if resumo["por_categoria"]:
-                df_cat = pd.DataFrame([{
-                    "Categoria": c["categoria"], "Tipo": c["tipo"],
-                    "Valor (R$)": float(c["total"]),
-                } for c in resumo["por_categoria"]])
-                st.markdown("#### Por categoria")
-                st.dataframe(df_cat, use_container_width=True, hide_index=True)
-                cat_receitas = df_cat[df_cat["Tipo"] == "Receita"]
-                cat_despesas = df_cat[df_cat["Tipo"] == "Despesa"]
-                if not cat_receitas.empty:
-                    fig_d1 = px.bar(cat_receitas, x="Categoria", y="Valor (R$)", title="Receitas por categoria",
-                                    color_discrete_sequence=['#4CAF50'])
-                    fig_d1.update_layout(height=320, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                    st.plotly_chart(fig_d1, use_container_width=True)
-                if not cat_despesas.empty:
-                    fig_d2 = px.bar(cat_despesas, x="Categoria", y="Valor (R$)", title="Despesas por categoria",
-                                    color_discrete_sequence=['#D32F2F'])
-                    fig_d2.update_layout(height=320, font=dict(color="white"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                    st.plotly_chart(fig_d2, use_container_width=True)
-
-            if resumo["por_pagamento"]:
-                st.markdown("#### Por forma de pagamento")
-                df_pag = pd.DataFrame([{
-                    "Forma": p["forma_pagamento"] or "Não informado",
-                    "Valor (R$)": float(p["total"]),
-                } for p in resumo["por_pagamento"]])
-                st.dataframe(df_pag, use_container_width=True, hide_index=True)
-
-        with tab3:
-            st.markdown("### 🧾 Emitir Nota Fiscal")
-            n1, n2 = st.columns(2)
-            with n1:
-                empresas_nf = db.listar_empresas(limit=200)
-                nf_empresa = st.selectbox("Empresa *", [e["nome"] for e in empresas_nf] if empresas_nf else [""], key="nf_empresa")
-                nf_numero = st.text_input("Número", key="nf_numero", max_chars=50)
-                nf_data = st.date_input("Data de emissão *", value=date.today(), key="nf_data")
-            with n2:
-                nf_tipo = st.selectbox("Tipo", ["NFSe", "Nota Fiscal Eletrônica", "Recibo"], key="nf_tipo")
-                nf_serie = st.text_input("Série", key="nf_serie", max_chars=10)
-                nf_valor = st.number_input("Valor (R$) *", min_value=0.0, step=10.0, value=0.0, key="nf_valor")
-            nf_descricao = st.text_input("Descrição", key="nf_desc", max_chars=255)
-            nf_obs = st.text_input("Observações", key="nf_obs", max_chars=500)
-            if st.button("💾 Salvar Nota Fiscal", type="primary", key="nf_salvar", use_container_width=True):
-                if not nf_empresa or nf_valor <= 0:
-                    st.error("Informe a empresa e um valor maior que zero.")
-                else:
-                    emp_id = None
-                    for e in empresas_nf:
-                        if e["nome"] == nf_empresa:
-                            emp_id = e["id"]
-                            break
-                    ok = db.inserir_nota_fiscal({
-                        "empresa_id": emp_id, "empresa_nome": nf_empresa,
-                        "numero": nf_numero.strip() or None, "serie": nf_serie.strip() or None,
-                        "tipo": nf_tipo, "data_emissao": nf_data.strftime("%Y-%m-%d"),
-                        "valor": float(nf_valor), "descricao": nf_descricao.strip() or None,
-                        "observacoes": nf_obs.strip() or None,
-                    })
-                    if ok:
-                        st.toast("Nota fiscal registrada!", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Erro ao salvar nota fiscal.")
-
-            st.markdown("---")
-            st.markdown("### 🔎 Notas Fiscais")
-            nf_filtro = st.text_input("Filtrar por empresa/número", key="nf_filtro")
-            notas = db.listar_notas_fiscais(filtro=nf_filtro or None)
-            if not notas:
-                st.info("Nenhuma nota fiscal encontrada.")
-            else:
-                df_nf = pd.DataFrame([{
-                    "ID": n["id"], "Empresa": n["empresa_nome"] or "",
-                    "Número": n["numero"] or "", "Tipo": n["tipo"],
-                    "Data": n["data_emissao"], "Valor (R$)": float(n["valor"]),
-                    "Status": n["status"],
-                } for n in notas])
-                st.dataframe(df_nf, use_container_width=True, hide_index=True)
-                opcoes_nf = {f"#{n['id']} — {n['empresa_nome'] or '?'} ({n['numero'] or 'sem número'})": n["id"] for n in notas}
-                sel_nf = st.selectbox("Excluir nota fiscal", list(opcoes_nf.keys()), key="nf_sel_del")
-                if st.button("🗑️ Excluir", key="nf_del_btn"):
-                    db.excluir_nota_fiscal(opcoes_nf[sel_nf])
-                    st.rerun()
-
-
-def _fin_categorias(tipo: str) -> list:
-    if tipo == "Receita":
-        return ["Consulta", "Exame", "Plano de saúde", "Particular", "Empresa", "Outros"]
-    return ["Salário", "Aluguel", "Fornecedores", "Impostos", "Equipamentos", "Marketing", "Transporte", "Outros"]
-
 class SecurityPage:
     @staticmethod
     def render() -> None:
@@ -6268,13 +6076,14 @@ class ClinicalManagementApp:
                     "📑 Laudos": "laudos",
                     "📝 Editor Docs": "docs_editor",
                     "🤖 IA": "ia",
-                    "💰 Financeiro": "finance",
                     "🔐 Segurança & LGPD": "security",
                     "☰ Relatórios": "reports",
                     "🛠️ Extras": "extras",
                     "↑ Upload": "upload",
                     "⚙ Configurações": "settings"
                 }
+                if st.session_state.get("nav_radio") not in pages:
+                    st.session_state["nav_radio"] = list(pages.keys())[0]
                 selected_page = st.radio("Selecione a página", list(pages.keys()), index=0, key='nav_radio', label_visibility="collapsed")
                 page_key = pages[selected_page]
 
@@ -6346,11 +6155,6 @@ class ClinicalManagementApp:
                 AuthPage.render()
             else:
                 AIPage.render()
-        elif page_key == "finance":
-            if require_auth and not st.session_state.get('user_authenticated', False):
-                AuthPage.render()
-            else:
-                FinancePage.render()
         elif page_key == "security":
             if require_auth and not st.session_state.get('user_authenticated', False):
                 AuthPage.render()
