@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import db
 import os
+import re
 import base64
 import pathlib
 import urllib.parse
@@ -113,6 +114,50 @@ def _parse_data(valor):
         return pd.to_datetime(texto, dayfirst=True, errors="coerce").date()
     except Exception:
         return date(1900, 1, 1)
+
+
+_CNPJ_RE = re.compile(r"(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})")
+_CNPJ_LABEL_RE = re.compile(r"/?\s*CNPJ\s*:?\s*[\d./\s-]*$", re.IGNORECASE)
+
+
+def _empresa_key_e_label(raw: str) -> tuple:
+    """Agrupa variantes da mesma empresa (CNPJ / espaços / caixa) e devolve label limpo."""
+    s = str(raw or "").strip()
+    if not s:
+        return ("", "")
+    m = _CNPJ_RE.search(s)
+    cnpj_digits = ""
+    nome = s
+    if m:
+        cnpj_digits = re.sub(r"\D", "", m.group(1))
+        if len(cnpj_digits) == 14:
+            nome = (s[: m.start()] + s[m.end():]).strip(" /,-\t")
+        else:
+            cnpj_digits = ""
+    nome = _CNPJ_LABEL_RE.sub("", nome)
+    nome = re.sub(r"\s+", " ", nome).strip(" /,-")
+    label = nome or (f"CNPJ {cnpj_digits}" if cnpj_digits else re.sub(r"\s+", " ", s))
+    key = cnpj_digits or re.sub(r"[^A-Z0-9]+", "", label.upper())
+    if not key:
+        key = label.upper()
+    return (key, label)
+
+
+def _agrupar_por_empresa(pares):
+    """[(nome_raw, n), ...] -> [(label, total), ...] ordenado desc, sem duplicatas por CNPJ."""
+    counts = {}
+    labels = {}
+    for raw, n in pares:
+        key, label = _empresa_key_e_label(raw)
+        if not key:
+            continue
+        counts[key] = counts.get(key, 0) + int(n or 0)
+        prev = labels.get(key)
+        # prefere o label mais curto/limpo entre as variantes
+        if prev is None or (len(label) < len(prev) and label):
+            labels[key] = label
+    return sorted(((labels[k], v) for k, v in counts.items()), key=lambda x: -x[1])
+
 
 class ModalidadeAtendimento(Enum):
     ADMISSIONAL = "Admissional"
@@ -1425,13 +1470,25 @@ class DashboardPage:
             else:
                 inicio = fim = calendario
 
-            contagem_empresas = {}
+            contagem_raw = {}
+            label_by_key = {}
             for a in appointments:
                 if len(a) <= 1 or not a[1]:
                     continue
                 dt = _parse_data(a[4]) if len(a) > 4 and a[4] else None
                 if dt and dt.year > 1900 and inicio <= dt <= fim:
-                    contagem_empresas[str(a[1])] = contagem_empresas.get(str(a[1]), 0) + 1
+                    k, lab = _empresa_key_e_label(str(a[1]))
+                    if not k:
+                        continue
+                    contagem_raw[k] = contagem_raw.get(k, 0) + 1
+                    prev = label_by_key.get(k)
+                    if prev is None or (lab and len(lab) < len(prev)):
+                        label_by_key[k] = lab
+            # labels canônicos; se colidirem, soma as contagens
+            contagem_empresas = {}
+            for k, n in contagem_raw.items():
+                lab = label_by_key.get(k) or k
+                contagem_empresas[lab] = contagem_empresas.get(lab, 0) + n
 
             col_p1, col_p2 = st.columns(2)
             with col_p1:
@@ -4888,6 +4945,18 @@ class ReportsPage:
                     "Laudo PDF", "Avaliação PDF", "Status", "Observações"
                 ])
                 df_e["Data"] = df_e["Data"].apply(lambda x: _parse_data(x))
+                # Normaliza variantes da mesma empresa (CNPJ/espacos) antes de agrupar
+                df_e["_emp_key"] = df_e["Empresa"].map(lambda x: _empresa_key_e_label(x)[0])
+                df_e["_emp_label"] = df_e["Empresa"].map(lambda x: _empresa_key_e_label(x)[1])
+                _label_canon = (
+                    df_e.dropna(subset=["_emp_key"])
+                    .assign(_len=df_e["_emp_label"].str.len())
+                    .sort_values("_len")
+                    .drop_duplicates("_emp_key", keep="first")
+                    .set_index("_emp_key")["_emp_label"]
+                    .to_dict()
+                )
+                df_e["Empresa"] = df_e["_emp_key"].map(lambda k: _label_canon.get(k, k))
                 grupo = df_e.groupby("Empresa").agg(
                     Atendimentos=("ID", "count"),
                     Pacientes=("Nome", "nunique"),
