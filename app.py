@@ -621,24 +621,49 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
 
         /* ── 4. SIDEBAR PREMIUM — refinamento SaaS sem trocar paleta #1E7A46/#155c33 ── */
+        section[data-testid="stSidebar"] {{
+            border-right: 1px solid rgba(255,255,255,0.08) !important;
+        }}
         section[data-testid="stSidebar"] > div {{
-            background: linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 100%) !important;
-            padding-top: 10px !important;
+            background:
+                radial-gradient(120% 50% at 50% -10%, rgba(255,255,255,0.14), transparent 55%),
+                radial-gradient(80% 40% at 100% 20%, rgba(142,227,154,0.14), transparent 50%),
+                linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 62%, #0d3a22 100%) !important;
+            padding-top: 8px !important;
             position: relative !important;
+            overflow: hidden !important;
+            box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 10px 0 36px rgba(0,0,0,0.28) !important;
         }}
         section[data-testid="stSidebar"] > div::before {{
             content: "";
             position: absolute;
-            top: 0;
-            left: 12px;
-            right: 12px;
-            height: 1px;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent);
+            top: 0; left: 16px; right: 16px; height: 1px;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.28), transparent);
             pointer-events: none;
+            z-index: 2;
+        }}
+        section[data-testid="stSidebar"] > div::after {{
+            content: "";
+            position: absolute;
+            top: -80px; right: -60px;
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(142,227,154,0.22), transparent 68%);
+            filter: blur(8px);
+            pointer-events: none;
+            z-index: 0;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+        section[data-testid="stSidebar"] [data-testid="stRadio"],
+        section[data-testid="stSidebar"] [data-testid="stTextInput"],
+        section[data-testid="stSidebar"] [data-testid="stFileUploader"],
+        section[data-testid="stSidebar"] [data-testid="stButton"] {{
+            position: relative !important;
+            z-index: 1;
         }}
         section[data-testid="stSidebar"] * {{
             color: white !important;
         }}
+        section[data-testid="stSidebar"] .stMarkdown p {{ margin: 0 !important; }}
         /* Esconde bolinha nativa do radio */
         section[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {{
             display: none !important;
@@ -646,9 +671,9 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         section[data-testid="stSidebar"] div[role="radiogroup"] {{
             display: flex;
             flex-direction: column;
-            gap: 6px !important;
-            padding: 0 10px !important;
-            margin-top: 4px !important;
+            gap: 5px !important;
+            padding: 0 8px !important;
+            margin-top: 2px !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label {{
             display: flex !important;
@@ -656,24 +681,32 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             gap: 12px !important;
             padding: 11px 14px !important;
             margin: 0 !important;
-            min-height: 44px !important;
+            min-height: 46px !important;
             border-radius: 14px !important;
             cursor: pointer;
             transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            background: transparent !important;
-            border: 1px solid transparent !important;
+            background: rgba(255,255,255,0.03) !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
             font-weight: 600 !important;
             font-size: 0.875rem !important;
-            letter-spacing: 0.2px !important;
+            letter-spacing: 0.15px !important;
             line-height: 1.35 !important;
             position: relative !important;
             overflow: hidden !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04) !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label::before {{
+            content: "";
+            position: absolute; left: 0; top: 12%; bottom: 12%;
+            width: 3px; border-radius: 0 4px 4px 0;
+            background: transparent;
+            transition: background 0.25s ease, box-shadow 0.25s ease;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
-            background: rgba(255,255,255,0.08) !important;
-            border-color: rgba(255,255,255,0.10) !important;
-            transform: translateX(2px) !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+            background: rgba(255,255,255,0.10) !important;
+            border-color: rgba(255,255,255,0.16) !important;
+            transform: translateX(3px) !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.08) !important;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:active {{
             transform: translateX(1px) scale(0.99) !important;
@@ -916,67 +949,199 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         section[data-testid="stSidebar"] [data-testid="stRadio"] {{ margin-top: 4px; }}
         section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
         section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
-            background: linear-gradient(135deg, rgba(123, 211, 137, 0.24), rgba(255,255,255,0.06)) !important;
-            border-color: rgba(168, 235, 177, 0.42) !important;
-            box-shadow: inset 3px 0 0 #8ee39a, 0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.10) !important;
-            font-weight: 700 !important;
-            transform: translateX(1px) !important;
+            background: linear-gradient(135deg, rgba(142,227,154,0.28), rgba(255,255,255,0.10)) !important;
+            border-color: rgba(168, 235, 177, 0.55) !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.18),
+                0 8px 22px rgba(0,0,0,0.22),
+                0 0 0 1px rgba(142,227,154,0.12) !important;
+            font-weight: 800 !important;
+            transform: translateX(3px) !important;
+            letter-spacing: 0.3px !important;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"]::before,
+        section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked)::before {{
+            background: linear-gradient(180deg, #b7f0c0, #4DA768) !important;
+            box-shadow: 0 0 10px rgba(142,227,154,0.75) !important;
+        }}
+        section[data-testid="stSidebar"] .sb-kicker {{
+            display:flex; align-items:center; justify-content:space-between;
+            margin: 4px 18px 8px;
+            color: rgba(255,255,255,0.55) !important;
+            font: 800 0.64rem/1 'Inter',sans-serif;
+            letter-spacing: 1.6px; text-transform: uppercase;
+        }}
+        section[data-testid="stSidebar"] .sb-kicker i {{
+            flex:1; height:1px; margin-left:10px;
+            background: linear-gradient(to right, rgba(255,255,255,0.18), transparent);
         }}
         /* ── SIDEBAR PREMIUM — logout e uploader refinados (isolado, só sidebar) ── */
         section[data-testid="stSidebar"] .stButton > button {{
-            background: rgba(255,255,255,0.06) !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
+            background: rgba(255,255,255,0.07) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
             color: rgba(255,255,255,0.92) !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             font-size: 0.85rem !important;
-            letter-spacing: 0.2px !important;
-            border-radius: 12px !important;
-            padding: 10px 14px !important;
+            letter-spacing: 0.3px !important;
+            border-radius: 14px !important;
+            padding: 11px 14px !important;
             transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: none !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) !important;
+            backdrop-filter: blur(8px);
         }}
         section[data-testid="stSidebar"] .stButton > button:hover {{
-            background: rgba(255,255,255,0.10) !important;
-            border-color: rgba(255,255,255,0.18) !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+            background: rgba(255,80,80,0.16) !important;
+            border-color: rgba(255,140,140,0.45) !important;
+            color: #ffd0d6 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stTextInput"] input {{
+            background: rgba(0,0,0,0.22) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            border-radius: 14px !important;
+            font-weight: 600 !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06) !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"] {{
-            background: rgba(255,255,255,0.09) !important;
-            border: 1.5px solid rgba(255,255,255,0.20) !important;
-            border-top: 1px solid rgba(255,255,255,0.08) !important;
-            border-radius: 0 0 18px 18px !important;
-            padding: 10px 14px 12px !important;
-            margin-top: -1px !important;
-            margin-bottom: 10px !important;
+            background: rgba(0,0,0,0.18) !important;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            border-radius: 16px !important;
+            padding: 8px 12px 10px !important;
+            margin-top: 6px !important;
+            margin-bottom: 4px !important;
             transition: all 0.22s ease !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06) !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {{
-            border-color: rgba(255,255,255,0.22) !important;
-            background: rgba(255,255,255,0.11) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            background: rgba(0,0,0,0.24) !important;
         }}
-        /* Botão interno do uploader — pill premium usando só branco translúcido (mesma paleta) */
         section[data-testid="stSidebar"] [data-testid="stFileUploader"] button {{
             background: rgba(255,255,255,0.10) !important;
-            border: 1px solid rgba(255,255,255,0.14) !important;
+            border: 1px solid rgba(255,255,255,0.16) !important;
             color: #fff !important;
             border-radius: 10px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             font-size: 0.78rem !important;
             padding: 6px 12px !important;
             transition: all 0.22s ease !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"] button:hover {{
-            background: rgba(255,255,255,0.16) !important;
-            border-color: rgba(255,255,255,0.22) !important;
+            background: rgba(255,255,255,0.18) !important;
+            border-color: rgba(255,255,255,0.28) !important;
             transform: translateY(-1px) !important;
         }}
         section[data-testid="stSidebar"] [data-testid="stFileUploader"] small {{
-            color: rgba(255,255,255,0.62) !important;
+            color: rgba(255,255,255,0.55) !important;
             font-size: 0.68rem !important;
             letter-spacing: 0.3px !important;
         }}
+        section[data-testid="stSidebar"] .sb-brand {{
+            position:relative; z-index:1;
+            display:flex; align-items:center; gap:13px;
+            padding: 4px 14px 14px;
+        }}
+        section[data-testid="stSidebar"] .sb-brand .sb-logo {{
+            width:50px; height:50px; border-radius:17px; flex-shrink:0;
+            background: linear-gradient(145deg, rgba(255,255,255,0.30), rgba(255,255,255,0.10));
+            border: 1.5px solid rgba(255,255,255,0.40);
+            display:flex; align-items:center; justify-content:center;
+            font-size:24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.28);
+            animation: riseIn .5s cubic-bezier(.16,1,.3,1) both;
+        }}
+        section[data-testid="stSidebar"] .sb-brand .sb-title {{
+            font-weight:800; font-size:1.08rem; color:#fff; line-height:1.15;
+            letter-spacing:0.2px; white-space:nowrap;
+            animation: riseIn .5s .05s cubic-bezier(.16,1,.3,1) both;
+        }}
+        section[data-testid="stSidebar"] .sb-brand .sb-sub {{
+            font-size:0.58rem; font-weight:800; letter-spacing:2.6px;
+            text-transform:uppercase; color:rgba(255,255,255,0.60);
+            margin-top:4px; white-space:nowrap;
+            animation: riseIn .5s .1s cubic-bezier(.16,1,.3,1) both;
+        }}
+        section[data-testid="stSidebar"] .sb-brand .sb-pill {{
+            display:inline-flex; align-items:center; gap:6px;
+            margin-top:7px; padding:3px 8px; border-radius:99px;
+            background:rgba(142,227,154,0.16);
+            border:1px solid rgba(142,227,154,0.35);
+            color:#c8f5d0 !important;
+            font:800 0.58rem/1 'Inter',sans-serif; letter-spacing:1px;
+            text-transform:uppercase;
+        }}
+        section[data-testid="stSidebar"] .sb-brand .sb-pill .sb-dot {{
+            width:6px; height:6px; border-radius:50%; background:#4ade80;
+            animation: pulseDot 2s ease-out infinite;
+            box-shadow:0 0 0 0 rgba(74,222,128,0.55);
+        }}
+        section[data-testid="stSidebar"] .sb-profile {{
+            position:relative; z-index:1;
+            margin: 0 12px;
+            background: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+            border: 1.5px solid rgba(255,255,255,0.20);
+            border-radius: 20px;
+            padding: 14px 14px 12px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 10px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.14);
+            animation: riseIn .5s .15s cubic-bezier(.16,1,.3,1) both;
+        }}
+        section[data-testid="stSidebar"] .sb-profile:hover {{
+            border-color: rgba(255,255,255,0.32);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.18);
+        }}
+        section[data-testid="stSidebar"] .sb-section {{
+            position:relative; z-index:1;
+            display:flex; align-items:center; gap:8px;
+            margin: 16px 18px 6px;
+            color: rgba(255,255,255,0.55) !important;
+            font: 800 0.64rem/1 'Inter',sans-serif;
+            letter-spacing: 1.6px; text-transform: uppercase;
+        }}
+        section[data-testid="stSidebar"] .sb-section::after {{
+            content:""; flex:1; height:1px;
+            background: linear-gradient(to right, rgba(255,255,255,0.16), transparent);
+        }}
+        section[data-testid="stSidebar"] .sb-ai {{
+            position:relative; z-index:1;
+            margin: 4px 12px 8px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: linear-gradient(160deg, rgba(77,167,104,0.28), rgba(0,0,0,0.18));
+            border: 1px solid rgba(142,227,154,0.28);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 8px 22px rgba(0,0,0,0.16);
+        }}
+        section[data-testid="stSidebar"] .sb-ai-head {{
+            display:flex; align-items:center; gap:9px; margin-bottom:8px;
+        }}
+        section[data-testid="stSidebar"] .sb-ai-head .sb-ai-ico {{
+            width:30px; height:30px; border-radius:11px;
+            background:linear-gradient(135deg,#4DA768,#8ee39a);
+            display:flex; align-items:center; justify-content:center;
+            font-size:0.95rem;
+            box-shadow:0 4px 12px rgba(0,0,0,0.22);
+        }}
+        section[data-testid="stSidebar"] .sb-ai-head .sb-ai-title {{
+            font-weight:800; font-size:0.88rem; color:#fff; letter-spacing:0.2px;
+        }}
+        section[data-testid="stSidebar"] .sb-ai-head .sb-ai-badge {{
+            margin-left:auto;
+            font:800 0.55rem/1 'Inter',sans-serif; letter-spacing:1px;
+            color:#c8f5d0 !important;
+            background:rgba(255,255,255,0.10);
+            border:1px solid rgba(255,255,255,0.16);
+            border-radius:99px; padding:4px 7px;
+        }}
+        section[data-testid="stSidebar"] .sb-foot {{
+            position:relative; z-index:1;
+            display:flex; align-items:center; justify-content:space-between;
+            margin: 10px 16px 4px;
+            color: rgba(255,255,255,0.42) !important;
+            font: 700 0.62rem/1 'Inter',sans-serif;
+            letter-spacing: 0.8px;
+        }}
+        section[data-testid="stSidebar"] hr {{ opacity: 0.35; }}
         .stDateInput > div > div {{ border-radius: 12px !important; }}
         @media (max-width: 860px) {{
             .metric-row-minimal {{ gap: 10px; }}
@@ -1278,9 +1443,6 @@ hr {{ background: linear-gradient(to right, transparent, rgba(255,255,255,0.16),
 }}
 
 /* Sidebar extras (nav já estilizado no CSS base) */
-section[data-testid="stSidebar"] > div {{
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 28px rgba(0,0,0,0.18) !important;
-}}
 section[data-testid="stSidebar"] div[role="radiogroup"] > label {{ animation: riseIn 0.4s ease both; }}
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(1) {{ animation-delay: .04s; }}
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:nth-child(2) {{ animation-delay: .08s; }}
@@ -5970,42 +6132,22 @@ class ClinicalManagementApp:
         if st.session_state.get('user_authenticated', False):
             with st.sidebar:
                 u_name = st.session_state.get('user_name', 'Admin')
-                # Marca / logo — refinamento premium (mesma paleta #1E7A46, só proporção e espaçamento)
+                # Marca / logo — refinamento premium + pill online
                 st.markdown(
-                    """<div style='display:flex;align-items:center;gap:14px;padding:6px 10px 18px;'>
-                        <div style='width:48px;height:48px;border-radius:16px;flex-shrink:0;
-                            background:linear-gradient(135deg,#ffffff42,#ffffff14);
-                            border:1.5px solid rgba(255,255,255,0.38);
-                            display:flex;align-items:center;justify-content:center;
-                            font-size:23px;box-shadow:0 6px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.22);'>🩺</div>
-                        <div style='min-width:0;flex:1;'>
-                            <div style='font-weight:800;font-size:1.06rem;color:#fff;line-height:1.15;letter-spacing:0.15px;white-space:nowrap;'>Gestão Clínica</div>
-                            <div style='font-size:0.60rem;font-weight:700;letter-spacing:2.8px;text-transform:uppercase;
-                                color:rgba(255,255,255,0.62);margin-top:3px;white-space:nowrap;'>MVP Psicologia</div>
-                        </div>
+                    f"""
+                    <div class="sb-brand">
+                      <div class="sb-logo">🩺</div>
+                      <div style='min-width:0;flex:1;'>
+                        <div class="sb-title">Gestão Clínica</div>
+                        <div class="sb-sub">MVP Psicologia</div>
+                        <div class="sb-pill"><span class="sb-dot"></span> Online</div>
+                      </div>
                     </div>""",
                     unsafe_allow_html=True
                 )
                 # Card de perfil premium
                 photo_b64 = st.session_state.get('profile_photo_b64', '')
                 photo_mime = st.session_state.get('profile_photo_mime', 'image/jpeg')
-                if photo_b64:
-                    avatar_html = (
-                        f"<div style='width:40px;height:40px;border-radius:50%;overflow:hidden;"
-                        f"border:2px solid rgba(255,255,255,0.5);flex-shrink:0;"
-                        f"box-shadow:0 2px 8px rgba(0,0,0,0.2);'>"
-                        f"<img src='data:{photo_mime};base64,{photo_b64}' "
-                        f"style='width:100%;height:100%;object-fit:cover;'/></div>"
-                    )
-                else:
-                    avatar_html = (
-                        "<div style='width:40px;height:40px;"
-                        "background:linear-gradient(135deg,#ffffff33,#ffffff22);"
-                        "border:2px solid rgba(255,255,255,0.4);border-radius:50%;"
-                        "display:flex;align-items:center;justify-content:center;"
-                        "font-size:18px;flex-shrink:0;'>&#128105;&#8205;&#9877;&#65039;</div>"
-                    )
-                # Avatar com foto ou ícone padrão
                 if photo_b64:
                     avatar_inner = (
                         f"<img src='data:{photo_mime};base64,{photo_b64}' "
@@ -6015,28 +6157,30 @@ class ClinicalManagementApp:
                     avatar_inner = "<span style='font-size:22px;line-height:44px;'>&#128105;&#8205;&#9877;&#65039;</span>"
 
                 st.markdown(
-                    f"""<div style='background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,255,255,0.20);
-                    border-radius:18px 18px 0 0;padding:16px 16px 14px;margin-bottom:0;
-                    display:flex;align-items:center;gap:14px;backdrop-filter:blur(12px);
-                    box-shadow:0 8px 24px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.10);
-                    transition: all 0.28s ease;'>
-                        <div style='width:46px;height:46px;border-radius:50%;overflow:hidden;position:relative;
-                            border:2.5px solid rgba(255,255,255,0.45);
-                            box-shadow:0 3px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.20);
+                    f"""<div class="sb-profile">
+                        <div style='display:flex;align-items:center;gap:13px;'>
+                          <div style='width:48px;height:48px;border-radius:50%;overflow:hidden;position:relative;
+                            border:2.5px solid rgba(255,255,255,0.5);
+                            box-shadow:0 4px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.22);
                             display:flex;align-items:center;justify-content:center;
-                            background:linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08));flex-shrink:0;'>
+                            background:linear-gradient(135deg,rgba(255,255,255,0.20),rgba(255,255,255,0.08));flex-shrink:0;'>
                             {avatar_inner}
-                            <div style='position:absolute;bottom:-1px;right:-1px;width:13px;height:13px;background:#8ee39a;border:2.5px solid rgba(255,255,255,0.95);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.18);'></div>
-                        </div>
-                        <div style='min-width:0;flex:1;'>
-                            <div style='font-weight:700;font-size:0.92rem;color:#fff;letter-spacing:0.15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{u_name}</div>
-                            <div style='font-size:0.70rem;color:rgba(255,255,255,0.62);letter-spacing:0.9px;text-transform:uppercase;font-weight:600;margin-top:2px;'>Administradora</div>
+                            <div style='position:absolute;bottom:0;right:0;width:13px;height:13px;background:#4ade80;
+                              border:2.5px solid rgba(255,255,255,0.95);border-radius:50%;
+                              box-shadow:0 0 0 0 rgba(74,222,128,0.55);animation:pulseDot 2s ease-out infinite;'></div>
+                          </div>
+                          <div style='min-width:0;flex:1;'>
+                            <div style='font-weight:800;font-size:0.95rem;color:#fff;letter-spacing:0.15px;
+                              line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{html.escape(str(u_name))}</div>
+                            <div style='font-size:0.68rem;color:rgba(255,255,255,0.62);letter-spacing:1.1px;
+                              text-transform:uppercase;font-weight:700;margin-top:3px;'>Administradora</div>
+                          </div>
                         </div>
                     </div>""",
                     unsafe_allow_html=True
                 )
 
-                # Uploader acoplado ao mesmo card do perfil (mesma identidade visual #1E7A46)
+                # Uploader acoplado ao card do perfil
                 sidebar_photo = st.file_uploader(
                     "📷 Trocar foto",
                     type=["jpg", "jpeg", "png", "webp"],
@@ -6061,9 +6205,7 @@ class ClinicalManagementApp:
                         st.rerun()
 
                 st.markdown(
-                    """<div style='display:flex;align-items:center;gap:12px;margin:14px 10px 10px;'>
-                        <div style='flex:1;height:1px;background:linear-gradient(to right, transparent, rgba(255,255,255,0.14), transparent);'></div>
-                    </div>""",
+                    """<div class="sb-section">Navegação</div>""",
                     unsafe_allow_html=True
                 )
 
@@ -6087,14 +6229,14 @@ class ClinicalManagementApp:
                 selected_page = st.radio("Selecione a página", list(pages.keys()), index=0, key='nav_radio', label_visibility="collapsed")
                 page_key = pages[selected_page]
 
-                st.divider()
+                # IA Assistente — card glass
                 st.markdown(
-                    """<div style='display:flex;align-items:center;gap:8px;margin:6px 0 10px 0;'>
-                        <div style='width:30px;height:30px;border-radius:10px;flex-shrink:0;
-                            background:linear-gradient(135deg,#4DA768,#4DA76899);
-                            display:flex;align-items:center;justify-content:center;font-size:0.95rem;
-                            box-shadow:0 4px 12px rgba(0,0,0,0.2);'>🤖</div>
-                        <div style='font-weight:800;font-size:0.92rem;color:#fff;'>IA Assistente</div>
+                    """<div class="sb-ai">
+                        <div class="sb-ai-head">
+                          <div class="sb-ai-ico">🤖</div>
+                          <div class="sb-ai-title">IA Assistente</div>
+                          <div class="sb-ai-badge">BETA</div>
+                        </div>
                     </div>""",
                     unsafe_allow_html=True,
                 )
@@ -6109,14 +6251,17 @@ class ClinicalManagementApp:
                         answer = AIManager.chat_with_data(user_msg, context)
                 if answer:
                     st.info(answer)
-                
-                # Logout - Versão Estável (Sem wrappers HTML quebrados)
-                st.divider()
+
+                # Logout premium
                 if st.button('🚪 Encerrar Sessão', use_container_width=True, key="logout_btn_sidebar"):
                     security.log_access('AUTH_LOGOUT', f"Usuário {u_name} deslogado")
                     st.session_state['user_authenticated'] = False
                     st.session_state['user_name'] = ''
                     st.rerun()
+                st.markdown(
+                    f"""<div class="sb-foot"><span>v1.0 · MVP</span><span>🔒 LGPD</span></div>""",
+                    unsafe_allow_html=True
+                )
         else:
             page_key = "dashboard" # Fallback para AuthPage.render() disparar no bloco abaixo
         if page_key == "dashboard":
