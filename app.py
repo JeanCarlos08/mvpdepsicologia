@@ -621,9 +621,6 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
 
         /* ── 4. SIDEBAR PREMIUM — refinamento SaaS sem trocar paleta #1E7A46/#155c33 ── */
-        section[data-testid="stSidebar"] {{
-            border-right: 1px solid rgba(255,255,255,0.08) !important;
-        }}
         section[data-testid="stSidebar"] > div {{
             background:
                 radial-gradient(120% 50% at 50% -10%, rgba(255,255,255,0.14), transparent 55%),
@@ -631,8 +628,12 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
                 linear-gradient(180deg, {bg_sidebar_top} 0%, {bg_sidebar_bottom} 62%, #0d3a22 100%) !important;
             padding-top: 8px !important;
             position: relative !important;
-            overflow: hidden !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
             box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 10px 0 36px rgba(0,0,0,0.28) !important;
+        }}
+        section[data-testid="stSidebar"] > div {{
+            min-height: 100% !important;
         }}
         section[data-testid="stSidebar"] > div::before {{
             content: "";
@@ -641,6 +642,9 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             background: linear-gradient(to right, transparent, rgba(255,255,255,0.28), transparent);
             pointer-events: none;
             z-index: 2;
+        }}
+        section[data-testid="stSidebar"] {{
+            border-right: 1px solid rgba(255,255,255,0.08) !important;
         }}
         section[data-testid="stSidebar"] > div::after {{
             content: "";
@@ -656,7 +660,8 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         section[data-testid="stSidebar"] [data-testid="stRadio"],
         section[data-testid="stSidebar"] [data-testid="stTextInput"],
         section[data-testid="stSidebar"] [data-testid="stFileUploader"],
-        section[data-testid="stSidebar"] [data-testid="stButton"] {{
+        section[data-testid="stSidebar"] [data-testid="stButton"],
+        section[data-testid="stSidebar"] [data-testid="stAlert"] {{
             position: relative !important;
             z-index: 1;
         }}
@@ -1105,12 +1110,21 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         }}
         section[data-testid="stSidebar"] .sb-ai {{
             position:relative; z-index:1;
-            margin: 4px 12px 8px;
-            padding: 12px 14px;
+            margin: 8px 12px 4px;
+            padding: 12px 14px 14px;
             border-radius: 18px;
             background: linear-gradient(160deg, rgba(77,167,104,0.28), rgba(0,0,0,0.18));
             border: 1px solid rgba(142,227,154,0.28);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 8px 22px rgba(0,0,0,0.16);
+        }}
+        section[data-testid="stSidebar"] .sb-ai [data-testid="stTextInput"] {{
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }}
+        section[data-testid="stSidebar"] .sb-ai input {{
+            background: rgba(0,0,0,0.28) !important;
+            border: 1px solid rgba(255,255,255,0.18) !important;
+            border-radius: 12px !important;
         }}
         section[data-testid="stSidebar"] .sb-ai-head {{
             display:flex; align-items:center; gap:9px; margin-bottom:8px;
@@ -6241,7 +6255,12 @@ class ClinicalManagementApp:
                     unsafe_allow_html=True,
                 )
                 answer = ""
-                user_msg = st.text_input("Pergunte sobre seus dados...", key="ai_chat_input", placeholder="Ex: Resumo de hoje")
+                user_msg = st.text_input(
+                    "Pergunte sobre seus dados...",
+                    key="ai_chat_input",
+                    placeholder="Ex: Resumo de hoje",
+                    label_visibility="collapsed",
+                )
                 if user_msg:
                     with st.spinner("IA processando..."):
                         from ai_manager import AIManager
