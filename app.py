@@ -1256,7 +1256,10 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
             letter-spacing: 0.8px;
         }}
         section[data-testid="stSidebar"] hr {{ opacity: 0.35; }}
-        .stDateInput > div > div {{ border-radius: 12px !important; }}
+        .stDateInput > div > div {{ border-radius: 14px !important; border: 1.5px solid rgba(255,255,255,0.15) !important; }}
+        .stDateInput [data-baseweb="calendar"] {{ background: #1c2f26 !important; color: #fff !important; }}
+        .stDateInput [data-baseweb="input"] {{ color: #fff !important; }}
+        .stCheckbox > label > div {{ color: #fff !important; }}
         @media (max-width: 860px) {{
             .metric-row-minimal {{ gap: 10px; }}
             .metric-card-minimal {{ border-right: none !important; }}
@@ -1406,19 +1409,48 @@ def apply_max_ui_css(accent="#4DA768", dark_mode=False):
 .stButton > button[kind="primary"]:hover {{ animation: shimmer 1.4s linear infinite; }}
 
 /* Inputs max */
-.stTextInput input, .stTextArea textarea, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div {{
+.stTextInput input, .stTextArea textarea, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div,
+.stDateInput [data-baseweb="input"] > div,
+.stDateInput input {{
   background: rgba(255,255,255,0.07) !important;
   border: 1.5px solid rgba(255,255,255,0.14) !important;
   border-radius: 14px !important;
   transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease !important;
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.12) !important;
+  color: #fff !important;
 }}
-.stTextInput input:hover, .stTextArea textarea:hover {{ border-color: rgba(255,255,255,0.24) !important; transform: translateY(-1px); }}
-.stTextInput input:focus, .stTextArea textarea:focus, .stNumberInput input:focus {{
+.stDateInput {{ color: #fff !important; }}
+.stDateInput input {{ color: #fff !important; }}
+.stDateInput button {{ color: rgba(255,255,255,0.75) !important; }}
+.stDateInput > div > div {{ border-radius: 14px !important; }}
+.stTextInput input:hover, .stTextArea textarea:hover, .stDateInput input:hover, .stDateInput [data-baseweb="input"]:hover {{
+  border-color: rgba(255,255,255,0.24) !important; transform: translateY(-1px);
+}}
+.stTextInput input:focus, .stTextArea textarea:focus, .stNumberInput input:focus, .stDateInput input:focus {{
   border-color: {a} !important;
   box-shadow: 0 0 0 4px {a}33, inset 0 2px 6px rgba(0,0,0,0.12) !important;
   outline: none !important;
 }}
+/* Checkbox premium */
+.stCheckbox [data-baseweb="checkbox"] {{
+  background: rgba(255,255,255,0.07) !important;
+  border: 1.5px solid rgba(255,255,255,0.22) !important;
+  border-radius: 8px !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease !important;
+}}
+.stCheckbox [data-baseweb="checkbox"]:hover {{
+  border-color: {a} !important;
+  box-shadow: 0 0 0 4px {a}33 !important;
+}}
+.stCheckbox [role="checkbox"]:checked,
+.stCheckbox [data-baseweb="checkbox"][aria-checked="true"],
+.stCheckbox input:checked + div {{
+  background: {a} !important;
+  border-color: {a} !important;
+}}
+.stCheckbox label {{ color: rgba(255,255,255,0.88) !important; font-weight: 600 !important; }}
 .stTextInput input:-webkit-autofill, .stNumberInput input:-webkit-autofill {{
   -webkit-text-fill-color: #fff !important;
   -webkit-box-shadow: 0 0 0 1000px rgba(28,48,38,0.95) inset !important;
@@ -4731,7 +4763,7 @@ class SecurityPage:
     def render() -> None:
         render_page_header("🔐 Segurança & LGPD", "Consentimentos, auditoria, backup e portabilidade")
 
-        tab1, tab2, tab3, tab4 = st.tabs(["📜 Consentimentos", "🔍 Auditoria", "💾 Backup", "🗂️ Dados do Paciente (LGPD)"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📜 Consentimentos", "🔍 Auditoria", "💾 Backup", "🗂️ Portabilidade LGPD"])
 
         with tab1:
             st.markdown("### ➕ Registrar Consentimento")
@@ -4780,10 +4812,18 @@ class SecurityPage:
                 if not cons:
                     st.info("Nenhum consentimento registrado.")
                 else:
+                    def _fmt_date(v, with_time=False):
+                        if v is None or v == "":
+                            return ""
+                        if isinstance(v, datetime):
+                            return v.strftime(DATE_FORMAT + " " + TIME_FORMAT) if with_time else v.strftime(DATE_FORMAT)
+                        if isinstance(v, date):
+                            return v.strftime(DATE_FORMAT)
+                        return str(v)
                     df_cons = pd.DataFrame([{
                         "ID": c["id"], "Paciente": c["paciente_nome"] or "",
-                        "Tipo": c["tipo"], "Data": c["assinado_em"] or "",
-                        "Validade": c["validade"] or "", "Assentiu": "✅" if c["assentimento"] else "❌",
+                        "Tipo": c["tipo"], "Data": _fmt_date(c["assinado_em"]),
+                        "Validade": _fmt_date(c["validade"]), "Assentiu": "✅" if c["assentimento"] else "❌",
                         "Versão": c["documento_versao"] or "",
                     } for c in cons])
                     st.dataframe(df_cons, use_container_width=True, hide_index=True)
@@ -4801,10 +4841,18 @@ class SecurityPage:
             if not auditoria:
                 st.info("Nenhum registro de auditoria.")
             else:
+                def _fmt_dt(v):
+                    if v is None:
+                        return ""
+                    if isinstance(v, datetime):
+                        return v.strftime(DATE_FORMAT + " " + TIME_FORMAT)
+                    if isinstance(v, date):
+                        return v.strftime(DATE_FORMAT)
+                    return str(v)
                 df_aud = pd.DataFrame([{
                     "ID": a["id"], "Ação": a["acao"], "Entidade": a["entidade"],
                     "Detalhes": a["detalhes"] or "", "Usuário": a["usuario"] or "",
-                    "Data": a["criado_em"],
+                    "Data": _fmt_dt(a["criado_em"]),
                 } for a in auditoria])
                 st.dataframe(df_aud, use_container_width=True, hide_index=True, height=400)
 
