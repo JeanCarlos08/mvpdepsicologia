@@ -315,7 +315,7 @@ def _render_ranking_html(ranking, palette, total=None, top_n=8):
     if not shown:
         return
     total_v = int(total) if total else sum(v for _, v in ranking) or 1
-    medals = ["🥇", "二等奖".encode("utf-8").decode() if False else "🥈", "🥉"]
+    medals = ["🥇", "🥈", "🥉"]
     # top para referência de barra (escala relativa = posições mais legíveis)
     max_v = max(v for _, v in shown) or 1
     rows = []
