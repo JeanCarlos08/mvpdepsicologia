@@ -1260,6 +1260,7 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         .stDateInput [data-baseweb="calendar"] {{ background: #1c2f26 !important; color: #fff !important; }}
         .stDateInput [data-baseweb="input"] {{ color: #fff !important; }}
         .stCheckbox > label > div {{ color: #fff !important; }}
+        #auth-cursor-glow, #auth-cursor-ring, #auth-cursor-dot {{ display: none !important; }}
         @media (max-width: 860px) {{
             .metric-row-minimal {{ gap: 10px; }}
             .metric-card-minimal {{ border-right: none !important; }}
@@ -1431,26 +1432,65 @@ def apply_max_ui_css(accent="#4DA768", dark_mode=False):
   box-shadow: 0 0 0 4px {a}33, inset 0 2px 6px rgba(0,0,0,0.12) !important;
   outline: none !important;
 }}
-/* Checkbox premium */
+/* Checkbox premium — estilizar SÓ a caixa, nunca o wrapper (que contém o label) */
 .stCheckbox [data-baseweb="checkbox"] {{
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}}
+.stCheckbox [data-baseweb="checkbox"] input[type="checkbox"] {{
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  margin: 0 !important;
+  accent-color: {a} !important;
+  cursor: pointer !important;
+}}
+.stCheckbox [data-baseweb="checkbox"] > span:first-child {{
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  flex-shrink: 0 !important;
   background: rgba(255,255,255,0.07) !important;
   border: 1.5px solid rgba(255,255,255,0.22) !important;
   border-radius: 8px !important;
-  width: 1.15rem !important;
-  height: 1.15rem !important;
   transition: border-color .2s ease, box-shadow .2s ease, background .2s ease !important;
 }}
-.stCheckbox [data-baseweb="checkbox"]:hover {{
+.stCheckbox [data-baseweb="checkbox"]:hover > span:first-child {{
   border-color: {a} !important;
   box-shadow: 0 0 0 4px {a}33 !important;
 }}
-.stCheckbox [role="checkbox"]:checked,
-.stCheckbox [data-baseweb="checkbox"][aria-checked="true"],
-.stCheckbox input:checked + div {{
+.stCheckbox [data-baseweb="checkbox"]:has(input:checked) > span:first-child {{
   background: {a} !important;
   border-color: {a} !important;
 }}
-.stCheckbox label {{ color: rgba(255,255,255,0.88) !important; font-weight: 600 !important; }}
+.stCheckbox label {{
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 1.5rem !important;
+  flex-wrap: nowrap !important;
+  color: rgba(255,255,255,0.88) !important;
+  font-weight: 600 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  line-height: 1.4 !important;
+}}
+.stCheckbox .stMarkdown, .stCheckbox label > div:last-child {{
+  white-space: normal !important;
+  word-break: normal !important;
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}}
+/* Efeito de cursor do login não pode vazar para o app autenticado */
+#auth-cursor-glow, #auth-cursor-ring, #auth-cursor-dot {{ display: none !important; }}
 .stTextInput input:-webkit-autofill, .stNumberInput input:-webkit-autofill {{
   -webkit-text-fill-color: #fff !important;
   -webkit-box-shadow: 0 0 0 1000px rgba(28,48,38,0.95) inset !important;
@@ -4784,8 +4824,8 @@ class SecurityPage:
                     ], key="cons_tipo")
                     cons_ass = st.checkbox("Paciente assentiu (aceitou)", value=True, key="cons_ass")
                 with c2:
-                    cons_data = st.date_input("Data de assinatura *", value=date.today(), key="cons_data")
-                    cons_val = st.date_input("Validade", value=None, key="cons_val")
+                    cons_data = st.date_input("Data de assinatura *", value=date.today(), key="cons_data", format="DD/MM/YYYY")
+                    cons_val = st.date_input("Validade", value=None, key="cons_val", format="DD/MM/YYYY")
                     cons_ver = st.text_input("Versão do documento", key="cons_ver", max_chars=20, placeholder="Ex: v1.0")
                 cons_desc = st.text_area("Descrição", key="cons_desc", max_chars=1000)
                 if st.button("💾 Registrar Consentimento", type="primary", key="cons_salvar", use_container_width=True):
@@ -6010,9 +6050,21 @@ class AuthPage:
         ring.style.transform='translate3d('+rx+'px,'+ry+'px,0)';
         requestAnimationFrame(follow);
       })();
-      var styles=D.createElement('style');
-      styles.textContent='#auth-cursor-glow,#auth-cursor-ring,#auth-cursor-dot{display:block!important}@media (pointer:coarse){#auth-cursor-glow,#auth-cursor-ring,#auth-cursor-dot{display:none!important}}';
-      D.head.appendChild(styles);
+      ['auth-cursor-glow','auth-cursor-ring','auth-cursor-dot'].forEach(function(id){
+        var el=D.getElementById(id); if(el) el.style.display='block';
+      });
+      /* Remove efeitos de cursor quando sair da tela de login */
+      var cleanup=function(){
+        if(!D.getElementById('auth-clock') && !D.querySelector('.auth-card')){
+          ['auth-cursor-glow','auth-cursor-ring','auth-cursor-dot'].forEach(function(id){
+            var el=D.getElementById(id); if(el) el.remove();
+          });
+          var st=D.getElementById('auth-fx-style'); if(st) st.remove();
+          return true;
+        }
+        return false;
+      };
+      var ci=setInterval(function(){ if(cleanup()) clearInterval(ci); }, 800);
     }
     /* Relógio ao vivo no footer */
     var tick=function(){
@@ -6205,6 +6257,19 @@ class ClinicalManagementApp:
         apply_custom_css(dark_mode=is_dark, primary_accent=accent, card_text_color=txt_color, main_bg_color=main_bg, card_bg_color=card_bg_css)
         apply_max_ui_css(accent=accent, dark_mode=is_dark)
         apply_plotly_theme(dark_mode=is_dark)
+        if st.session_state.get('user_authenticated', False):
+            components.html("""<script>
+            (function(){
+              var P=window.parent;
+              ['auth-cursor-glow','auth-cursor-ring','auth-cursor-dot'].forEach(function(id){
+                var el=P.document.getElementById(id); if(el) el.remove();
+              });
+              var s=P.document.getElementById('auth-fx-style'); if(s) s.remove();
+              P.document.querySelectorAll('style').forEach(function(st){
+                if(st.textContent && st.textContent.indexOf('#auth-cursor-glow')>=0 && st.textContent.indexOf('display:block')>=0) st.remove();
+              });
+            })();
+            </script>""", height=0)
 
         # ── CALLBACK GLOBAL GOOGLE DOCS OAUTH (corrigido) ──
         # Deve rodar EM TODA RERUN, antes do roteamento de páginas, para capturar ?code=... independente da página atual.
