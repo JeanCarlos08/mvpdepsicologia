@@ -1454,22 +1454,22 @@ class DashboardPage:
             with col_p2:
                 if contagem_empresas:
                     st.markdown("#### 🏢 Atendimentos por Empresa")
-                    empresa_df = pd.DataFrame(
-                        sorted(contagem_empresas.items(), key=lambda item: item[1], reverse=True),
-                        columns=["Empresa", "Atendimentos"],
-                    ).head(10)
+                    ranking = sorted(contagem_empresas.items(), key=lambda item: -item[1])
+                    total_v = sum(value for _, value in ranking) or 1
+                    empresa_df = pd.DataFrame(ranking[:10], columns=["Empresa", "Atendimentos"])
                     _tot_emp = int(empresa_df["Atendimentos"].sum())
                     _n_emp = len(empresa_df)
-                    # Pizza premium — fatia maior destacada + paleta verde clínica
+                    _pal = [
+                        "#0F3D24", "#164B2A", "#1E7A46", "#24753D", "#379451",
+                        "#4DA768", "#58B86A", "#7BCF8A", "#8DDB98", "#B7E8BF",
+                    ]
+                    # Pizza premium — fatia #1 destacada
                     fig = px.pie(
                         empresa_df,
                         names="Empresa",
                         values="Atendimentos",
                         hole=0.0,
-                        color_discrete_sequence=[
-                            "#0F3D24", "#164B2A", "#1E7A46", "#24753D", "#379451",
-                            "#4DA768", "#58B86A", "#7BCF8A", "#8DDB98", "#B7E8BF",
-                        ],
+                        color_discrete_sequence=_pal,
                     )
                     fig.update_traces(
                         textposition="inside",
@@ -1485,43 +1485,117 @@ class DashboardPage:
                         direction="clockwise",
                     )
                     fig.update_layout(
-                        showlegend=True,
-                        height=360,
-                        margin=dict(l=8, r=8, t=16, b=8),
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom",
-                            y=-0.22,
-                            xanchor="center",
-                            x=0.5,
-                            font=dict(size=11, color="rgba(255,255,255,0.85)"),
-                            bgcolor="rgba(0,0,0,0)",
-                        ),
+                        showlegend=False,
+                        height=340,
+                        margin=dict(l=8, r=8, t=8, b=8),
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
                         font=dict(color="#FFFFFF", family="Plus Jakarta Sans"),
                     )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-                    st.caption(f"Top {_n_emp} empresas no período · total {_tot_emp} atendimentos")
 
-            if contagem_empresas:
-                with st.expander("🏆 Ranking por Empresa", expanded=False):
-                    ranking = sorted(contagem_empresas.items(), key=lambda item: -item[1])
-                    total_v = sum(value for _, value in ranking)
-                    rows_html = [
-                        '<table class="ranking-table"><thead><tr><th>#</th><th>Empresa</th><th>Atendimentos</th><th class="ranking-share">Participação</th></tr></thead><tbody>'
-                    ]
-                    for pos, (emp, qtde) in enumerate(ranking[:10], start=1):
-                        participacao = (qtde / total_v * 100) if total_v else 0
-                        rows_html.append(
-                            f"<tr><td class='ranking-rank'>{pos}</td><td>{html.escape(str(emp))}</td>"
-                            f"<td>{qtde}</td><td class='ranking-share'>{participacao:.1f}%</td></tr>"
+                    # 🏆 Rankzinho sempre visível ao lado/debaixo da pizza
+                    medals = ["🥇", "🥈", "🥉"]
+                    rank_rows = []
+                    for pos, (emp, qtde) in enumerate(ranking[:8], start=1):
+                        part = (qtde / total_v) * 100
+                        medal = medals[pos - 1] if pos <= 3 else f"<span class='rk-n'>{pos}</span>"
+                        bar_w = max(4, int(part))
+                        rank_rows.append(
+                            f"""
+                            <div class="rk-item{' rk-top' if pos <= 3 else ''}" style="animation-delay:{0.05 * (pos - 1):.2f}s">
+                              <div class="rk-left">{medal}</div>
+                              <div class="rk-mid">
+                                <div class="rk-name">{html.escape(str(emp))}</div>
+                                <div class="rk-bar"><i style="width:{bar_w}%;background:linear-gradient(90deg,{_pal[(pos - 1) % len(_pal)]},#7BCF8A)"></i></div>
+                              </div>
+                              <div class="rk-right">
+                                <b>{qtde}</b>
+                                <span>{part:.1f}%</span>
+                              </div>
+                            </div>
+                            """
                         )
-                    rows_html.append('</tbody></table>')
-                    st.markdown("".join(rows_html), unsafe_allow_html=True)
-                    st.caption(f"🏢 {len(ranking)} empresa(s) — {total_v} atendimento(s) no período.")
-            else:
-                empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
+                    st.markdown(
+                        f"""
+                        <style>
+                          @keyframes riseIn {{ from {{ opacity:0; transform: translateY(12px); }} to {{ opacity:1; transform:none; }} }}
+                          .rk-list {{
+                            display:flex; flex-direction:column; gap:8px; margin-top:4px;
+                          }}
+                          .rk-item {{
+                            display:flex; align-items:center; gap:10px;
+                            padding:9px 12px; border-radius:14px;
+                            background:rgba(0,0,0,0.22);
+                            border:1px solid rgba(255,255,255,0.08);
+                            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+                            animation: riseIn .45s cubic-bezier(.16,1,.3,1) both;
+                            transition: transform .2s ease, border-color .2s ease, background .2s ease;
+                          }}
+                          .rk-item:hover {{
+                            transform: translateX(4px);
+                            border-color: rgba(123,211,145,0.35);
+                            background: rgba(77,167,104,0.12);
+                          }}
+                          .rk-top {{ border-color: rgba(123,211,145,0.28); }}
+                          .rk-left {{
+                            width:28px; height:28px; border-radius:10px; flex-shrink:0;
+                            display:grid; place-items:center; font-size:0.95rem;
+                            background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+                          }}
+                          .rk-n {{
+                            font:800 0.78rem 'Plus Jakarta Sans',sans-serif; color:rgba(255,255,255,0.7);
+                          }}
+                          .rk-mid {{ flex:1; min-width:0; }}
+                          .rk-name {{
+                            color:#fff; font:700 0.82rem 'Plus Jakarta Sans',sans-serif;
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                            margin-bottom:5px; letter-spacing:-0.2px;
+                          }}
+                          .rk-bar {{
+                            height:6px; border-radius:99px; overflow:hidden;
+                            background:rgba(255,255,255,0.08);
+                            border:1px solid rgba(255,255,255,0.06);
+                          }}
+                          .rk-bar i {{
+                            display:block; height:100%; border-radius:99px;
+                            box-shadow:0 0 8px rgba(123,211,145,0.45);
+                            transition: width .6s ease;
+                          }}
+                          .rk-right {{
+                            text-align:right; flex-shrink:0; min-width:52px;
+                          }}
+                          .rk-right b {{
+                            display:block; color:#fff; font:800 0.95rem 'Plus Jakarta Sans',sans-serif;
+                            letter-spacing:-0.4px; line-height:1.1;
+                          }}
+                          .rk-right span {{
+                            color:rgba(255,255,255,0.55); font:700 0.68rem 'Inter',sans-serif;
+                            letter-spacing:0.4px;
+                          }}
+                          .rk-head {{
+                            display:flex; align-items:center; justify-content:space-between;
+                            margin:14px 0 8px;
+                          }}
+                          .rk-head span {{
+                            color:rgba(255,255,255,0.7); font:800 0.72rem 'Inter',sans-serif;
+                            letter-spacing:1px; text-transform:uppercase;
+                          }}
+                        </style>
+                        <div class="rk-head">
+                          <span>🏆 Ranking · Top {min(8, len(ranking))}</span>
+                          <span style="color:#a8e8b7 !important;">{_tot_emp} no período</span>
+                        </div>
+                        <div class="rk-list">{''.join(rank_rows)}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    if len(ranking) > 8:
+                        st.caption(f"… +{len(ranking) - 8} empresa(s) · {total_v} atendimentos no total")
+                    else:
+                        st.caption(f"🏢 {len(ranking)} empresa(s) · {total_v} atendimentos no período")
+                else:
+                    empty_state("📅", "Nada por aqui", "Não há atendimentos no período selecionado. Ajuste o calendário acima.")
 
 def _pac_initials(nome: str) -> str:
     partes = [p for p in str(nome or "").strip().split() if p]
@@ -4863,6 +4937,105 @@ class ReportsPage:
                         ),
                     )
                     st.plotly_chart(fig_e, use_container_width=True, config={"displayModeBar": False})
+                    # 🏆 Rankzinho ao lado da pizza (Relatórios)
+                    _pal_r = [
+                        "#0F3D24", "#164B2A", "#1E7A46", "#24753D", "#379451",
+                        "#4DA768", "#58B86A", "#7BCF8A", "#8DDB98", "#B7E8BF",
+                        "#D4F0DA", "#EAF8ED",
+                    ]
+                    _tot_all_r = int(grupo["Atendimentos"].sum()) or 1
+                    medals_r = ["🥇", "🥈", "🥉"]
+                    rank_rows_r = []
+                    for pos, row in enumerate(grupo.head(8).itertuples(index=False), start=1):
+                        qtde = int(row.Atendimentos)
+                        part = (qtde / _tot_all_r) * 100
+                        medal = medals_r[pos - 1] if pos <= 3 else f"<span class='rk-n'>{pos}</span>"
+                        bar_w = max(4, int(part))
+                        rank_rows_r.append(
+                            f"""
+                            <div class="rk-item{' rk-top' if pos <= 3 else ''}" style="animation-delay:{0.05 * (pos - 1):.2f}s">
+                              <div class="rk-left">{medal}</div>
+                              <div class="rk-mid">
+                                <div class="rk-name">{html.escape(str(row.Empresa))}</div>
+                                <div class="rk-bar"><i style="width:{bar_w}%;background:linear-gradient(90deg,{_pal_r[(pos - 1) % len(_pal_r)]},#7BCF8A)"></i></div>
+                              </div>
+                              <div class="rk-right">
+                                <b>{qtde}</b>
+                                <span>{part:.1f}%</span>
+                              </div>
+                            </div>
+                            """
+                        )
+                    st.markdown(
+                        f"""
+                        <style>
+                          @keyframes riseIn {{ from {{ opacity:0; transform: translateY(12px); }} to {{ opacity:1; transform:none; }} }}
+                          .rk-list {{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }}
+                          .rk-item {{
+                            display:flex; align-items:center; gap:10px;
+                            padding:9px 12px; border-radius:14px;
+                            background:rgba(0,0,0,0.22);
+                            border:1px solid rgba(255,255,255,0.08);
+                            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+                            animation: riseIn .45s cubic-bezier(.16,1,.3,1) both;
+                            transition: transform .2s ease, border-color .2s ease, background .2s ease;
+                          }}
+                          .rk-item:hover {{
+                            transform: translateX(4px);
+                            border-color: rgba(123,211,145,0.35);
+                            background: rgba(77,167,104,0.12);
+                          }}
+                          .rk-top {{ border-color: rgba(123,211,145,0.28); }}
+                          .rk-left {{
+                            width:28px; height:28px; border-radius:10px; flex-shrink:0;
+                            display:grid; place-items:center; font-size:0.95rem;
+                            background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+                          }}
+                          .rk-n {{ font:800 0.78rem 'Plus Jakarta Sans',sans-serif; color:rgba(255,255,255,0.7); }}
+                          .rk-mid {{ flex:1; min-width:0; }}
+                          .rk-name {{
+                            color:#fff; font:700 0.82rem 'Plus Jakarta Sans',sans-serif;
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                            margin-bottom:5px; letter-spacing:-0.2px;
+                          }}
+                          .rk-bar {{
+                            height:6px; border-radius:99px; overflow:hidden;
+                            background:rgba(255,255,255,0.08);
+                            border:1px solid rgba(255,255,255,0.06);
+                          }}
+                          .rk-bar i {{
+                            display:block; height:100%; border-radius:99px;
+                            box-shadow:0 0 8px rgba(123,211,145,0.45);
+                            transition: width .6s ease;
+                          }}
+                          .rk-right {{ text-align:right; flex-shrink:0; min-width:52px; }}
+                          .rk-right b {{
+                            display:block; color:#fff; font:800 0.95rem 'Plus Jakarta Sans',sans-serif;
+                            letter-spacing:-0.4px; line-height:1.1;
+                          }}
+                          .rk-right span {{
+                            color:rgba(255,255,255,0.55); font:700 0.68rem 'Inter',sans-serif;
+                            letter-spacing:0.4px;
+                          }}
+                          .rk-head {{
+                            display:flex; align-items:center; justify-content:space-between;
+                            margin:4px 0 8px;
+                          }}
+                          .rk-head span {{
+                            color:rgba(255,255,255,0.7); font:800 0.72rem 'Inter',sans-serif;
+                            letter-spacing:1px; text-transform:uppercase;
+                          }}
+                        </style>
+                        <div class="rk-head">
+                          <span>🏆 Ranking · Top {min(8, len(grupo))}</span>
+                          <span style="color:#a8e8b7 !important;">{_tot_all_r} no total</span>
+                        </div>
+                        <div class="rk-list">{''.join(rank_rows_r)}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    if len(grupo) > 8:
+                        st.caption(f"… +{len(grupo) - 8} empresa(s) fora do top 8")
                 st.markdown("#### 💰 Faturamento por Empresa")
                 empresas_fat = db.listar_empresas(limit=200)
                 linhas_fat = []
