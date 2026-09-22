@@ -156,104 +156,204 @@ def _agrupar_por_empresa(pares):
         # prefere o label mais curto/limpo entre as variantes
         if prev is None or (len(label) < len(prev) and label):
             labels[key] = label
-    return sorted(((labels[k], v) for k, v in counts.items()), key=lambda x: -x[1])
+    return sorted(
+        ((labels[k], v) for k, v in counts.items()),
+        key=lambda x: (-int(x[1]), str(x[0]).lower()),
+    )
 
 
 _RANK_CSS = """
 html, body { background: transparent !important; margin: 0; padding: 0; }
-@keyframes riseIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform:none; } }
-.rk-list { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
-.rk-item {
-  display:flex; align-items:center; gap:10px;
-  padding:9px 12px; border-radius:14px;
-  background:rgba(0,0,0,0.22);
-  border:1px solid rgba(255,255,255,0.08);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-  animation: riseIn .45s cubic-bezier(.16,1,.3,1) both;
-  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+* { box-sizing: border-box; }
+@keyframes rkIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+@keyframes rkBar { from { width:0; } }
+@keyframes rkGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(142,227,154,0); } 50% { box-shadow: 0 0 14px 0 rgba(142,227,154,0.35); } }
+
+.rk-shell {
+  border-radius: 18px;
+  background: linear-gradient(165deg, rgba(255,255,255,0.08), rgba(0,0,0,0.18));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
+  padding: 14px 14px 12px;
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+.rk-shell::before {
+  content: "";
+  position: absolute; top: 0; left: 14px; right: 14px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.28), transparent);
+}
+.rk-head {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.rk-head-l { display:flex; align-items:center; gap:8px; min-width:0; }
+.rk-head-l b {
+  color:#fff; font:800 0.78rem/1 'Plus Jakarta Sans',sans-serif;
+  letter-spacing:0.4px; text-transform:uppercase;
+}
+.rk-head-l i {
+  display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#4ade80; box-shadow:0 0 8px rgba(74,222,128,0.7);
+}
+.rk-head-r {
+  color:#a8e8b7; font:800 0.7rem/1 'Inter',sans-serif;
+  letter-spacing:0.6px; white-space:nowrap;
+  background: rgba(142,227,154,0.12);
+  border:1px solid rgba(142,227,154,0.28);
+  border-radius:99px; padding:5px 9px;
+}
+.rk-list { display:flex; flex-direction:column; gap:7px; }
+.rk-item {
+  display:grid;
+  grid-template-columns: 36px 1fr 64px;
+  align-items:center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.20);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  animation: rkIn .4s cubic-bezier(.16,1,.3,1) both;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
 .rk-item:hover {
-  transform: translateX(4px);
-  border-color: rgba(123,211,145,0.35);
-  background: rgba(77,167,104,0.12);
+  transform: translateX(3px);
+  border-color: rgba(123,211,145,0.32);
+  background: rgba(77,167,104,0.10);
 }
-.rk-top { border-color: rgba(123,211,145,0.28); }
-.rk-left {
-  width:28px; height:28px; border-radius:10px; flex-shrink:0;
-  display:grid; place-items:center; font-size:0.95rem;
-  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+.rk-pos {
+  width:36px; height:36px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font:800 0.88rem/1 'Plus Jakarta Sans',sans-serif;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.10);
+  flex-shrink:0;
 }
-.rk-n { font:800 0.78rem 'Plus Jakarta Sans',sans-serif; color:rgba(255,255,255,0.7); }
-.rk-mid { flex:1; min-width:0; }
+.rk-pos.medal {
+  font-size: 1.05rem;
+  background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05));
+  border-color: rgba(255,255,255,0.22);
+}
+.rk-mid { min-width:0; }
+.rk-meta {
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  margin-bottom: 6px;
+}
 .rk-name {
-  color:#fff; font:700 0.82rem 'Plus Jakarta Sans',sans-serif;
+  color:#fff; font:700 0.84rem/1.25 'Plus Jakarta Sans',sans-serif;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  margin-bottom:5px; letter-spacing:-0.2px;
+  letter-spacing:-0.2px;
+}
+.rk-pct {
+  flex-shrink:0;
+  color: rgba(255,255,255,0.55);
+  font:700 0.68rem/1 'Inter',sans-serif;
+  letter-spacing:0.3px;
 }
 .rk-bar {
-  height:6px; border-radius:99px; overflow:hidden;
-  background:rgba(255,255,255,0.08);
+  height:7px; border-radius:99px; overflow:hidden;
+  background: rgba(255,255,255,0.07);
   border:1px solid rgba(255,255,255,0.06);
 }
 .rk-bar i {
   display:block; height:100%; border-radius:99px;
-  box-shadow:0 0 8px rgba(123,211,145,0.45);
-  transition: width .6s ease;
+  background: linear-gradient(90deg, #1E7A46, #7BCF8A 70%, #b7f0c0);
+  box-shadow: 0 0 10px rgba(123,211,145,0.45);
+  animation: rkBar .7s cubic-bezier(.16,1,.3,1) both;
+  animation-delay: inherit;
 }
-.rk-right { text-align:right; flex-shrink:0; min-width:52px; }
+.rk-right {
+  text-align:right; min-width:0;
+  display:flex; flex-direction:column; align-items:flex-end; gap:2px;
+}
 .rk-right b {
-  display:block; color:#fff; font:800 0.95rem 'Plus Jakarta Sans',sans-serif;
-  letter-spacing:-0.4px; line-height:1.1;
+  color:#fff; font:800 1.05rem/1 'Plus Jakarta Sans',sans-serif;
+  letter-spacing:-0.5px;
 }
 .rk-right span {
-  color:rgba(255,255,255,0.55); font:700 0.68rem 'Inter',sans-serif;
-  letter-spacing:0.4px;
+  color:rgba(255,255,255,0.48); font:700 0.62rem/1 'Inter',sans-serif;
+  letter-spacing:0.5px; text-transform:uppercase;
 }
-.rk-head {
-  display:flex; align-items:center; justify-content:space-between;
-  margin:0 0 8px;
+.rk-item.p1 {
+  background: linear-gradient(135deg, rgba(142,227,154,0.20), rgba(0,0,0,0.22));
+  border-color: rgba(142,227,154,0.45);
+  animation: rkIn .4s cubic-bezier(.16,1,.3,1) both, rkGlow 3.2s ease-in-out infinite;
 }
-.rk-head span {
-  color:rgba(255,255,255,0.7); font:800 0.72rem 'Inter',sans-serif;
-  letter-spacing:1px; text-transform:uppercase;
+.rk-item.p1 .rk-pos {
+  background: linear-gradient(160deg, #8ee39a, #2f9e55);
+  color:#0d2a18; border-color: rgba(255,255,255,0.35);
 }
+.rk-item.p2 { border-color: rgba(196,181,253,0.35); }
+.rk-item.p3 { border-color: rgba(251,191,36,0.30); }
+.rk-item.p2 .rk-pos, .rk-item.p3 .rk-pos {
+  background: linear-gradient(160deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06));
+}
+.rk-item.p1 .rk-bar i { background: linear-gradient(90deg, #2f9e55, #8ee39a); }
+.rk-item.p2 .rk-bar i { background: linear-gradient(90deg, #4DA768, #c4b5fd); }
+.rk-item.p3 .rk-bar i { background: linear-gradient(90deg, #4DA768, #fcd34d); }
+.rk-item.p1 .rk-right b { color:#b7f0c0; }
+.rk-item.p2 .rk-right b { color:#ddd6fe; }
+.rk-item.p3 .rk-right b { color:#fde68a; }
 """
 
 
 def _render_ranking_html(ranking, palette, total=None, top_n=8):
-    """Renderiza o rankzinho via components.html (evita o Streamlit tratar como código)."""
+    """Rank premium via components.html — posições estáveis + empates por nome."""
     if not ranking:
         return
-    total_v = total if total else sum(v for _, v in ranking) or 1
-    medals = ["🥇", "🥈", "🥉"]
+    # Ordenação estável: qtd desc, depois nome A-Z (evita "pulo" aleatório em empates)
+    ranking = sorted(
+        [(str(a), int(b or 0)) for a, b in ranking],
+        key=lambda x: (-x[1], x[0].lower()),
+    )
+    shown = ranking[:top_n]
+    if not shown:
+        return
+    total_v = int(total) if total else sum(v for _, v in ranking) or 1
+    medals = ["🥇", "二等奖".encode("utf-8").decode() if False else "🥈", "🥉"]
+    # top para referência de barra (escala relativa = posições mais legíveis)
+    max_v = max(v for _, v in shown) or 1
     rows = []
-    for pos, (emp, qtde) in enumerate(ranking[:top_n], start=1):
-        part = (qtde / total_v) * 100
-        medal = medals[pos - 1] if pos <= 3 else f"<span class='rk-n'>{pos}</span>"
-        bar_w = max(4, min(100, int(part)))
+    for pos, (emp, qtde) in enumerate(shown, start=1):
+        part = (qtde / total_v) * 100 if total_v else 0
+        bar_w = max(6, min(100, int(round((qtde / max_v) * 100))))
+        if pos <= 3:
+            pos_html = f"<div class=\"rk-pos medal\">{medals[pos - 1]}</div>"
+            pk = f" p{pos}"
+        else:
+            pos_html = f"<div class=\"rk-pos\">{pos}</div>"
+            pk = ""
+        delay = 0.04 * (pos - 1)
         rows.append(
-            f"<div class=\"rk-item{' rk-top' if pos <= 3 else ''}\" "
-            f"style=\"animation-delay:{0.05 * (pos - 1):.2f}s\">"
-            f"<div class=\"rk-left\">{medal}</div>"
+            f"<div class=\"rk-item{pk}\" style=\"animation-delay:{delay:.2f}s\">"
+            f"{pos_html}"
             f"<div class=\"rk-mid\">"
-            f"<div class=\"rk-name\">{html.escape(str(emp))}</div>"
-            f"<div class=\"rk-bar\"><i style=\"width:{bar_w}%;"
-            f"background:linear-gradient(90deg,{palette[(pos - 1) % len(palette)]},#7BCF8A)\"></i></div>"
+            f"<div class=\"rk-meta\">"
+            f"<div class=\"rk-name\" title=\"{html.escape(str(emp))}\">{html.escape(str(emp))}</div>"
+            f"<div class=\"rk-pct\">{part:.1f}%</div>"
             f"</div>"
-            f"<div class=\"rk-right\"><b>{qtde}</b><span>{part:.1f}%</span></div>"
+            f"<div class=\"rk-bar\"><i style=\"width:{bar_w}%;animation-delay:{delay:.2f}s\"></i></div>"
+            f"</div>"
+            f"<div class=\"rk-right\"><b>{qtde}</b><span>atend.</span></div>"
             f"</div>"
         )
-    n = min(top_n, len(ranking))
+    n = len(shown)
     body = (
-        f"<style>{_RANK_CSS}</style>"
+        f"<div class=\"rk-shell\">"
         f"<div class=\"rk-head\">"
-        f"<span>🏆 Ranking · Top {n}</span>"
-        f"<span style=\"color:#a8e8b7 !important;\">{int(total_v)} no período</span>"
+        f"<div class=\"rk-head-l\"><i></i><b>Ranking · Top {n}</b></div>"
+        f"<div class=\"rk-head-r\">{total_v} no período</div>"
         f"</div>"
         f"<div class=\"rk-list\">{''.join(rows)}</div>"
+        f"</div>"
+        f"<style>{_RANK_CSS}</style>"
     )
-    height = 42 + n * 58
+    height = 64 + n * 60
     components.html(body, height=height, scrolling=False)
 
 
@@ -1784,7 +1884,10 @@ class DashboardPage:
             with col_p2:
                 if contagem_empresas:
                     st.markdown("#### 🏢 Atendimentos por Empresa")
-                    ranking = sorted(contagem_empresas.items(), key=lambda item: -item[1])
+                    ranking = sorted(
+                        contagem_empresas.items(),
+                        key=lambda item: (-int(item[1]), str(item[0]).lower()),
+                    )
                     total_v = sum(value for _, value in ranking) or 1
                     empresa_df = pd.DataFrame(ranking[:10], columns=["Empresa", "Atendimentos"])
                     _tot_emp = int(empresa_df["Atendimentos"].sum())
@@ -4949,7 +5052,11 @@ class ReportsPage:
                     Atendimentos=("ID", "count"),
                     Pacientes=("Nome", "nunique"),
                     Modalidades=("Modalidade", "nunique"),
-                ).reset_index().sort_values("Atendimentos", ascending=False)
+                ).reset_index().sort_values(
+                    ["Atendimentos", "Empresa"],
+                    ascending=[False, True],
+                    kind="mergesort",
+                )
                 st.dataframe(grupo, use_container_width=True, hide_index=True)
                 if not grupo.empty:
                     # Pizza premium — Atendimentos por Empresa (Relatórios)
