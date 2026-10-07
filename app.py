@@ -5552,17 +5552,15 @@ class AuthPage:
                 100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
             }
             [data-testid="stMainViewContainer"] { background: transparent !important; }
-            .main .block-container { padding: 1.4rem 1rem 1.2rem !important; max-width: 1140px !important; }
+            .main .block-container { padding: 1.4rem 1rem 1.2rem !important; max-width: 560px !important; }
             @keyframes authIn {
                 0% { opacity: 0; transform: translateY(26px) scale(0.965); filter: blur(8px); }
                 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
             }
             @keyframes authSweep { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(240%) skewX(-18deg); } }
             @keyframes authPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); } 60% { box-shadow: 0 0 0 9px rgba(74,222,128,0); } }
-            @keyframes authShine { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
             @keyframes authFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
             @keyframes authUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes authLetter { from { opacity: 0; transform: translateY(0.55em) rotateX(-70deg); filter: blur(4px); } to { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); } }
             @keyframes authBtnGlow {
                 0%,100% { box-shadow: 0 14px 32px rgba(77,167,104,0.38), 0 0 0 0 rgba(77,167,104,0.35), inset 0 1.5px 0 rgba(255,255,255,0.35); }
                 50% { box-shadow: 0 14px 32px rgba(77,167,104,0.45), 0 0 18px 4px rgba(77,167,104,0.28), inset 0 1.5px 0 rgba(255,255,255,0.35); }
@@ -5576,8 +5574,8 @@ class AuthPage:
                 perspective: 1400px;
             }
             .auth-card {
-                width: 100%; max-width: 1010px;
-                display: grid; grid-template-columns: 1fr 1.05fr;
+                width: 100%; max-width: 470px;
+                display: grid; grid-template-columns: 1fr;
                 position: relative;
                 background: linear-gradient(155deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045) 55%, rgba(255,255,255,0.07));
                 border: 1px solid rgba(255,255,255,0.17);
@@ -5629,81 +5627,18 @@ class AuthPage:
                 box-shadow: 0 56px 110px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.2);
             }
             @media (max-width: 880px) {
-                .auth-card { grid-template-columns: 1fr; max-width: 520px; border-radius: 26px; transform: none !important; }
+                .auth-card { max-width: 520px; border-radius: 26px; transform: none !important; }
                 .auth-card::before, .auth-card::after { border-radius: 26px; }
-                .auth-brand { padding: 26px 22px !important; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.09) !important; }
                 .auth-form-wrap { padding: 24px 20px 18px !important; }
             }
             @media (max-width: 540px) {
                 .auth-shell { padding: 8px 0; }
                 .auth-card { max-width: 100%; border-radius: 22px; }
                 .auth-card::before, .auth-card::after { border-radius: 22px; }
-                .auth-brand { padding: 24px 18px 20px !important; }
-                .auth-brand-mark { margin-top: 14px !important; }
                 .auth-form-wrap { padding: 22px 16px 14px !important; }
-                .auth-title { font-size: clamp(1.8rem, 9vw, 2.3rem); margin: 14px 0 8px !important; }
-                .auth-brand-badge { font-size: 0.6rem; padding: 7px 10px; letter-spacing: 0.7px; }
                 .auth-portal { padding: 11px 13px; gap: 10px; }
                 .main .block-container { padding: 0.8rem 0.6rem 0.8rem !important; }
             }
-            .auth-brand {
-                padding: 40px 34px; position: relative; overflow: hidden;
-                background:
-                    radial-gradient(at 25% 12%, rgba(123,211,145,0.18), transparent 55%),
-                    radial-gradient(at 85% 92%, rgba(46,204,113,0.14), transparent 50%),
-                    linear-gradient(165deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-                border-right: 1px solid rgba(255,255,255,0.1);
-                display: flex; flex-direction: column; justify-content: center;
-            }
-            .auth-brand-mark { margin-top: 20px; }
-            .auth-brand::after {
-                content: ""; position: absolute; top: -40%; left: -35%; width: 75%; height: 170%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-                transform: rotate(18deg);
-                pointer-events: none;
-                animation: authBrandSheen 7s ease-in-out infinite;
-            }
-            @keyframes authBrandSheen {
-                0%, 60%, 100% { transform: translateX(-20%) rotate(18deg); opacity: 0.4; }
-                30% { transform: translateX(140%) rotate(18deg); opacity: 1; }
-            }
-            .auth-brand-badge {
-                display: inline-flex; align-items: center; gap: 8px;
-                padding: 8px 13px; border-radius: 999px;
-                background: linear-gradient(135deg, rgba(77,167,104,0.24), rgba(46,204,113,0.1));
-                border: 1px solid rgba(123,211,145,0.38);
-                color: #d2f7dc;
-                font: 700 0.67rem 'Inter',sans-serif; letter-spacing: 1.05px; text-transform: uppercase;
-                box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 18px rgba(77,167,104,0.2);
-                animation: authFloat 5s ease-in-out infinite;
-                position: relative; z-index: 1;
-            }
-            .auth-brand-badge::before {
-                content: ""; width: 7px; height: 7px; border-radius: 50%;
-                background: #4ade80; animation: authPulse 2s ease-out infinite;
-            }
-            .auth-brand-top { position: relative; z-index: 1; }
-            /* Título com letras 3D uma a uma */
-            .auth-title {
-                font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800;
-                letter-spacing: -1.5px; line-height: 0.93;
-                font-size: clamp(2.2rem, 3.8vw, 3.2rem); color: #fff; margin: 22px 0 6px;
-                text-shadow: 0 8px 28px rgba(0,0,0,0.4);
-                perspective: 500px;
-            }
-            .auth-title .ln { display: block; }
-            .auth-title .ch {
-                display: inline-block;
-                opacity: 0;
-                animation: authLetter 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
-            }
-            .auth-title .grad {
-                background: linear-gradient(120deg, #7bd391 0%, #4DA768 40%, #2ecc71 65%, #7bd391 100%);
-                background-size: 220% auto;
-                -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-                animation: authShine 4.5s linear infinite;
-            }
-            .auth-title .grad .ch { -webkit-text-fill-color: transparent; }
             .auth-form-wrap {
                 padding: 34px 30px 24px; position: relative;
                 background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015));
@@ -5850,10 +5785,9 @@ class AuthPage:
                     animation-iteration-count: 1 !important;
                     transition-duration: 0.01ms !important;
                 }
-                .auth-title .ch { opacity: 1 !important; }
             }
             
-            /* ── TETO MÁXIMO: iframe canvas + iridescente + typewriter + magnetic ── */
+            /* ── TETO MÁXIMO: iframe canvas full-viewport + magnetic button ── */
             [data-testid="stAppViewContainer"] iframe,
             main iframe {
                 position: fixed !important;
@@ -5879,8 +5813,6 @@ class AuthPage:
                     transparent 94%);
                 animation: authSpinBorder 5s linear infinite;
             }
-            .auth-brand-top { animation: authUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
-            .auth-title { animation: authUp 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s both; }
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
                 will-change: transform;
             }
@@ -5893,7 +5825,6 @@ class AuthPage:
             .auth-clock b { color: #a8e8b7; font-weight: 800; }
             /* O CSS global força Plus Jakarta em `.stApp *` com !important — aqui o login volta a usar Inter no corpo */
             .auth-shell * { font-family: 'Inter', sans-serif !important; }
-            .auth-shell .auth-title,
             .auth-shell .auth-form-head h3 { font-family: 'Plus Jakarta Sans', sans-serif !important; }
             @media (pointer: coarse) {
                 #auth-cursor-glow, #auth-cursor-ring { display: none !important; }
@@ -5905,16 +5836,10 @@ class AuthPage:
         photo_b64 = db.get_preference('profile_photo_b64')
         photo_mime = db.get_preference('profile_photo_mime', 'image/jpeg')
         if photo_b64:
-            avatar_html = (
-                f"<div style='width:84px;height:84px;border-radius:22px;overflow:hidden;flex-shrink:0;"
-                f"border:1.5px solid rgba(255,255,255,0.18);box-shadow:0 12px 28px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18);'>"
-                f"<img src='data:{photo_mime};base64,{photo_b64}' style='width:100%;height:100%;object-fit:cover;'/></div>"
-            )
             avatar_small = (
                 f"<img src='data:{photo_mime};base64,{photo_b64}' style='width:100%;height:100%;object-fit:cover;border-radius:50%;'/>"
             )
         else:
-            avatar_html = "<div style='width:84px;height:84px;border-radius:22px;display:grid;place-items:center;flex-shrink:0;background:linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));border:1px solid rgba(255,255,255,0.14);box-shadow:0 12px 28px rgba(0,0,0,0.22);font-size:2.2rem;'>🩺</div>"
             avatar_small = "<span style='font-size:1.35rem;line-height:1;'>🩺</span>"
 
         # FX engine: canvas full-viewport + glow de cursor + botão magnético (máximo JS permitido)
@@ -6046,19 +5971,6 @@ class AuthPage:
             '<div class="auth-shell"><div class="auth-card">',
             unsafe_allow_html=True,
         )
-        st.markdown(f"""
-            <div class="auth-brand">
-                <div>
-                    <div class="auth-brand-top"><div class="auth-brand-badge">● Sistema em produção • Seguro & LGPD</div></div>
-                    <div class="auth-brand-top auth-brand-mark">{avatar_html}</div>
-                    <div class="auth-title">
-                        <span class="ln">{''.join(f'<span class="ch" style="animation-delay:{0.18 + i * 0.055:.2f}s">{ch}</span>' for i, ch in enumerate('Gestão'))}</span>
-                        <span class="ln grad">{''.join(f'<span class="ch" style="animation-delay:{0.55 + i * 0.055:.2f}s">{ch}</span>' for i, ch in enumerate('Clínica'))}</span>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
         st.markdown('<div class="auth-form-wrap">', unsafe_allow_html=True)
         st.markdown(f"""
             <div class="auth-form-head">
