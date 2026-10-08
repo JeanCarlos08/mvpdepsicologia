@@ -5599,7 +5599,13 @@ class AuthPage:
                     inset 0 -1px 0 rgba(0,0,0,0.2);
                 backdrop-filter: blur(38px) saturate(155%) contrast(105%) !important;
                 -webkit-backdrop-filter: blur(38px) saturate(155%) contrast(105%) !important;
-                animation: authIn 0.9s cubic-bezier(0.16,1,0.3,1) backwards;
+                /* Intro em 2 tempos: fundo já visível, card entra por volta de 1s */
+                --auth-t0: __AUTH_INTRO_DELAY__;
+                animation-name: authIn;
+                animation-duration: 0.7s;
+                animation-timing-function: cubic-bezier(0.16,1,0.3,1);
+                animation-delay: var(--auth-t0);
+                animation-fill-mode: backwards;
                 transition: transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s ease;
                 transform-style: preserve-3d;
             }
@@ -5666,7 +5672,7 @@ class AuthPage:
                 [data-testid="stMainBlockContainer"] { padding: 1rem 0.9rem !important; }
             }
             .auth-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.1s) both; }
             .auth-form-head h3 {
                 margin: 0;
                 background: linear-gradient(120deg, #ffffff 20%, #d8f5e2 65%, #a8e8b7 100%);
@@ -5692,7 +5698,7 @@ class AuthPage:
                 border: 1px solid rgba(255,255,255,0.11); margin-bottom: 0;
                 box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 10px 26px rgba(0,0,0,0.2);
                 transition: border-color 0.3s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1);
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.4s backwards;
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.2s) backwards;
             }
             .auth-portal:hover { border-color: rgba(123,211,145,0.35); transform: translateY(-2px); }
             .auth-portal-av {
@@ -5715,7 +5721,7 @@ class AuthPage:
                 box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.25), 0 20px 46px rgba(0,0,0,0.34) !important;
                 backdrop-filter: blur(26px) saturate(140%) !important;
                 -webkit-backdrop-filter: blur(26px) saturate(140%) !important;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.48s both;
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.3s) both;
             }
             div[data-testid="stForm"] label {
                 color: rgba(255,255,255,0.88) !important;
@@ -5768,8 +5774,8 @@ class AuthPage:
                 position: relative; overflow: hidden;
                 transition: transform 0.32s cubic-bezier(0.16,1,0.3,1), box-shadow 0.32s ease, filter 0.32s ease !important;
                 text-shadow: 0 1px 0 rgba(255,255,255,0.22) !important;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.6s backwards !important,
-                           authBtnGlow 3.2s ease-in-out 1.3s infinite !important;
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.4s) backwards !important,
+                           authBtnGlow 3.2s ease-in-out calc(var(--auth-t0) + 1.2s) infinite !important;
             }
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button::after {
                 content: ""; position: absolute; top: -40%; left: -60%; width: 48%; height: 180%;
@@ -5799,10 +5805,10 @@ class AuthPage:
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] + div,
             div[data-testid="stForm"] div[data-testid="stAlert"] { margin-top: 8px !important; }
             .auth-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 0; flex-wrap: wrap;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.66s backwards; }
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.5s) backwards; }
             .auth-version { color: rgba(255,255,255,0.58); font: 500 0.70rem 'Inter',sans-serif; letter-spacing: 0.55px; }
             .auth-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); margin: 0;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.72s backwards; }
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.55s) backwards; }
             .auth-logo-foot {
                 width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0;
                 background: linear-gradient(135deg, #4DA768, #2ecc71);
@@ -5813,7 +5819,7 @@ class AuthPage:
             .auth-logo-line {
                 display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 0;
                 color: rgba(255,255,255,0.66); font: 600 0.72rem 'Inter',sans-serif; letter-spacing: 0.6px;
-                animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.78s backwards;
+                animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.6s) backwards;
             }
             /* Scrollbar verde */
             [data-testid="stAppViewContainer"] ::-webkit-scrollbar { width: 10px; }
@@ -5826,6 +5832,7 @@ class AuthPage:
             @media (prefers-reduced-motion: reduce) {
                 *, *::before, *::after {
                     animation-duration: 0.01ms !important;
+                    animation-delay: 0s !important;
                     animation-iteration-count: 1 !important;
                     transition-duration: 0.01ms !important;
                 }
@@ -5875,7 +5882,13 @@ class AuthPage:
             }
             </style>
         """
-        st.markdown(_auth_css.replace("__AUTH_BG_URL__", _bg_css), unsafe_allow_html=True)
+        # Intro em 2 tempos: só na primeira vez na tela de login (não repete em reruns)
+        _intro_delay = "0.9s" if not st.session_state.get("auth_intro_shown") else "0s"
+        st.session_state["auth_intro_shown"] = True
+        st.markdown(
+            _auth_css.replace("__AUTH_BG_URL__", _bg_css).replace("__AUTH_INTRO_DELAY__", _intro_delay),
+            unsafe_allow_html=True,
+        )
 
         photo_b64 = db.get_preference('profile_photo_b64')
         photo_mime = db.get_preference('profile_photo_mime', 'image/jpeg')
@@ -5998,6 +6011,27 @@ class AuthPage:
       btn.addEventListener('mouseleave',function(){btn.style.transform='';});
     };
     mag();setInterval(mag,800);
+    /* Foco no 1º campo quando o intro terminar (não rouba foco se já estiver em uso) */
+    var introFocus=function(){
+      try{
+        var card=D.querySelector('[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]');
+        var inp=D.querySelector('[data-testid="stForm"] input');
+        if(!inp) return;
+        var d=0;
+        if(card){var cs=P.getComputedStyle(card);
+          d=((parseFloat(cs.animationDelay)||0)+(parseFloat(cs.animationDuration)||0))*1000;}
+        if(!(d>=0)) d=0; if(d>5000) d=5000;
+        setTimeout(function(){
+          try{
+            var a=D.activeElement;
+            if(a&&a!==D.body&&a!==inp) return;
+            if(P.innerWidth<768) return;
+            inp.focus({preventScroll:true});
+          }catch(e){}
+        },d+80);
+      }catch(e){}
+    };
+    introFocus();
   }catch(e){}
 })();
 </script>
