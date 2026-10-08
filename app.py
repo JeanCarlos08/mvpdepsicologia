@@ -5553,7 +5553,14 @@ class AuthPage:
                 100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
             }
             [data-testid="stMainViewContainer"] { background: transparent !important; }
-            .main .block-container { padding: 1.4rem 1rem 1.2rem !important; max-width: 560px !important; }
+            [data-testid="stMainBlockContainer"] {
+                padding: 1.5rem clamp(1rem, 3vw, 2.6rem) 1.5rem !important;
+                max-width: 100% !important;
+                min-height: 100dvh;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            [data-testid="stVerticalBlockBorderWrapper"] { margin: auto 0; }
             @keyframes authIn {
                 0% { opacity: 0; transform: translateY(26px) scale(0.965); filter: blur(8px); }
                 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
@@ -5569,15 +5576,15 @@ class AuthPage:
             @keyframes authSpinBorder { from { --auth-angle: 0deg; } to { --auth-angle: 360deg; } }
             @property --auth-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
             .auth-shell {
-                position: relative; z-index: 1;
-                display: flex; align-items: center; justify-content: center;
-                min-height: 90vh; padding: 18px 0;
-                perspective: 1400px;
+                position: fixed; inset: 0; z-index: 0;
+                pointer-events: none !important;
             }
-            .auth-card {
-                width: 100%; max-width: 470px;
-                display: grid; grid-template-columns: 1fr;
+            .auth-card { display: none !important; }
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
+                width: 100%; max-width: 100%;
                 position: relative;
+                gap: 0 !important;
+                padding: 48px clamp(22px, 3.6vw, 58px) 42px !important;
                 background:
                     radial-gradient(130% 70% at 50% -12%, rgba(255,255,255,0.16), transparent 62%),
                     radial-gradient(90% 60% at 110% 110%, rgba(46,204,113,0.12), transparent 60%),
@@ -5592,12 +5599,12 @@ class AuthPage:
                     inset 0 -1px 0 rgba(0,0,0,0.2);
                 backdrop-filter: blur(38px) saturate(155%) contrast(105%) !important;
                 -webkit-backdrop-filter: blur(38px) saturate(155%) contrast(105%) !important;
-                animation: authIn 0.9s cubic-bezier(0.16,1,0.3,1) both;
+                animation: authIn 0.9s cubic-bezier(0.16,1,0.3,1) backwards;
                 transition: transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s ease;
                 transform-style: preserve-3d;
             }
             /* Borda cinética conic */
-            .auth-card::before {
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::before {
                 content: "" !important;
                 position: absolute; inset: 0;
                 padding: 1.6px;
@@ -5618,48 +5625,47 @@ class AuthPage:
                 animation: authSpinBorder 6s linear infinite;
             }
             /* Specular sweep no load */
-            .auth-card::after {
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::after {
                 content: "" !important;
                 position: absolute; inset: 0;
+                border-radius: var(--auth-xl);
                 background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.07) 45%, rgba(255,255,255,0.02) 55%, transparent 70%);
                 pointer-events: none;
                 z-index: 2;
                 opacity: 0.9;
             }
-            .auth-card:hover {
-                transform: translateY(-4px) rotateX(1.2deg) scale(1.004);
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]:hover {
+                transform: translateY(-4px) scale(1.004);
                 box-shadow: 0 56px 110px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.2);
             }
+            /* Ritmo vertical sem depender dos contêineres vazios do Streamlit */
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > * {
+                width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
+            }
+            /* Streamlit grava width inline nos wrappers markdown — aqui eles herdam o card */
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] .stMarkdown,
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] .stMarkdownContainer,
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > * > [style*="width"] {
+                width: auto !important; max-width: 100% !important;
+            }
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > .stElementContainer:has(.auth-form-head) { margin-bottom: 28px !important; }
+            [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] > [data-testid="stForm"] { margin-bottom: 28px !important; }
             @media (max-width: 880px) {
-                .auth-card { max-width: 520px; border-radius: 26px; transform: none !important; }
-                .auth-card::before, .auth-card::after { border-radius: 26px; }
-                .auth-form-wrap { padding: 30px 24px 20px !important; }
-                .auth-form-wrap::before { left: 24px; right: 24px; }
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] { border-radius: 26px; }
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::before,
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::after { border-radius: 26px; }
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] { padding: 38px 28px 32px !important; }
             }
             @media (max-width: 540px) {
-                .auth-shell { padding: 8px 0; }
-                .auth-card { max-width: 100%; border-radius: 22px; }
-                .auth-card::before, .auth-card::after { border-radius: 22px; }
-                .auth-form-wrap { padding: 26px 18px 16px !important; }
-                .auth-form-wrap::before { left: 18px; right: 18px; }
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] { border-radius: 22px; padding: 30px 20px 26px !important; }
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::before,
+                [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::after { border-radius: 22px; }
                 .auth-form-head h3 { font-size: 1.16rem; }
-                div[data-testid="stForm"] { padding: 18px 16px 14px !important; }
+                div[data-testid="stForm"] { padding: 20px 18px 16px !important; }
                 .auth-portal { padding: 11px 13px; gap: 10px; }
-                .main .block-container { padding: 0.8rem 0.6rem 0.8rem !important; }
+                [data-testid="stMainBlockContainer"] { padding: 1rem 0.9rem !important; }
             }
-            .auth-form-wrap {
-                padding: 38px 32px 28px; position: relative; z-index: 1;
-                background:
-                    radial-gradient(120% 55% at 100% 0%, rgba(77,167,104,0.14), transparent 55%),
-                    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.018));
-                animation: authUp 0.75s cubic-bezier(0.16,1,0.3,1) 0.15s both;
-            }
-            .auth-form-wrap::before {
-                content: ""; position: absolute; left: 32px; right: 32px; top: 0; height: 1px;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                pointer-events: none;
-            }
-            .auth-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;
+            .auth-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px;
                 animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
             .auth-form-head h3 {
                 margin: 0;
@@ -5683,7 +5689,7 @@ class AuthPage:
             .auth-portal {
                 display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 16px;
                 background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
-                border: 1px solid rgba(255,255,255,0.11); margin-bottom: 16px;
+                border: 1px solid rgba(255,255,255,0.11); margin-bottom: 0;
                 box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 10px 26px rgba(0,0,0,0.2);
                 transition: border-color 0.3s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1);
                 animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.4s backwards;
@@ -5705,7 +5711,7 @@ class AuthPage:
                 background: linear-gradient(180deg, rgba(0,0,0,0.34), rgba(0,0,0,0.24)) !important;
                 border: 1px solid rgba(255,255,255,0.13) !important;
                 border-radius: var(--auth-lg) !important;
-                padding: 22px 20px 18px !important;
+                padding: 28px 26px 24px !important;
                 box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.25), 0 20px 46px rgba(0,0,0,0.34) !important;
                 backdrop-filter: blur(26px) saturate(140%) !important;
                 -webkit-backdrop-filter: blur(26px) saturate(140%) !important;
@@ -5715,23 +5721,28 @@ class AuthPage:
                 color: rgba(255,255,255,0.88) !important;
                 font: 700 0.7rem 'Inter',sans-serif !important;
                 letter-spacing: 1.2px !important; text-transform: uppercase !important;
-                margin-bottom: 6px !important;
+                margin-bottom: 8px !important;
                 text-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
             }
-            div[data-testid="stForm"] .stTextInput { margin-bottom: 10px !important; }
-            div[data-testid="stForm"] input {
-                background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04)) !important;
+            div[data-testid="stForm"] .stTextInput { margin-bottom: 16px !important; }
+            div[data-testid="stForm"] input:not([type="checkbox"]):not([type="radio"]),
+            div[data-testid="stForm"] [data-testid="stTextInput"] input {
+                background-color: rgba(8,18,13,0.78) !important;
+                background-image: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04)) !important;
                 border: 1.5px solid rgba(255,255,255,0.16) !important;
                 color: #fff !important; border-radius: var(--auth-md) !important;
                 padding: 15px 16px !important; font: 500 1rem 'Inter',sans-serif !important;
                 transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, transform 0.25s ease !important;
                 box-shadow: inset 0 2px 6px rgba(0,0,0,0.22) !important;
             }
-            div[data-testid="stForm"] input::placeholder { color: rgba(255,255,255,0.42) !important; }
-            div[data-testid="stForm"] input:hover { border-color: rgba(255,255,255,0.26) !important; transform: translateY(-1px); }
-            div[data-testid="stForm"] input:focus {
+            div[data-testid="stForm"] input::placeholder { color: rgba(255,255,255,0.45) !important; }
+            div[data-testid="stForm"] input:not([type="checkbox"]):hover,
+            div[data-testid="stForm"] [data-testid="stTextInput"] input:hover { border-color: rgba(255,255,255,0.26) !important; transform: translateY(-1px); }
+            div[data-testid="stForm"] input:not([type="checkbox"]):focus,
+            div[data-testid="stForm"] [data-testid="stTextInput"] input:focus {
                 border-color: rgba(123,211,145,0.75) !important;
-                background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)) !important;
+                background-color: rgba(12,26,18,0.85) !important;
+                background-image: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)) !important;
                 box-shadow: 0 0 0 4px rgba(77,167,104,0.26), 0 10px 26px rgba(0,0,0,0.3), inset 0 2px 6px rgba(0,0,0,0.14) !important;
                 outline: none !important;
                 transform: translateY(-1px);
@@ -5787,10 +5798,10 @@ class AuthPage:
             }
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] + div,
             div[data-testid="stForm"] div[data-testid="stAlert"] { margin-top: 8px !important; }
-            .auth-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+            .auth-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 0; flex-wrap: wrap;
                 animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.66s backwards; }
             .auth-version { color: rgba(255,255,255,0.58); font: 500 0.70rem 'Inter',sans-serif; letter-spacing: 0.55px; }
-            .auth-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); margin: 16px 0 0;
+            .auth-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.16), transparent); margin: 0;
                 animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.72s backwards; }
             .auth-logo-foot {
                 width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0;
@@ -5800,7 +5811,7 @@ class AuthPage:
                 animation: authFloat 4s ease-in-out infinite;
             }
             .auth-logo-line {
-                display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 15px;
+                display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 0;
                 color: rgba(255,255,255,0.66); font: 600 0.72rem 'Inter',sans-serif; letter-spacing: 0.6px;
                 animation: authUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.78s backwards;
             }
@@ -5857,8 +5868,8 @@ class AuthPage:
             }
             .auth-clock b { color: #a8e8b7; font-weight: 800; }
             /* O CSS global força Plus Jakarta em `.stApp *` com !important — aqui o login volta a usar Inter no corpo */
-            .auth-shell * { font-family: 'Inter', sans-serif !important; }
-            .auth-shell .auth-form-head h3 { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+            [data-testid="stVerticalBlockBorderWrapper"] * { font-family: 'Inter', sans-serif !important; }
+            .auth-form-head h3 { font-family: 'Plus Jakarta Sans', sans-serif !important; }
             @media (pointer: coarse) {
                 #auth-cursor-glow, #auth-cursor-ring { display: none !important; }
             }
@@ -6001,10 +6012,10 @@ class AuthPage:
             '<span class="p p1"></span><span class="p p2"></span><span class="p p3"></span><span class="p p4"></span>'
             '<span class="p p5"></span><span class="p p6"></span><span class="p p7"></span><span class="p p8"></span>'
             '</div>'
-            '<div class="auth-shell"><div class="auth-card">',
+            '<div class="auth-shell" aria-hidden="true"></div>'
+            '<div class="auth-card" aria-hidden="true"></div>',
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="auth-form-wrap">', unsafe_allow_html=True)
         st.markdown(f"""
             <div class="auth-form-head">
                 <h3>Acesse sua conta</h3>
@@ -6052,8 +6063,6 @@ class AuthPage:
                 MVP de Psicologia • Design premium
             </div>
         """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div></div>', unsafe_allow_html=True)
 
 class ClinicalManagementApp:
     def __init__(self):
