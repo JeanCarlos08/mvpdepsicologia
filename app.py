@@ -5475,7 +5475,7 @@ class AuthPage:
                 mix-blend-mode: overlay;
                 pointer-events: none !important;
                 z-index: 0 !important;
-                animation: authGrain 0.9s steps(2) infinite;
+                animation: authGrain 3s steps(3) infinite;
             }
             @keyframes authGrain {
                 0% { transform: translate(0,0); }
@@ -5517,19 +5517,18 @@ class AuthPage:
                 z-index: 0 !important;
                 animation: authOrbC 22s ease-in-out infinite alternate;
             }
-            @keyframes authOrbA { from { transform: translate(0,0) scale(1); } to { transform: translate(70px,50px) scale(1.1); } }
-            @keyframes authOrbB { from { transform: translate(0,0) scale(1); } to { transform: translate(-55px,-45px) scale(1.12); } }
-            @keyframes authOrbC { from { transform: translate(0,0) scale(1); opacity: 0.7; } to { transform: translate(40px,60px) scale(1.15); opacity: 1; } }
+            @keyframes authOrbA { from { transform: translate(0,0); } to { transform: translate(70px,50px); } }
+            @keyframes authOrbB { from { transform: translate(0,0); } to { transform: translate(-55px,-45px); } }
+            @keyframes authOrbC { from { transform: translate(0,0); opacity: 0.7; } to { transform: translate(40px,60px); opacity: 1; } }
             /* Aurora ribbons */
             .auth-fx { position: fixed !important; inset: 0 !important; pointer-events: none !important; z-index: 0 !important; overflow: hidden !important; }
             .auth-fx .aur {
                 position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.5;
-                mix-blend-mode: screen;
             }
             .auth-fx .aur1 { width: 520px; height: 220px; left: -80px; top: 18%; background: linear-gradient(90deg, rgba(46,204,113,0.35), transparent); animation: authAur1 16s ease-in-out infinite alternate; }
             .auth-fx .aur2 { width: 460px; height: 200px; right: -60px; bottom: 16%; background: linear-gradient(270deg, rgba(123,211,145,0.3), transparent); animation: authAur2 20s ease-in-out infinite alternate; }
-            @keyframes authAur1 { from { transform: translateX(-30px) rotate(-6deg); } to { transform: translateX(80px) rotate(4deg); } }
-            @keyframes authAur2 { from { transform: translateX(30px) rotate(5deg); } to { transform: translateX(-70px) rotate(-4deg); } }
+            @keyframes authAur1 { from { transform: translateX(-30px); } to { transform: translateX(80px); } }
+            @keyframes authAur2 { from { transform: translateX(30px); } to { transform: translateX(-70px); } }
             /* Floating particles */
             .auth-fx .p {
                 position: absolute; width: 4px; height: 4px; border-radius: 50%;
@@ -5562,8 +5561,8 @@ class AuthPage:
             }
             [data-testid="stVerticalBlockBorderWrapper"] { margin: auto 0; }
             @keyframes authIn {
-                0% { opacity: 0; transform: translateY(26px) scale(0.965); filter: blur(8px); }
-                100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+                0% { opacity: 0; transform: translateY(26px) scale(0.965); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
             }
             @keyframes authSweep { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(240%) skewX(-18deg); } }
             @keyframes authPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); } 60% { box-shadow: 0 0 0 9px rgba(74,222,128,0); } }
@@ -5583,6 +5582,8 @@ class AuthPage:
             [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
                 width: 100%; max-width: 100%;
                 position: relative;
+                /* Camada pronta antes do intro: o card rasteriza durante a espera e entra sem engasgo */
+                will-change: opacity, transform;
                 gap: 0 !important;
                 padding: 48px clamp(22px, 3.6vw, 58px) 42px !important;
                 background:
@@ -5628,7 +5629,7 @@ class AuthPage:
                 mask-composite: exclude;
                 pointer-events: none;
                 z-index: 3;
-                animation: authSpinBorder 6s linear infinite;
+                animation: authSpinBorder 20s steps(200) linear infinite;
             }
             /* Specular sweep no load */
             [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]::after {
@@ -5775,7 +5776,7 @@ class AuthPage:
                 transition: transform 0.32s cubic-bezier(0.16,1,0.3,1), box-shadow 0.32s ease, filter 0.32s ease !important;
                 text-shadow: 0 1px 0 rgba(255,255,255,0.22) !important;
                 animation: authUp 0.55s cubic-bezier(0.16,1,0.3,1) calc(var(--auth-t0) + 0.4s) backwards !important,
-                           authBtnGlow 3.2s ease-in-out calc(var(--auth-t0) + 1.2s) infinite !important;
+                           authBtnGlow 3.2s ease-in-out calc(var(--auth-t0) + 1.2s) 3 !important;
             }
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button::after {
                 content: ""; position: absolute; top: -40%; left: -60%; width: 48%; height: 180%;
@@ -5862,7 +5863,7 @@ class AuthPage:
                     rgba(46,204,113,0.55) 76%,
                     rgba(250,204,21,0.25) 86%,
                     transparent 94%);
-                animation: authSpinBorder 5s linear infinite;
+                animation: authSpinBorder 20s steps(200) linear infinite;
             }
             div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
                 will-change: transform;
@@ -5919,37 +5920,41 @@ class AuthPage:
     ctx.setTransform(DPR,0,0,DPR,0,0);
   }
   size();window.addEventListener('resize',size);
-  var N=window.innerWidth<700?28:55,ps=[];
+  var N=window.innerWidth<700?24:40,ps=[];
   for(var i=0;i<N;i++){
     ps.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.8+.6,a:Math.random()*.5+.25,h:Math.random()<.15?1:0});
   }
-  function loop(){
-    ctx.clearRect(0,0,W,H);
-    for(var i=0;i<N;i++){
-      var p=ps[i];p.x+=p.vx;p.y+=p.vy;
-      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
-      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.2832);
-      ctx.fillStyle=p.h?'rgba(123,211,145,'+p.a+')':'rgba(255,255,255,'+(p.a*.55)+')';
-      ctx.fill();
-    }
-    for(var i=0;i<N;i++)for(var j=i+1;j<N;j++){
-      var a=ps[i],b=ps[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
-      if(d2<110*110){
-        var o=(1-Math.sqrt(d2)/110)*.14;
-        ctx.strokeStyle='rgba(123,211,145,'+o+')';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  var lastT=0;
+  function loop(ts){
+    if(ts-lastT>=32){
+      lastT=ts;
+      ctx.clearRect(0,0,W,H);
+      for(var i=0;i<N;i++){
+        var p=ps[i];p.x+=p.vx;p.y+=p.vy;
+        if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.2832);
+        ctx.fillStyle=p.h?'rgba(123,211,145,'+p.a+')':'rgba(255,255,255,'+(p.a*.55)+')';
+        ctx.fill();
+      }
+      for(var i=0;i<N;i++)for(var j=i+1;j<N;j++){
+        var a=ps[i],b=ps[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+        if(d2<110*110){
+          var o=(1-Math.sqrt(d2)/110)*.14;
+          ctx.strokeStyle='rgba(123,211,145,'+o+')';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+        }
       }
     }
     requestAnimationFrame(loop);
   }
-  loop();
+  requestAnimationFrame(loop);
 
   /* Mesmo origin: efeitos no documento pai */
   try{
     var P=window.parent, D=P.document;
     if(!D.getElementById('auth-cursor-glow')){
       var g=D.createElement('div');g.id='auth-cursor-glow';
-      g.style.cssText='position:fixed;left:0;top:0;width:380px;height:380px;margin:-190px 0 0 -190px;border-radius:50%;pointer-events:none!important;z-index:2147483000;background:radial-gradient(circle,rgba(77,167,104,.28),rgba(46,204,113,.08) 45%,transparent 70%);filter:blur(6px);mix-blend-mode:screen;opacity:0;transition:opacity .35s ease;will-change:transform;';
+      g.style.cssText='position:fixed;left:0;top:0;width:380px;height:380px;margin:-190px 0 0 -190px;border-radius:50%;pointer-events:none!important;z-index:2147483000;background:radial-gradient(circle,rgba(77,167,104,.34),rgba(46,204,113,.12) 45%,transparent 70%);filter:blur(6px);opacity:0;transition:opacity .35s ease;will-change:transform;';
       D.body.appendChild(g);
       var ring=D.createElement('div');ring.id='auth-cursor-ring';
       ring.style.cssText='position:fixed;left:0;top:0;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;pointer-events:none!important;z-index:2147483001;border:1.5px solid rgba(168,232,183,.75);box-shadow:0 0 18px rgba(77,167,104,.45),inset 0 0 12px rgba(77,167,104,.25);opacity:0;transition:opacity .3s ease,transform .12s ease;will-change:transform;';
