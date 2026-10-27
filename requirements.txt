@@ -1,11 +1,11 @@
-streamlit==1.42.0
+streamlit==1.66.1
 google-generativeai==0.8.4
 psycopg2-binary==2.9.10
 pandas==2.2.3
 plotly==6.0.0
 fpdf2==2.8.2
 python-dotenv>=1.0
-pillow>=11.1.0
+pillow>=13.0.0
 google-auth-oauthlib
 google-auth
 google-auth-httplib2
