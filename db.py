@@ -3019,7 +3019,18 @@ def obter_arquivo_por_id(file_id: int) -> Optional[Dict[str, Any]]:
 		cur = _get_cursor(conn)
 		cur.execute(query, (file_id,))
 		row = cur.fetchone()
-		return dict(row) if row else None
+		if not row:
+			return None
+		reg = dict(row)
+		# Sênior: drivers (psycopg/Neon) podem devolver BYTEA como memoryview —
+		# st.download_button exige bytes; converte de forma defensiva.
+		content = reg.get("content")
+		if content is not None and not isinstance(content, bytes):
+			try:
+				reg["content"] = bytes(content)
+			except Exception:
+				reg["content"] = b""
+		return reg
 
 
 def listar_arquivos() -> List[Dict[str, Any]]:
