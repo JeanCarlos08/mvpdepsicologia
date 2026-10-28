@@ -20,7 +20,7 @@ st.set_page_config(
     page_title="Sistema de Gestão Clínica",
     page_icon="🩺",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="locked"
 )
 
 # Inicializar esquema do banco (cria tabelas caso ainda não existam)
@@ -721,6 +721,13 @@ def apply_custom_css(dark_mode=False, primary_accent="#4DA768", card_text_color=
         .stApp * {{
             font-family: 'Plus Jakarta Sans', sans-serif !important;
         }}
+        /* Ícones Material do Streamlit (+:material/...) — o * acima quebrava a fonte
+           e o glifo saía como texto cru (ex: "keyboard_double_arrow_left") */
+        [data-testid="stIconMaterial"] {{
+            font-family: 'Material Symbols Rounded' !important;
+            font-weight: 400 !important;
+            font-style: normal !important;
+        }}
 
         /* ── 4. SIDEBAR PREMIUM — refinamento SaaS sem trocar paleta #1E7A46/#155c33 ── */
         section[data-testid="stSidebar"] > div {{
@@ -1308,7 +1315,30 @@ def apply_max_ui_css(accent="#4DA768", dark_mode=False, login_screen=False):
 @property --mx-angle {{ syntax: '<angle>'; inherits: false; initial-value: 0deg; }}
 
 /* Chrome */
-[data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer {{ display: none !important; }}
+#MainMenu, footer {{ display: none !important; }}
+/* Header some, EXCETO quando ele carrega o botão de reabrir a sidebar
+   (sem isso, sidebar colapsada vira definitiva — o botão ficava escondido junto) */
+[data-testid="stHeader"] {{ display: none !important; }}
+[data-testid="stHeader"]:has([data-testid="stExpandSidebarButton"]) {{
+    display: flex !important;
+    position: fixed !important;
+    top: 14px !important; left: 14px !important; right: auto !important; bottom: auto !important;
+    height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important;
+    background: transparent !important; box-shadow: none !important;
+    z-index: 99999 !important; pointer-events: none !important;
+}}
+[data-testid="stHeader"] *:not(:has([data-testid="stExpandSidebarButton"])):not([data-testid="stExpandSidebarButton"]):not([data-testid="stExpandSidebarButton"] *) {{ display: none !important; }}
+[data-testid="stHeader"] [data-testid="stExpandSidebarButton"] {{
+    display: inline-flex !important;
+    align-items: center !important; justify-content: center !important;
+    width: 40px !important; height: 40px !important; min-width: 40px !important; padding: 0 !important;
+    visibility: visible !important; pointer-events: auto !important;
+    background: rgba(18,18,18,0.78) !important;
+    border: 1px solid rgba(255,255,255,0.24) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.30) !important;
+    cursor: pointer !important;
+}}
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] {{ opacity: 0.35 !important; }}
 ::selection {{ background: {a}66; color: #fff; }}
 ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
